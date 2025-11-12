@@ -42,15 +42,15 @@
     "LICENSE"
   ],
   "scripts": {
-    "clean": "rm -rf dist",
-    "build": "npm run clean && tsc",
-    "build:watch": "tsc --watch",
-    "dev": "tsx src/cli/bin.ts",
-    "dev:mcp": "tsx src/mcp/server.ts",
+    "clean": "rm -rf dist tsconfig.tsbuildinfo",
+    "build": "rm -rf dist tsconfig.tsbuildinfo && node_modules/.bin/tsc",
+    "build:watch": "node_modules/.bin/tsc --watch",
+    "dev": "node_modules/.bin/tsx src/cli/bin.ts",
+    "dev:mcp": "node_modules/.bin/tsx src/mcp/server.ts",
     "start": "node dist/cli/bin.js",
-    "check-types": "tsc --noEmit --skipLibCheck",
-    "test": "mocha -r tsx/cjs src/test/**/*.test.ts",
-    "prepublishOnly": "npm run build && npm test"
+    "check-types": "node_modules/.bin/tsc --noEmit --skipLibCheck",
+    "test": "node_modules/.bin/mocha -r tsx/cjs src/test/**/*.test.ts",
+    "prepublishOnly": "bun run build && bun test"
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^2.0.44",
