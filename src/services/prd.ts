@@ -16,6 +16,7 @@ export class PRDService {
 
   async parsePRD(input: {
     file: string;
+    workingDirectory?: string; // Working directory passed from CLI layer
     aiOptions?: AIOptions;
     promptOverride?: string;
     messageOverride?: string;
@@ -48,8 +49,9 @@ export class PRDService {
       );
     }
 
-    // Set working directory to current directory
-    configManager.setWorkingDirectory(process.cwd());
+    // Set working directory from CLI layer (defaults to process.cwd() for backward compatibility)
+    const workingDir = input.workingDirectory || process.cwd();
+    configManager.setWorkingDirectory(workingDir);
 
     input.callbacks?.onProgress?.({
       type: 'progress',
@@ -104,7 +106,9 @@ export class PRDService {
       aiConfig,
       input.promptOverride,
       input.messageOverride,
-      input.streamingOptions
+      input.streamingOptions,
+      undefined, // retryConfig
+      workingDir // Pass working directory to AI operations
     );
 
     steps.push({

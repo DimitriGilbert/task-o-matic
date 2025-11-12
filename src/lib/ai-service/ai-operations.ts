@@ -130,13 +130,15 @@ export class AIOperations {
     userMessage?: string,
     streamingOptions?: StreamingOptions,
     retryConfig?: Partial<RetryConfig>,
+    workingDirectory?: string, // Working directory passed from service layer
   ): Promise<AIPRDParseResult> {
     return this.retryHandler.executeWithRetry(
       async () => {
         // Get stack context for better PRD parsing using PromptBuilder
+        // Pass working directory explicitly to avoid process.cwd() issues
         let stackInfo = "";
         try {
-          stackInfo = await PromptBuilder.detectStackInfo();
+          stackInfo = await PromptBuilder.detectStackInfo(workingDirectory);
           if (stackInfo === "Not detected") {
             stackInfo = "";
           }
