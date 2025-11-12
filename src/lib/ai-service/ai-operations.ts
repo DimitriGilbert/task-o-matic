@@ -136,7 +136,7 @@ export class AIOperations {
         // Get stack context for better PRD parsing using PromptBuilder
         let stackInfo = "";
         try {
-          stackInfo = await PromptBuilder.detectStackInfo();
+          stackInfo = await PromptBuilder.detectStackInfo(process.cwd());
           if (stackInfo === "Not detected") {
             stackInfo = "";
           }
