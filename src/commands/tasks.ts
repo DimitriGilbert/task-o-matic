@@ -1,20 +1,9 @@
 import { Command } from "commander";
 import chalk from "chalk";
-import { listTasks } from "../lib/tasks/list";
-import { createTask } from "../lib/tasks/create";
-import { getTask } from "../lib/tasks/get";
-import { getNextTask } from "../lib/tasks/next";
-import { planTask, getTaskPlan, listTaskPlans, deleteTaskPlan } from "../lib/tasks/plan";
-import { splitTask } from "../lib/tasks/split";
-import { documentTask } from "../lib/tasks/document";
-import { enhanceTask } from "../lib/tasks/enhance";
-import { updateTask, setTaskStatus } from "../lib/tasks/update";
-import { deleteTask } from "../lib/tasks/delete";
-import { addTaskTags, removeTaskTags } from "../lib/tasks/tags";
-import { listTaskSubtasks, getTaskTree } from "../lib/tasks/tree";
+import { taskService } from "../services/tasks";
 import { executeTask } from "../lib/task-execution";
-
 import { createStreamingOptions } from "../utils/streaming-options";
+import { displayProgress, displayError } from "../cli/display/progress";
 import {
   displayTask,
   displayTaskDetails,
@@ -49,12 +38,20 @@ tasksCommand
   .option("--status <status>", "Filter by status (todo/in-progress/completed)")
   .option("--tag <tag>", "Filter by tag")
   .action(async (options) => {
-    const tasks = await listTasks(options);
+    try {
+      const tasks = await taskService.listTasks({
+        status: options.status,
+        tag: options.tag,
+      });
 
-    displayTaskList(tasks);
+      displayTaskList(tasks);
 
-    for (const task of tasks) {
-      await displayTask(task, { showSubtasks: true });
+      for (const task of tasks) {
+        await displayTask(task, { showSubtasks: true });
+      }
+    } catch (error) {
+      displayError(error);
+      process.exit(1);
     }
   });
 
@@ -74,22 +71,38 @@ tasksCommand
   .option("--ai-provider-url <url>", "AI provider URL override")
   .option("--reasoning <tokens>", "Enable reasoning for OpenRouter models (max reasoning tokens)")
   .action(async (options) => {
-    if (options.aiEnhance) {
-      console.log(
-        chalk.blue("🤖 Enhancing task with Context7 documentation...")
+    try {
+      const streamingOptions = createStreamingOptions(
+        options.aiEnhance && options.stream,
+        "Enhancement"
       );
+
+      const result = await taskService.createTask({
+        title: options.title,
+        content: options.content,
+        parentId: options.parentId,
+        effort: options.effort,
+        aiEnhance: options.aiEnhance,
+        aiOptions: {
+          aiProvider: options.aiProvider,
+          aiModel: options.aiModel,
+          aiKey: options.aiKey,
+          aiProviderUrl: options.aiProviderUrl,
+          aiReasoning: options.reasoning,
+        },
+        streamingOptions,
+        callbacks: {
+          onProgress: displayProgress,
+          onError: displayError,
+        },
+      });
+
+      displayEnhancementResult(options.aiEnhance && options.stream);
+      displayCreatedTask(result.task, result.aiMetadata);
+    } catch (error) {
+      displayError(error);
+      process.exit(1);
     }
-
-    // Set up streaming options if stream flag is enabled
-    const streamingOptions = createStreamingOptions(
-      options.aiEnhance && options.stream,
-      "Enhancement"
-    );
-
-    const { task, aiMetadata } = await createTask(options, streamingOptions);
-
-    displayEnhancementResult(options.aiEnhance && options.stream);
-    displayCreatedTask(task, aiMetadata);
   });
 
 // Show task details
@@ -98,13 +111,18 @@ tasksCommand
   .description("Show detailed information about a task")
   .requiredOption("--id <id>", "Task ID")
   .action(async (options) => {
-    const task = await getTask(options.id);
+    try {
+      const task = await taskService.getTask(options.id);
 
-    if (!task) {
-      throw new Error(`Task with ID ${options.id} not found`);
+      if (!task) {
+        throw new Error(`Task with ID ${options.id} not found`);
+      }
+
+      await displayTaskDetails(task);
+    } catch (error) {
+      displayError(error);
+      process.exit(1);
     }
-
-    await displayTaskDetails(task);
   });
 
 // Document task
@@ -122,41 +140,51 @@ tasksCommand
   .option("--ai-provider-url <url>", "AI provider URL override")
   .option("--reasoning <tokens>", "Enable reasoning for OpenRouter models (max reasoning tokens)")
   .action(async (options) => {
-    console.log(chalk.blue(`📚 Analyzing documentation needs for task...`));
+    try {
+      const streamingOptions = createStreamingOptions(options.stream, "Analysis");
 
-    // Set up streaming options if stream flag is enabled
-    const streamingOptions = createStreamingOptions(options.stream, "Analysis");
-
-    const { task, analysis, documentation } = await documentTask(
-      options,
-      streamingOptions
-    );
-
-    if (documentation && !options.force) {
-      const daysSinceFetch =
-        (Date.now() - documentation.lastFetched) / (24 * 60 * 60 * 1000);
-      console.log(
-        chalk.green(
-          `✓ Documentation is fresh (${Math.round(daysSinceFetch)} days old)`
-        )
+      const result = await taskService.documentTask(
+        options.taskId,
+        options.force,
+        {
+          aiProvider: options.aiProvider,
+          aiModel: options.aiModel,
+          aiKey: options.aiKey,
+          aiProviderUrl: options.aiProviderUrl,
+          aiReasoning: options.reasoning,
+        },
+        streamingOptions,
+        {
+          onProgress: displayProgress,
+          onError: displayError,
+        }
       );
-      console.log(chalk.cyan(`Recap: ${documentation.recap}`));
-      console.log(
-        chalk.blue(`Libraries: ${documentation.libraries.join(", ")}`)
-      );
-      return;
-    }
 
-    if (!options.stream) {
-      console.log(chalk.blue(`🔍 Using AI to analyze documentation needs...`));
-    }
+      if (result.documentation && !options.force) {
+        const daysSinceFetch =
+          (Date.now() - result.documentation.lastFetched) / (24 * 60 * 60 * 1000);
+        console.log(
+          chalk.green(
+            `✓ Documentation is fresh (${Math.round(daysSinceFetch)} days old)`
+          )
+        );
+        console.log(chalk.cyan(`Recap: ${result.documentation.recap}`));
+        console.log(
+          chalk.blue(`Libraries: ${result.documentation.libraries.join(", ")}`)
+        );
+        return;
+      }
 
-    if (analysis) {
-      displayDocumentationAnalysis(analysis);
-    }
-    
-    if (documentation?.research) {
-      displayResearchSummary(documentation);
+      if (result.analysis) {
+        displayDocumentationAnalysis(result.analysis);
+      }
+
+      if (result.documentation?.research) {
+        displayResearchSummary(result.documentation);
+      }
+    } catch (error) {
+      displayError(error);
+      process.exit(1);
     }
   });
 
@@ -173,81 +201,90 @@ tasksCommand
   .option("--ai-provider-url <url>", "AI provider URL override")
   .option("--reasoning <tokens>", "Enable reasoning for OpenRouter models (max reasoning tokens)")
   .action(async (options) => {
-    if (!options.taskId && !options.all) {
-      throw new Error("Either --task-id or --all must be specified");
-    }
-
-    if (options.taskId && options.all) {
-      throw new Error("Cannot specify both --task-id and --all");
-    }
-
-    const enhanceSingleTask = async (taskId: string) => {
-      console.log(chalk.blue(`🤖 Enhancing task...`));
-
-      // Set up streaming options if stream flag is enabled
-      const streamingOptions = createStreamingOptions(
-        options.stream,
-        "Enhancement"
-      );
-
-      const { task, enhancedContent, aiMetadata } = await enhanceTask(
-        { taskId: taskId, ...options },
-        streamingOptions
-      );
-
-      if (!options.stream) {
-        console.log(chalk.blue(`🤖 Enhancing task: ${task.title}`));
+    try {
+      if (!options.taskId && !options.all) {
+        throw new Error("Either --task-id or --all must be specified");
       }
 
-      if (enhancedContent.length > 200) {
-        console.log(chalk.cyan(`  Enhanced content saved to file.`));
-      } else {
-        console.log(
-          chalk.cyan(`  Enhanced content updated in task description.`)
+      if (options.taskId && options.all) {
+        throw new Error("Cannot specify both --task-id and --all");
+      }
+
+      const enhanceSingleTask = async (taskId: string) => {
+        const streamingOptions = createStreamingOptions(
+          options.stream,
+          "Enhancement"
         );
-      }
 
-      console.log(chalk.green("✓ Task enhanced with Context7 documentation"));
-      console.log(chalk.magenta(`  🤖 Enhanced using Context7 MCP tools`));
-    };
-
-    if (options.taskId) {
-      await enhanceSingleTask(options.taskId);
-    } else if (options.all) {
-      const allTasks = await listTasks({});
-      if (allTasks.length === 0) {
-        console.log(chalk.yellow("No tasks found to enhance."));
-        return;
-      }
-
-      console.log(
-        chalk.blue(`🤖 Enhancing ${allTasks.length} tasks in order...`)
-      );
-
-      for (let i = 0; i < allTasks.length; i++) {
-        const task = allTasks[i];
-        console.log(
-          chalk.cyan(
-            `\n[${i + 1}/${allTasks.length}] Enhancing: ${task.title} (${task.id})`
-          )
+        const result = await taskService.enhanceTask(
+          taskId,
+          {
+            aiProvider: options.aiProvider,
+            aiModel: options.aiModel,
+            aiKey: options.aiKey,
+            aiProviderUrl: options.aiProviderUrl,
+            aiReasoning: options.reasoning,
+          },
+          streamingOptions,
+          {
+            onProgress: displayProgress,
+            onError: displayError,
+          }
         );
-        try {
-          await enhanceSingleTask(task.id);
-          console.log(chalk.green(`✓ Enhanced task ${task.id}`));
-        } catch (error) {
+
+        if (result.enhancedContent.length > 200) {
+          console.log(chalk.cyan(`  Enhanced content saved to file.`));
+        } else {
           console.log(
-            chalk.red(
-              `❌ Failed to enhance task ${task.id}: ${error instanceof Error ? error.message : "Unknown error"}`
-            )
+            chalk.cyan(`  Enhanced content updated in task description.`)
           );
         }
-      }
 
-      console.log(
-        chalk.green(
-          `\n✓ Bulk enhancement complete! Processed ${allTasks.length} tasks.`
-        )
-      );
+        console.log(chalk.green("✓ Task enhanced with Context7 documentation"));
+        console.log(chalk.magenta(`  🤖 Enhanced using Context7 MCP tools`));
+      };
+
+      if (options.taskId) {
+        await enhanceSingleTask(options.taskId);
+      } else if (options.all) {
+        const allTasks = await taskService.listTasks({});
+        if (allTasks.length === 0) {
+          console.log(chalk.yellow("No tasks found to enhance."));
+          return;
+        }
+
+        console.log(
+          chalk.blue(`🤖 Enhancing ${allTasks.length} tasks in order...`)
+        );
+
+        for (let i = 0; i < allTasks.length; i++) {
+          const task = allTasks[i];
+          console.log(
+            chalk.cyan(
+              `\n[${i + 1}/${allTasks.length}] Enhancing: ${task.title} (${task.id})`
+            )
+          );
+          try {
+            await enhanceSingleTask(task.id);
+            console.log(chalk.green(`✓ Enhanced task ${task.id}`));
+          } catch (error) {
+            console.log(
+              chalk.red(
+                `❌ Failed to enhance task ${task.id}: ${error instanceof Error ? error.message : "Unknown error"}`
+              )
+            );
+          }
+        }
+
+        console.log(
+          chalk.green(
+            `\n✓ Bulk enhancement complete! Processed ${allTasks.length} tasks.`
+          )
+        );
+      }
+    } catch (error) {
+      displayError(error);
+      process.exit(1);
     }
   });
 
@@ -264,87 +301,99 @@ tasksCommand
   .option("--ai-provider-url <url>", "AI provider URL override")
   .option("--reasoning <tokens>", "Enable reasoning for OpenRouter models (max reasoning tokens)")
   .action(async (options) => {
-    if (!options.taskId && !options.all) {
-      throw new Error("Either --task-id or --all must be specified");
-    }
-
-    if (options.taskId && options.all) {
-      throw new Error("Cannot specify both --task-id and --all");
-    }
-
-    const splitSingleTask = async (taskId: string) => {
-      console.log(chalk.blue(`🔧 Breaking down task into subtasks...`));
-
-      // Set up streaming options if stream flag is enabled
-      const streamingOptions = createStreamingOptions(
-        options.stream,
-        "Task breakdown"
-      );
-
-      try {
-        const result = await splitTask({ taskId, ...options }, streamingOptions);
-
-        if (!options.stream) {
-          console.log(
-            chalk.blue(`🔧 Breaking down task: ${result.task.title}`)
-          );
-        }
-
-        displaySubtaskCreation(result.subtasks);
-
-        // Display AI metadata
-        console.log(chalk.gray(`\n📊 AI Splitting Details:`));
-        console.log(chalk.gray(`   Provider: ${result.aiMetadata.aiProvider}`));
-        console.log(chalk.gray(`   Model: ${result.aiMetadata.aiModel}`));
-        console.log(
-          chalk.gray(`   Subtasks created: ${result.subtasks.length}`)
-        );
-        console.log(
-          chalk.gray(
-            `   Confidence: ${result.aiMetadata.confidence ? (result.aiMetadata.confidence * 100).toFixed(1) : "N/A"}%`
-          )
-        );
-      } catch (error) {
-        if (error instanceof Error && error.message.includes("already has")) {
-          console.log(chalk.yellow(`⚠️ ${error.message}`));
-          return;
-        }
-        throw error;
-      }
-    };
-
-    if (options.taskId) {
-      await splitSingleTask(options.taskId);
-    } else if (options.all) {
-      const allTasks = await listTasks({});
-      if (allTasks.length === 0) {
-        console.log(chalk.yellow("No tasks found to split."));
-        return;
+    try {
+      if (!options.taskId && !options.all) {
+        throw new Error("Either --task-id or --all must be specified");
       }
 
-      console.log(chalk.blue(`🔧 Splitting ${allTasks.length} tasks...`));
+      if (options.taskId && options.all) {
+        throw new Error("Cannot specify both --task-id and --all");
+      }
 
-      for (let i = 0; i < allTasks.length; i++) {
-        const task = allTasks[i];
-        console.log(
-          chalk.cyan(`\n[${i + 1}/${allTasks.length}] Splitting: ${task.title}`)
+      const splitSingleTask = async (taskId: string) => {
+        const streamingOptions = createStreamingOptions(
+          options.stream,
+          "Task breakdown"
         );
+
         try {
-          await splitSingleTask(task.id);
-        } catch (error) {
+          const result = await taskService.splitTask(
+            taskId,
+            {
+              aiProvider: options.aiProvider,
+              aiModel: options.aiModel,
+              aiKey: options.aiKey,
+              aiProviderUrl: options.aiProviderUrl,
+              aiReasoning: options.reasoning,
+            },
+            undefined,
+            undefined,
+            streamingOptions,
+            {
+              onProgress: displayProgress,
+              onError: displayError,
+            }
+          );
+
+          displaySubtaskCreation(result.subtasks);
+
+          // Display AI metadata
+          console.log(chalk.gray(`\n📊 AI Splitting Details:`));
+          console.log(chalk.gray(`   Provider: ${result.metadata.aiProvider}`));
+          console.log(chalk.gray(`   Model: ${result.metadata.aiModel}`));
           console.log(
-            chalk.red(
-              `❌ Failed to split task ${task.id}: ${error instanceof Error ? error.message : "Unknown error"}`
+            chalk.gray(`   Subtasks created: ${result.subtasks.length}`)
+          );
+          console.log(
+            chalk.gray(
+              `   Confidence: ${result.metadata.confidence ? (result.metadata.confidence * 100).toFixed(1) : "N/A"}%`
             )
           );
+        } catch (error) {
+          if (error instanceof Error && error.message.includes("already has")) {
+            console.log(chalk.yellow(`⚠️ ${error.message}`));
+            return;
+          }
+          throw error;
         }
-      }
+      };
 
-      console.log(
-        chalk.green(
-          `\n✓ Bulk splitting complete! Processed ${allTasks.length} tasks.`
-        )
-      );
+      if (options.taskId) {
+        await splitSingleTask(options.taskId);
+      } else if (options.all) {
+        const allTasks = await taskService.listTasks({});
+        if (allTasks.length === 0) {
+          console.log(chalk.yellow("No tasks found to split."));
+          return;
+        }
+
+        console.log(chalk.blue(`🔧 Splitting ${allTasks.length} tasks...`));
+
+        for (let i = 0; i < allTasks.length; i++) {
+          const task = allTasks[i];
+          console.log(
+            chalk.cyan(`\n[${i + 1}/${allTasks.length}] Splitting: ${task.title}`)
+          );
+          try {
+            await splitSingleTask(task.id);
+          } catch (error) {
+            console.log(
+              chalk.red(
+                `❌ Failed to split task ${task.id}: ${error instanceof Error ? error.message : "Unknown error"}`
+              )
+            );
+          }
+        }
+
+        console.log(
+          chalk.green(
+            `\n✓ Bulk splitting complete! Processed ${allTasks.length} tasks.`
+          )
+        );
+      }
+    } catch (error) {
+      displayError(error);
+      process.exit(1);
     }
   });
 
@@ -360,24 +409,32 @@ tasksCommand
   .option("--ai-provider-url <url>", "AI provider URL override")
   .option("--reasoning <tokens>", "Enable reasoning for OpenRouter models (max reasoning tokens)")
   .action(async (options) => {
-    console.log(
-      chalk.blue(
-        `📋 Creating implementation plan for task/subtask ${options.id}...`
-      )
-    );
+    try {
+      const streamingOptions = createStreamingOptions(options.stream, "Planning");
 
-    // Set up streaming options if stream flag is enabled
-    const streamingOptions = createStreamingOptions(options.stream, "Planning");
+      const result = await taskService.planTask(
+        options.id,
+        {
+          aiProvider: options.aiProvider,
+          aiModel: options.aiModel,
+          aiKey: options.aiKey,
+          aiProviderUrl: options.aiProviderUrl,
+          aiReasoning: options.reasoning,
+        },
+        streamingOptions,
+        {
+          onProgress: displayProgress,
+          onError: displayError,
+        }
+      );
 
-    const result = await planTask(options, streamingOptions);
-
-    if (!options.stream) {
-      console.log(chalk.blue(`📋 Planning task: ${result.task.title}`));
+      // Display the plan
+      displayPlanCreation(options.id, result.task.title);
+      console.log(chalk.cyan(result.plan));
+    } catch (error) {
+      displayError(error);
+      process.exit(1);
     }
-
-    // Display the plan
-    displayPlanCreation(options.id, result.task.title);
-    console.log(chalk.cyan(result.planText));
   });
 
 // Get plan command
@@ -386,25 +443,30 @@ tasksCommand
   .description("View existing implementation plan for a task or subtask")
   .requiredOption("--id <id>", "Task or subtask ID")
   .action(async (options) => {
-    const plan = await getTaskPlan(options.id);
+    try {
+      const plan = await taskService.getTaskPlan(options.id);
 
-    if (!plan) {
-      console.log(
-        chalk.yellow(`⚠️  No plan found for task/subtask ${options.id}`)
+      if (!plan) {
+        console.log(
+          chalk.yellow(`⚠️  No plan found for task/subtask ${options.id}`)
+        );
+        return;
+      }
+
+      const task = await taskService.getTask(options.id);
+      const taskTitle = task ? task.title : options.id;
+
+      displayPlanView(
+        taskTitle,
+        options.id,
+        plan.plan,
+        plan.createdAt,
+        plan.updatedAt
       );
-      return;
+    } catch (error) {
+      displayError(error);
+      process.exit(1);
     }
-
-    const task = await getTask(options.id);
-    const taskTitle = task ? task.title : options.id;
-
-    displayPlanView(
-      taskTitle,
-      options.id,
-      plan.plan,
-      plan.createdAt,
-      plan.updatedAt
-    );
   });
 
 // List plans command
@@ -412,20 +474,25 @@ tasksCommand
   .command("list-plan")
   .description("List all available implementation plans")
   .action(async () => {
-    const plans = await listTaskPlans();
+    try {
+      const plans = await taskService.listTaskPlans();
 
-    // Get task titles for each plan
-    const plansWithTitles = await Promise.all(
-      plans.map(async (plan) => {
-        const task = await getTask(plan.taskId);
-        return {
-          ...plan,
-          taskTitle: task ? task.title : plan.taskId,
-        };
-      })
-    );
+      // Get task titles for each plan
+      const plansWithTitles = await Promise.all(
+        plans.map(async (plan) => {
+          const task = await taskService.getTask(plan.taskId);
+          return {
+            ...plan,
+            taskTitle: task ? task.title : plan.taskId,
+          };
+        })
+      );
 
-    displayPlanList(plansWithTitles);
+      displayPlanList(plansWithTitles);
+    } catch (error) {
+      displayError(error);
+      process.exit(1);
+    }
   });
 
 // Update task command
@@ -439,18 +506,25 @@ tasksCommand
   .option("--effort <effort>", "New estimated effort (small/medium/large)")
   .option("--tags <tags>", "New tags (comma-separated)")
   .action(async (options) => {
-    const { id, ...updates } = options;
-    if (Object.keys(updates).length === 0) {
-      throw new Error("At least one field must be specified for update");
-    }
+    try {
+      const { id, ...updates } = options;
+      if (Object.keys(updates).length === 0) {
+        throw new Error("At least one field must be specified for update");
+      }
 
-    const updatedTask = await updateTask(options);
-    
-    if (!updatedTask) {
-      throw new Error(`Failed to update task ${options.id}`);
-    }
+      const updatedTask = await taskService.updateTask(id, {
+        title: updates.title,
+        description: updates.description,
+        status: updates.status,
+        effort: updates.effort,
+        tags: updates.tags,
+      });
 
-    displayTaskUpdate(updatedTask, updates);
+      displayTaskUpdate(updatedTask, updates);
+    } catch (error) {
+      displayError(error);
+      process.exit(1);
+    }
   });
 
 // Delete task command
@@ -461,22 +535,31 @@ tasksCommand
   .option("--force", "Skip confirmation and delete anyway")
   .option("--cascade", "Delete all subtasks as well")
   .action(async (options) => {
-    if (!options.force) {
-      const task = await getTask(options.id);
-      if (!task) {
-        throw new Error(`Task with ID ${options.id} not found`);
-      }
-      
-      console.log(chalk.red(`\n⚠️  Are you sure you want to delete task: ${task.title} (${task.id})?`));
-      console.log(chalk.red("This action cannot be undone."));
-      
-      // Simple confirmation - in a real CLI you might want a proper prompt
-      console.log(chalk.yellow("Use --force to confirm deletion."));
-      return;
-    }
+    try {
+      if (!options.force) {
+        const task = await taskService.getTask(options.id);
+        if (!task) {
+          throw new Error(`Task with ID ${options.id} not found`);
+        }
 
-    const result = await deleteTask(options);
-    displayTaskDelete(result.deleted, result.orphanedSubtasks);
+        console.log(chalk.red(`\n⚠️  Are you sure you want to delete task: ${task.title} (${task.id})?`));
+        console.log(chalk.red("This action cannot be undone."));
+
+        // Simple confirmation - in a real CLI you might want a proper prompt
+        console.log(chalk.yellow("Use --force to confirm deletion."));
+        return;
+      }
+
+      const result = await taskService.deleteTask(options.id, {
+        cascade: options.cascade,
+        force: options.force,
+      });
+
+      displayTaskDelete(result.deleted, result.orphanedSubtasks);
+    } catch (error) {
+      displayError(error);
+      process.exit(1);
+    }
   });
 
 // Set status command
@@ -486,19 +569,20 @@ tasksCommand
   .requiredOption("--id <id>", "Task ID")
   .requiredOption("--status <status>", "New status (todo/in-progress/completed)")
   .action(async (options) => {
-    const task = await getTask(options.id);
-    if (!task) {
-      throw new Error(`Task with ID ${options.id} not found`);
-    }
+    try {
+      const task = await taskService.getTask(options.id);
+      if (!task) {
+        throw new Error(`Task with ID ${options.id} not found`);
+      }
 
-    const oldStatus = task.status;
-    const updatedTask = await setTaskStatus(options);
-    
-    if (!updatedTask) {
-      throw new Error(`Failed to update status for task ${options.id}`);
-    }
+      const oldStatus = task.status;
+      const updatedTask = await taskService.setTaskStatus(options.id, options.status);
 
-    displayTaskStatusChange(updatedTask, oldStatus, options.status);
+      displayTaskStatusChange(updatedTask, oldStatus, options.status);
+    } catch (error) {
+      displayError(error);
+      process.exit(1);
+    }
   });
 
 // Add tags command
@@ -508,13 +592,15 @@ tasksCommand
   .requiredOption("--id <id>", "Task ID")
   .requiredOption("--tags <tags>", "Tags to add (comma-separated)")
   .action(async (options) => {
-    const updatedTask = await addTaskTags(options);
-    
-    if (!updatedTask) {
-      throw new Error(`Failed to add tags to task ${options.id}`);
-    }
+    try {
+      const tags = options.tags.split(',').map((tag: string) => tag.trim());
+      const updatedTask = await taskService.addTags(options.id, tags);
 
-    displayTagsUpdate(updatedTask, options.tags.split(',').map((tag: string) => tag.trim()), []);
+      displayTagsUpdate(updatedTask, tags, []);
+    } catch (error) {
+      displayError(error);
+      process.exit(1);
+    }
   });
 
 // Remove tags command
@@ -524,13 +610,15 @@ tasksCommand
   .requiredOption("--id <id>", "Task ID")
   .requiredOption("--tags <tags>", "Tags to remove (comma-separated)")
   .action(async (options) => {
-    const updatedTask = await removeTaskTags(options);
-    
-    if (!updatedTask) {
-      throw new Error(`Failed to remove tags from task ${options.id}`);
-    }
+    try {
+      const tags = options.tags.split(',').map((tag: string) => tag.trim());
+      const updatedTask = await taskService.removeTags(options.id, tags);
 
-    displayTagsUpdate(updatedTask, [], options.tags.split(',').map((tag: string) => tag.trim()));
+      displayTagsUpdate(updatedTask, [], tags);
+    } catch (error) {
+      displayError(error);
+      process.exit(1);
+    }
   });
 
 // Delete plan command
@@ -539,8 +627,13 @@ tasksCommand
   .description("Delete implementation plan for a task")
   .requiredOption("--id <id>", "Task ID")
   .action(async (options) => {
-    const success = await deleteTaskPlan(options.id);
-    displayPlanDeletion(options.id, success);
+    try {
+      const success = await taskService.deleteTaskPlan(options.id);
+      displayPlanDeletion(options.id, success);
+    } catch (error) {
+      displayError(error);
+      process.exit(1);
+    }
   });
 
 // List subtasks command
@@ -549,22 +642,27 @@ tasksCommand
   .description("List subtasks for a task")
   .requiredOption("--id <id>", "Parent task ID")
   .action(async (options) => {
-    const subtasks = await listTaskSubtasks(options.id);
-    
-    if (subtasks.length === 0) {
-      console.log(chalk.yellow(`No subtasks found for task ${options.id}`));
-      return;
-    }
+    try {
+      const subtasks = await taskService.getSubtasks(options.id);
 
-    const parentTask = await getTask(options.id);
-    const parentTitle = parentTask ? parentTask.title : options.id;
-    
-    console.log(chalk.blue(`\n📋 Subtasks for ${parentTitle} (${options.id}):`));
-    console.log("");
-    
-    for (let i = 0; i < subtasks.length; i++) {
-      const subtask = subtasks[i];
-      await displayTask(subtask, { indent: '  ', showSubtasks: false });
+      if (subtasks.length === 0) {
+        console.log(chalk.yellow(`No subtasks found for task ${options.id}`));
+        return;
+      }
+
+      const parentTask = await taskService.getTask(options.id);
+      const parentTitle = parentTask ? parentTask.title : options.id;
+
+      console.log(chalk.blue(`\n📋 Subtasks for ${parentTitle} (${options.id}):`));
+      console.log("");
+
+      for (let i = 0; i < subtasks.length; i++) {
+        const subtask = subtasks[i];
+        await displayTask(subtask, { indent: '  ', showSubtasks: false });
+      }
+    } catch (error) {
+      displayError(error);
+      process.exit(1);
     }
   });
 
@@ -574,8 +672,13 @@ tasksCommand
   .description("Display hierarchical task tree")
   .option("--id <id>", "Root task ID (optional - shows full tree if not specified)")
   .action(async (options) => {
-    const tasks = await getTaskTree(options.id);
-    await displayTaskTree(tasks, options.id);
+    try {
+      const tasks = await taskService.getTaskTree(options.id);
+      await displayTaskTree(tasks, options.id);
+    } catch (error) {
+      displayError(error);
+      process.exit(1);
+    }
   });
 
 // Get next task command
@@ -587,27 +690,32 @@ tasksCommand
   .option("--effort <effort>", "Filter by effort (small/medium/large)")
   .option("--priority <priority>", "Sort priority (newest/oldest/effort)", "hierarchical")
   .action(async (options) => {
-    // Default to todo status if not specified
-    const searchOptions = {
-      ...options,
-      status: options.status || "todo"
-    };
-    
-    const nextTask = await getNextTask(searchOptions);
-    
-    if (!nextTask) {
-      console.log(chalk.yellow("No tasks found matching the criteria."));
-      return;
+    try {
+      // Default to todo status if not specified
+      const searchOptions = {
+        ...options,
+        status: options.status || "todo"
+      };
+
+      const nextTask = await taskService.getNextTask(searchOptions);
+
+      if (!nextTask) {
+        console.log(chalk.yellow("No tasks found matching the criteria."));
+        return;
+      }
+
+      const criteria = [
+        searchOptions.status && `status: ${searchOptions.status}`,
+        options.tag && `tag: ${options.tag}`,
+        options.effort && `effort: ${options.effort}`,
+        options.priority && `priority: ${options.priority}`
+      ].filter(Boolean).join(", ");
+
+      displayNextTask(nextTask, criteria || "next todo task");
+    } catch (error) {
+      displayError(error);
+      process.exit(1);
     }
-    
-    const criteria = [
-      searchOptions.status && `status: ${searchOptions.status}`,
-      options.tag && `tag: ${options.tag}`,
-      options.effort && `effort: ${options.effort}`,
-      options.priority && `priority: ${options.priority}`
-    ].filter(Boolean).join(", ");
-    
-    displayNextTask(nextTask, criteria || "next todo task");
   });
 
 // Execute task command

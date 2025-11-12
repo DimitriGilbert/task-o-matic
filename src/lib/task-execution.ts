@@ -1,6 +1,4 @@
-import { getStorage } from "../utils/ai-service-factory";
-import { getTaskPlan } from "./tasks/plan";
-import { updateTask } from "./tasks/update";
+import { taskService } from "../services/tasks";
 import { ExecuteTaskOptions, ExecutorTool } from "../types";
 import { ExecutorFactory } from "./executors/executor-factory";
 import { runValidations } from "./validation";
@@ -12,7 +10,7 @@ async function executeSingleTask(
   dry: boolean,
 ): Promise<void> {
   // Load task
-  const task = await getStorage().getTask(taskId);
+  const task = await taskService.getTask(taskId);
   if (!task) {
     throw new Error(`Task with ID ${taskId} not found`);
   }
@@ -25,7 +23,7 @@ async function executeSingleTask(
 
   // Build execution message
   let executionMessage: string;
-  const planData = await getTaskPlan(taskId);
+  const planData = await taskService.getTaskPlan(taskId);
   if (planData) {
     executionMessage = `Execute this task plan:\n\n${planData.plan}`;
   } else {
@@ -37,7 +35,7 @@ async function executeSingleTask(
     //   console.log(chalk.cyan(executionMessage));
     // } else {
     // Update task status to in-progress
-    await updateTask({ id: taskId, status: "in-progress" });
+    await taskService.setTaskStatus(taskId, "in-progress");
     console.log(chalk.yellow("⏳ Task status updated to in-progress"));
   }
 
@@ -50,13 +48,13 @@ async function executeSingleTask(
 
     if (!dry) {
       // Update task status to completed
-      await updateTask({ id: taskId, status: "completed" });
+      await taskService.setTaskStatus(taskId, "completed");
       console.log(chalk.green("✅ Task execution completed successfully"));
     }
   } catch (error) {
     if (!dry) {
       // Update task status back to todo on failure
-      await updateTask({ id: taskId, status: "todo" });
+      await taskService.setTaskStatus(taskId, "todo");
       console.log(chalk.red("❌ Task execution failed, status reset to todo"));
     }
     throw error;
@@ -68,13 +66,13 @@ async function executeTaskWithSubtasks(
   tool: ExecutorTool,
   dry: boolean,
 ): Promise<void> {
-  const task = await getStorage().getTask(taskId);
+  const task = await taskService.getTask(taskId);
   if (!task) {
     throw new Error(`Task with ID ${taskId} not found`);
   }
 
   // Get subtasks
-  const subtasks = await getStorage().getSubtasks(taskId);
+  const subtasks = await taskService.getSubtasks(taskId);
 
   if (subtasks.length === 0) {
     // No subtasks, execute this task directly
@@ -111,7 +109,7 @@ async function executeTaskWithSubtasks(
 
   // After all subtasks are done, mark the main task as completed
   if (!dry) {
-    await updateTask({ id: taskId, status: "completed" });
+    await taskService.setTaskStatus(taskId, "completed");
     console.log(
       chalk.green(`✅ Main task ${task.title} completed after all subtasks`),
     );
@@ -135,7 +133,7 @@ export async function executeTask(options: ExecuteTaskOptions): Promise<void> {
 
   // If custom message is provided, execute just this task (ignore subtasks)
   if (message) {
-    const task = await getStorage().getTask(taskId);
+    const task = await taskService.getTask(taskId);
     if (!task) {
       throw new Error(`Task with ID ${taskId} not found`);
     }
@@ -150,7 +148,7 @@ export async function executeTask(options: ExecuteTaskOptions): Promise<void> {
       console.log(chalk.yellow(`📝 Custom message that would be sent:`));
       console.log(chalk.cyan(message));
     } else {
-      await updateTask({ id: taskId, status: "in-progress" });
+      await taskService.setTaskStatus(taskId, "in-progress");
       console.log(chalk.yellow("⏳ Task status updated to in-progress"));
     }
 
@@ -161,7 +159,7 @@ export async function executeTask(options: ExecuteTaskOptions): Promise<void> {
       await executor.execute(message, dry);
 
       if (!dry) {
-        await updateTask({ id: taskId, status: "completed" });
+        await taskService.setTaskStatus(taskId, "completed");
         console.log(chalk.green("✅ Task execution completed successfully"));
       }
 
@@ -169,7 +167,7 @@ export async function executeTask(options: ExecuteTaskOptions): Promise<void> {
       await runValidations(validate, dry);
     } catch (error) {
       if (!dry) {
-        await updateTask({ id: taskId, status: "todo" });
+        await taskService.setTaskStatus(taskId, "todo");
         console.log(
           chalk.red("❌ Task execution failed, status reset to todo"),
         );

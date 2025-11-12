@@ -1,7 +1,6 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp";
 import { z } from "zod";
-import { listTasks } from "../lib/tasks/list";
-import { createTask } from "../lib/tasks/create";
+import { taskService } from "../services/tasks";
 import { configManager } from "../lib/config";
 
 export function registerMcpTools(server: McpServer) {
@@ -51,7 +50,9 @@ export function registerMcpTools(server: McpServer) {
     },
     async (input) => {
       try {
-        const tasks = await listTasks({ status: input.filterByStatus });
+        const tasks = await taskService.listTasks({
+          status: input.filterByStatus
+        });
         return {
           content: [
             {
@@ -84,7 +85,7 @@ export function registerMcpTools(server: McpServer) {
     },
     async (input) => {
       try {
-        const { task } = await createTask({
+        const result = await taskService.createTask({
           title: input.taskTitle,
           content: input.taskContent,
           effort: input.effort,
@@ -94,7 +95,7 @@ export function registerMcpTools(server: McpServer) {
           content: [
             {
               type: "text",
-              text: `Task created successfully with ID: ${task.id}`,
+              text: `Task created successfully with ID: ${result.task.id}`,
             },
           ],
         };
