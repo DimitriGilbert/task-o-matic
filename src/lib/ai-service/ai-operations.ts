@@ -149,13 +149,19 @@ export class AIOperations {
         if (promptOverride) {
           enhancedPrompt = promptOverride;
         } else {
+          const variables: Record<string, string> = {
+            PRD_CONTENT: prdContent,
+          };
+
+          // Only include stack info if we have it
+          if (stackInfo) {
+            variables.STACK_INFO = stackInfo;
+          }
+
           const promptResult = PromptBuilder.buildPrompt({
             name: "prd-parsing",
             type: "user",
-            variables: {
-              PRD_CONTENT: prdContent,
-              STACK_INFO: stackInfo,
-            },
+            variables,
           });
 
           if (!promptResult.success) {
