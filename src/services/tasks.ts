@@ -131,8 +131,9 @@ export class TaskService {
     }
 
     if (filters.tag) {
+      const tagToFilter = filters.tag; // Type narrowing
       filteredTasks = filteredTasks.filter(
-        (task) => task.tags && task.tags.includes(filters.tag)
+        (task) => task.tags && task.tags.includes(tagToFilter)
       );
     }
 

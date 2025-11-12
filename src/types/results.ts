@@ -1,4 +1,4 @@
-import { Task, TaskAIMetadata } from "./index";
+import { Task, TaskAIMetadata, DocumentationDetection } from "./index";
 
 export interface OperationResult<T = any> {
   success: boolean;
@@ -61,11 +61,7 @@ export interface PlanTaskResult {
 export interface DocumentTaskResult {
   success: true;
   task: Task;
-  analysis?: {
-    needsDocumentation: boolean;
-    suggestedLibraries: string[];
-    reasoning: string;
-  };
+  analysis?: DocumentationDetection;
   documentation?: any;
   stats: {
     duration: number;
@@ -74,7 +70,7 @@ export interface DocumentTaskResult {
 
 export interface DeleteTaskResult {
   success: true;
-  deleted: Task;
+  deleted: Task[];
   orphanedSubtasks: Task[];
 }
 

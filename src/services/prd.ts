@@ -2,7 +2,8 @@ import { readFileSync, existsSync, copyFileSync, writeFileSync, mkdirSync } from
 import { join, basename, relative } from "path";
 import { getAIOperations, getStorage } from "../utils/ai-service-factory";
 import { buildAIConfig, AIOptions } from "../utils/ai-config-builder";
-import { AIConfig, PRDParseResult, StreamingOptions } from "../types";
+import { AIConfig, StreamingOptions } from "../types";
+import { PRDParseResult } from "../types/results";
 import { configManager } from "../lib/config";
 import { isValidAIProvider } from "../lib/validation";
 import { ProgressCallback } from "../types/callbacks";
@@ -29,7 +30,7 @@ export class PRDService {
       details?: any;
     }> = [];
 
-    callbacks?.onProgress?.({
+    input.callbacks?.onProgress?.({
       type: 'started',
       message: 'Starting PRD parsing...',
     });
@@ -50,7 +51,7 @@ export class PRDService {
     // Set working directory to current directory
     configManager.setWorkingDirectory(process.cwd());
 
-    callbacks?.onProgress?.({
+    input.callbacks?.onProgress?.({
       type: 'progress',
       message: 'Reading PRD file...',
     });
@@ -58,7 +59,7 @@ export class PRDService {
     const prdContent = readFileSync(input.file, "utf-8");
 
     // Save PRD file to .task-o-matic/prd directory
-    callbacks?.onProgress?.({
+    input.callbacks?.onProgress?.({
       type: 'progress',
       message: 'Saving PRD to project directory...',
     });
@@ -92,7 +93,7 @@ export class PRDService {
 
     const aiConfig = buildAIConfig(input.aiOptions);
 
-    callbacks?.onProgress?.({
+    input.callbacks?.onProgress?.({
       type: 'progress',
       message: 'Parsing PRD with AI...',
     });
@@ -113,7 +114,7 @@ export class PRDService {
       details: { tasksFound: result.tasks.length },
     });
 
-    callbacks?.onProgress?.({
+    input.callbacks?.onProgress?.({
       type: 'progress',
       message: `Creating ${result.tasks.length} tasks...`,
     });
@@ -125,7 +126,7 @@ export class PRDService {
     for (let i = 0; i < result.tasks.length; i++) {
       const task = result.tasks[i];
 
-      callbacks?.onProgress?.({
+      input.callbacks?.onProgress?.({
         type: 'progress',
         message: `Creating task ${i + 1}/${result.tasks.length}: ${task.title}`,
         current: i + 1,
@@ -167,7 +168,7 @@ export class PRDService {
       details: { count: createdTasks.length },
     });
 
-    callbacks?.onProgress?.({
+    input.callbacks?.onProgress?.({
       type: 'completed',
       message: `Successfully created ${createdTasks.length} tasks from PRD`,
     });
@@ -177,9 +178,9 @@ export class PRDService {
     return {
       success: true,
       prd: {
-        overview: result.overview || "",
-        objectives: result.objectives || [],
-        features: result.features || [],
+        overview: result.summary || "",
+        objectives: [],
+        features: [],
       },
       tasks: createdTasks,
       stats: {
@@ -202,7 +203,7 @@ export class PRDService {
     streamingOptions?: StreamingOptions;
     callbacks?: ProgressCallback;
   }): Promise<string> {
-    callbacks?.onProgress?.({
+    input.callbacks?.onProgress?.({
       type: 'started',
       message: 'Starting PRD improvement...',
     });
@@ -212,7 +213,7 @@ export class PRDService {
       throw new Error(`PRD file not found: ${input.file}`);
     }
 
-    callbacks?.onProgress?.({
+    input.callbacks?.onProgress?.({
       type: 'progress',
       message: 'Reading PRD file...',
     });
@@ -226,7 +227,7 @@ export class PRDService {
 
     const aiConfig = buildAIConfig(input.aiOptions);
 
-    callbacks?.onProgress?.({
+    input.callbacks?.onProgress?.({
       type: 'progress',
       message: 'Calling AI to improve PRD...',
     });
@@ -240,7 +241,7 @@ export class PRDService {
       input.streamingOptions
     );
 
-    callbacks?.onProgress?.({
+    input.callbacks?.onProgress?.({
       type: 'progress',
       message: 'Saving improved PRD...',
     });
@@ -248,7 +249,7 @@ export class PRDService {
     const outputPath = input.output || input.file;
     writeFileSync(outputPath, improvedPRD);
 
-    callbacks?.onProgress?.({
+    input.callbacks?.onProgress?.({
       type: 'completed',
       message: `PRD improved and saved to ${outputPath}`,
     });

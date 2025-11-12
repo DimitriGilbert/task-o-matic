@@ -91,13 +91,8 @@ export interface Task extends CreateTaskOptions {
   plan?: string; // Implementation plan - just fucking text
 }
 
-// PRD Parsing
-export interface PRDParseResult {
-  tasks: Task[];
-  summary: string;
-  estimatedDuration: string;
-  confidence: number;
-}
+// PRD Parsing - moved to results.ts
+// Use PRDParseResult from results.ts instead
 
 // Interface for parsed AI task from PRD
 export interface ParsedAITask {
@@ -112,6 +107,14 @@ export interface ParsedAITask {
 // AI Response Interfaces for proper typing
 export interface PRDResponse {
   tasks: ParsedAITask[];
+  summary: string;
+  estimatedDuration: string;
+  confidence: number;
+}
+
+// What AI operations returns after parsing PRD (before service layer enrichment)
+export interface AIPRDParseResult {
+  tasks: Task[];
   summary: string;
   estimatedDuration: string;
   confidence: number;
@@ -305,3 +308,15 @@ export interface ExecutionResult {
   exitCode?: number;
   error?: string;
 }
+
+// Re-export result types from results.ts
+export type {
+  OperationResult,
+  CreateTaskResult,
+  EnhanceTaskResult,
+  SplitTaskResult,
+  PlanTaskResult,
+  DocumentTaskResult,
+  DeleteTaskResult,
+  PRDParseResult,
+} from "./results";

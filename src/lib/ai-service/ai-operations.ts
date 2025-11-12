@@ -4,7 +4,7 @@ import type { LanguageModelV2 } from "@ai-sdk/provider";
 import {
   AIConfig,
   Task,
-  PRDParseResult,
+  AIPRDParseResult,
   DocumentationDetection,
   StreamingOptions,
   RetryConfig,
@@ -130,7 +130,7 @@ export class AIOperations {
     userMessage?: string,
     streamingOptions?: StreamingOptions,
     retryConfig?: Partial<RetryConfig>,
-  ): Promise<PRDParseResult> {
+  ): Promise<AIPRDParseResult> {
     return this.retryHandler.executeWithRetry(
       async () => {
         // Get stack context for better PRD parsing using PromptBuilder

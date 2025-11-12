@@ -1,5 +1,4 @@
 import { ExternalExecutor, ExecutionResult } from "../../types";
-import { updateTask } from "../tasks/update";
 import chalk from "chalk";
 import { spawn } from "child_process";
 
