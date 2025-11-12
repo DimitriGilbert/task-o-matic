@@ -1,7 +1,7 @@
 
 import chalk from "chalk";
 import { Task, TaskAIMetadata } from "../../types";
-import { getTaskAIMetadata, getSubtasks, getTaskContent } from "../tasks/get";
+import { taskService } from "../../services/tasks";
 
 export interface TaskDisplayOptions {
   indent?: string;
@@ -47,7 +47,7 @@ export async function displayTaskDetails(task: Task): Promise<void> {
   }
 
   if (task.contentFile) {
-    const fullContent = await getTaskContent(task.id);
+    const fullContent = await taskService.getTaskContent(task.id);
     if (fullContent) {
       console.log(`${chalk.cyan("Full Content:")}`);
       console.log(fullContent);
@@ -62,7 +62,7 @@ export async function displayTaskDetails(task: Task): Promise<void> {
     console.log(`${chalk.cyan("Tags:")} ${task.tags.join(", ")}`);
   }
 
-  const aiMetadata = await getTaskAIMetadata(task.id);
+  const aiMetadata = await taskService.getTaskAIMetadata(task.id);
   if (aiMetadata?.aiGenerated) {
     console.log(`${chalk.magenta("🤖 AI-generated")}`);
     if (aiMetadata.aiProvider) {
@@ -93,7 +93,7 @@ export async function displayTaskDetails(task: Task): Promise<void> {
     );
   }
 
-  const subtasks = await getSubtasks(task.id);
+  const subtasks = await taskService.getSubtasks(task.id);
   if (subtasks.length > 0) {
     console.log(chalk.blue(`\n📋 Subtasks (${subtasks.length}):`));
     for (let i = 0; i < subtasks.length; i++) {
@@ -121,7 +121,7 @@ export async function displayTaskDetails(task: Task): Promise<void> {
         console.log(chalk.cyan(`     Effort: ${subtask.estimatedEffort}`));
       }
 
-      const subtaskAiMetadata = await getTaskAIMetadata(subtask.id);
+      const subtaskAiMetadata = await taskService.getTaskAIMetadata(subtask.id);
       if (subtaskAiMetadata?.aiGenerated) {
         console.log(chalk.magenta(`     🤖 AI-generated`));
       }
@@ -306,7 +306,7 @@ export async function displayTaskTree(
           : chalk.gray;
 
     const connector = isLast ? "└── " : "├── ";
-    const subtasks = await getSubtasks(task.id);
+    const subtasks = await taskService.getSubtasks(task.id);
     const hasSubtasks = subtasks.length > 0;
 
     console.log(

@@ -27,18 +27,18 @@ import {
   displayTagsUpdate,
   displayNextTask,
   displayTaskTree,
-} from "../lib/display/task";
+} from "../cli/display/task";
 import {
   displayPlanCreation,
   displayPlanView,
   displayPlanList,
   displayPlanDeletion,
-} from "../lib/display/plan";
+} from "../cli/display/plan";
 import {
   displayEnhancementResult,
   displayDocumentationAnalysis,
   displayResearchSummary,
-} from "../lib/display/common";
+} from "../cli/display/common";
 
 export const tasksCommand = new Command("tasks");
 

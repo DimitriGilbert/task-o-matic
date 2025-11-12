@@ -1,0 +1,261 @@
+import { readFileSync, existsSync, copyFileSync, writeFileSync, mkdirSync } from "fs";
+import { join, basename, relative } from "path";
+import { getAIOperations, getStorage } from "../utils/ai-service-factory";
+import { buildAIConfig, AIOptions } from "../utils/ai-config-builder";
+import { AIConfig, PRDParseResult, StreamingOptions } from "../types";
+import { configManager } from "../lib/config";
+import { isValidAIProvider } from "../lib/validation";
+import { ProgressCallback } from "../types/callbacks";
+
+/**
+ * PRDService - Business logic for PRD operations
+ * Handles PRD parsing, task extraction, and PRD improvement
+ */
+export class PRDService {
+
+  async parsePRD(input: {
+    file: string;
+    aiOptions?: AIOptions;
+    promptOverride?: string;
+    messageOverride?: string;
+    streamingOptions?: StreamingOptions;
+    callbacks?: ProgressCallback;
+  }): Promise<PRDParseResult> {
+    const startTime = Date.now();
+    const steps: Array<{
+      step: string;
+      status: 'completed' | 'failed';
+      duration: number;
+      details?: any;
+    }> = [];
+
+    callbacks?.onProgress?.({
+      type: 'started',
+      message: 'Starting PRD parsing...',
+    });
+
+    // Validate file exists
+    if (!existsSync(input.file)) {
+      throw new Error(`PRD file not found: ${input.file}`);
+    }
+
+    // Ensure we're in a task-o-matic project
+    const taskOMaticDir = configManager.getTaskOMaticDir();
+    if (!existsSync(taskOMaticDir)) {
+      throw new Error(
+        `Not a task-o-matic project. Run 'task-o-matic init init' first.`
+      );
+    }
+
+    // Set working directory to current directory
+    configManager.setWorkingDirectory(process.cwd());
+
+    callbacks?.onProgress?.({
+      type: 'progress',
+      message: 'Reading PRD file...',
+    });
+
+    const prdContent = readFileSync(input.file, "utf-8");
+
+    // Save PRD file to .task-o-matic/prd directory
+    callbacks?.onProgress?.({
+      type: 'progress',
+      message: 'Saving PRD to project directory...',
+    });
+
+    const stepStart1 = Date.now();
+    const prdDir = join(taskOMaticDir, "prd");
+    const prdFileName = basename(input.file);
+    const savedPrdPath = join(prdDir, prdFileName);
+
+    // Ensure PRD directory exists
+    if (!existsSync(prdDir)) {
+      mkdirSync(prdDir, { recursive: true });
+    }
+
+    // Copy PRD file to project directory
+    copyFileSync(input.file, savedPrdPath);
+
+    // Get relative path from .task-o-matic directory for storage
+    const relativePrdPath = relative(taskOMaticDir, savedPrdPath);
+
+    steps.push({
+      step: 'Save PRD File',
+      status: 'completed',
+      duration: Date.now() - stepStart1,
+    });
+
+    // Validate AI provider if specified
+    if (input.aiOptions?.aiProvider && !isValidAIProvider(input.aiOptions.aiProvider)) {
+      throw new Error(`Invalid AI provider: ${input.aiOptions.aiProvider}`);
+    }
+
+    const aiConfig = buildAIConfig(input.aiOptions);
+
+    callbacks?.onProgress?.({
+      type: 'progress',
+      message: 'Parsing PRD with AI...',
+    });
+
+    const stepStart2 = Date.now();
+    const result = await getAIOperations().parsePRD(
+      prdContent,
+      aiConfig,
+      input.promptOverride,
+      input.messageOverride,
+      input.streamingOptions
+    );
+
+    steps.push({
+      step: 'AI Parsing',
+      status: 'completed',
+      duration: Date.now() - stepStart2,
+      details: { tasksFound: result.tasks.length },
+    });
+
+    callbacks?.onProgress?.({
+      type: 'progress',
+      message: `Creating ${result.tasks.length} tasks...`,
+    });
+
+    // Create tasks
+    const stepStart3 = Date.now();
+    const createdTasks = [];
+
+    for (let i = 0; i < result.tasks.length; i++) {
+      const task = result.tasks[i];
+
+      callbacks?.onProgress?.({
+        type: 'progress',
+        message: `Creating task ${i + 1}/${result.tasks.length}: ${task.title}`,
+        current: i + 1,
+        total: result.tasks.length,
+      });
+
+      const createdTask = await getStorage().createTask({
+        id: task.id, // Preserve AI-generated ID for dependencies
+        title: task.title,
+        description: task.description,
+        content: task.content,
+        estimatedEffort: task.estimatedEffort,
+        status: "todo",
+        dependencies: task.dependencies,
+        tags: task.tags,
+        prdFile: relativePrdPath, // Reference to the PRD file
+      });
+
+      createdTasks.push(createdTask);
+
+      // Update AI metadata with the actual task ID
+      const aiMetadata = {
+        taskId: createdTask.id,
+        aiGenerated: true,
+        aiPrompt: input.promptOverride || "Parse PRD and extract tasks",
+        confidence: result.confidence,
+        aiProvider: input.aiOptions?.aiProvider,
+        aiModel: input.aiOptions?.aiModel,
+        generatedAt: Date.now(),
+      };
+
+      await getStorage().saveTaskAIMetadata(aiMetadata);
+    }
+
+    steps.push({
+      step: 'Create Tasks',
+      status: 'completed',
+      duration: Date.now() - stepStart3,
+      details: { count: createdTasks.length },
+    });
+
+    callbacks?.onProgress?.({
+      type: 'completed',
+      message: `Successfully created ${createdTasks.length} tasks from PRD`,
+    });
+
+    const duration = Date.now() - startTime;
+
+    return {
+      success: true,
+      prd: {
+        overview: result.overview || "",
+        objectives: result.objectives || [],
+        features: result.features || [],
+      },
+      tasks: createdTasks,
+      stats: {
+        tasksCreated: createdTasks.length,
+        duration,
+        aiProvider: input.aiOptions?.aiProvider || "default",
+        aiModel: input.aiOptions?.aiModel || "default",
+      },
+      steps,
+    };
+  }
+
+  async reworkPRD(input: {
+    file: string;
+    feedback: string;
+    output?: string;
+    aiOptions?: AIOptions;
+    promptOverride?: string;
+    messageOverride?: string;
+    streamingOptions?: StreamingOptions;
+    callbacks?: ProgressCallback;
+  }): Promise<string> {
+    callbacks?.onProgress?.({
+      type: 'started',
+      message: 'Starting PRD improvement...',
+    });
+
+    // Validate file exists
+    if (!existsSync(input.file)) {
+      throw new Error(`PRD file not found: ${input.file}`);
+    }
+
+    callbacks?.onProgress?.({
+      type: 'progress',
+      message: 'Reading PRD file...',
+    });
+
+    const prdContent = readFileSync(input.file, "utf-8");
+
+    // Validate AI provider if specified
+    if (input.aiOptions?.aiProvider && !isValidAIProvider(input.aiOptions.aiProvider)) {
+      throw new Error(`Invalid AI provider: ${input.aiOptions.aiProvider}`);
+    }
+
+    const aiConfig = buildAIConfig(input.aiOptions);
+
+    callbacks?.onProgress?.({
+      type: 'progress',
+      message: 'Calling AI to improve PRD...',
+    });
+
+    const improvedPRD = await getAIOperations().reworkPRD(
+      prdContent,
+      input.feedback,
+      aiConfig,
+      input.promptOverride,
+      input.messageOverride,
+      input.streamingOptions
+    );
+
+    callbacks?.onProgress?.({
+      type: 'progress',
+      message: 'Saving improved PRD...',
+    });
+
+    const outputPath = input.output || input.file;
+    writeFileSync(outputPath, improvedPRD);
+
+    callbacks?.onProgress?.({
+      type: 'completed',
+      message: `PRD improved and saved to ${outputPath}`,
+    });
+
+    return outputPath;
+  }
+}
+
+// Export singleton instance
+export const prdService = new PRDService();
