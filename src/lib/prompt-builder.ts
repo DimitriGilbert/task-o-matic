@@ -195,10 +195,9 @@ export class PromptBuilder {
    */
   static async detectStackInfo(projectPath?: string): Promise<string> {
     try {
-      // Set working directory if provided
-      if (projectPath) {
-        configManager.setWorkingDirectory(projectPath);
-      }
+      // Default to current working directory if not provided
+      const workDir = projectPath || process.cwd();
+      configManager.setWorkingDirectory(workDir);
 
       const contextBuilder = new ContextBuilder();
 
