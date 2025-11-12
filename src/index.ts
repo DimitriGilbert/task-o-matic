@@ -1,4 +1,9 @@
-#!/usr/bin/env node
+/**
+ * task-o-matic CLI Logic
+ *
+ * This module contains the CLI setup and command definitions.
+ * It can be imported and used by the binary or for testing.
+ */
 
 import { Command } from "commander";
 import chalk from "chalk";
@@ -54,8 +59,11 @@ program.on("command:*", (operands) => {
   process.exit(1);
 });
 
-// Parse command line arguments
-const main = async () => {
+/**
+ * Run the CLI
+ * This is the main entry point for the CLI, called by the bin script
+ */
+export const runCLI = async () => {
   try {
     await program.parseAsync(process.argv);
   } catch (error) {
@@ -67,4 +75,7 @@ const main = async () => {
   }
 };
 
-main();
+/**
+ * Export the program for testing purposes
+ */
+export { program };
