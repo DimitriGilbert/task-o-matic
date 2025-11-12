@@ -72,7 +72,7 @@ echo ""
 
 # Step 3: Initialize task-o-matic
 echo "Step 3: We initialize task-o-matic in our workspace!"
-node ../dist/index.js init init --project-name le-croissant-magique
+bun ../dist/index.js init init --project-name le-croissant-magique
 echo "Configuration... It is done. Ze AI is ready."
 echo "Let's see if ze project is ready to run..."
 if [ -f "le-croissant-magique/package.json" ]; then
@@ -85,18 +85,18 @@ fi
 echo "---"
 echo ""
 
-# Step 4: Configure AI
-echo "Step 4: We ask ze AI for 'elp. But, you know, politely."
-echo "Setting AI provider to our best value model..."
-node ../dist/index.js config set-ai-provider "${AI_PROVIDER:-$Deafult_AI_provider}" "${AI_MODEL:-$Default_AI_model}"
-echo "✅ AI configured with ${AI_MODEL:-$Default_AI_model} @ ${AI_PROVIDER:-$Deafult_AI_provider}"
-echo "---"
-echo ""
+# # Step 4: Configure AI
+# echo "Step 4: We ask ze AI for 'elp. But, you know, politely."
+# echo "Setting AI provider to our best value model..."
+# bun ../dist/index.js config set-ai-provider "${AI_PROVIDER:-$Deafult_AI_provider}" "${AI_MODEL:-$Default_AI_model}"
+# echo "✅ AI configured with ${AI_MODEL:-$Default_AI_model} @ ${AI_PROVIDER:-$Deafult_AI_provider}"
+# echo "---"
+# echo ""
 
 # Step 5: Parse ze PRD
 echo "Step 5: Ze moment of truth! We give ze PRD to ze AI."
 echo "Let's see if ze machine understands 'l'art du croissant'."
-node ../dist/index.js prd parse --file prd_croissant.md --stream
+bun ../dist/index.js prd parse --file prd_croissant.md --stream
 echo ""
 
 echo "---"
@@ -105,18 +105,18 @@ echo ""
 # Step 6: List ze tasks
 # echo "Step 6: And 'ere is ze work! Let us look at ze tasks ze AI 'as created for us."
 # echo "Magnifique! It is almost like it is wearing a little beret."
-# node ../dist/index.js tasks list
+# bun ../dist/index.js tasks list
 # echo "---"
 # echo ""
 
 # Step 7: Enhance ALL ze tasks
 # echo "Step 7: We make ALL ze tasks better! Like adding more butter to ALL ze croissants!"
 # echo "First, let us see what tasks we have to enhance..."
-# # node ../dist/index.js tasks list
+# # bun ../dist/index.js tasks list
 # echo ""
 # echo "Now we enhance EACH AND EVERY task... like a very patient baker!"
 # echo "Ze AI will make all our tasks more sophisticated with Context7 documentation!"
-# node ../dist/index.js tasks enhance --all --stream
+# bun ../dist/index.js tasks enhance --all --stream
 # echo ""
 # echo "Voilà! ALL tasks are now more... sophisticated. Like a French wine cellar!"
 # echo "---"
@@ -126,18 +126,18 @@ echo ""
 echo "Step 8: Now we split ALL ze tasks into smaller, bite-sized pieces!"
 echo "Because big tasks are like... how you say... 'intimidating', non?"
 echo "Ze AI will break down every task into manageable subtasks!"
-node ../dist/index.js tasks split --all --stream
+bun ../dist/index.js tasks split --all --stream
 echo ""
 echo "Magnifique! Now we have many small tasks to conquer. Like eating a croissant one flaky layer at a time!"
 echo "Let us see ze final result..."
-node ../dist/index.js tasks list
+bun ../dist/index.js tasks list
 echo "---"
 echo ""
 echo "Now we enhance each task one by one... like a patient baker!"
 echo "Note: In a real scenario, you would enhance each task by ID like:"
-echo "node ../dist/index.js tasks enhance --task-id <task-id> --stream"
+echo "bun ../dist/index.js tasks enhance --task-id <task-id> --stream"
 echo "For now, let us create a new enhanced task to demonstrate!"
-# node ../dist/index.js tasks create --title "Enhanced Croissant Map Feature" --content "Create an interactive map showing all bakeries with real-time croissant quality ratings" --ai-enhance --stream
+# bun ../dist/index.js tasks create --title "Enhanced Croissant Map Feature" --content "Create an interactive map showing all bakeries with real-time croissant quality ratings" --ai-enhance --stream
 echo ""
 echo "Voilà! Ze task is now more... sophisticated. Like a French wine!"
 echo "---"
