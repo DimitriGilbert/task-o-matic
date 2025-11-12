@@ -1,0 +1,46 @@
+{
+  "name": "task-o-matic",
+  "version": "0.0.1",
+  "description": "task management for ai",
+  "private": true,
+  "main": "src/index.ts",
+  "bin": {
+    "task-o-matic": "src/index.ts",
+    "task-o-matic-mcp": "dist/mcp/server.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "build:mcp": "tsc --project tsconfig.json",
+    "dev": "tsx src/index.ts",
+    "dev:mcp": "tsx src/mcp/server.ts",
+    "start": "tsx src/index.ts",
+    "check-types": "tsc --noEmit --skipLibCheck",
+    "test": "mocha -r tsx/cjs src/test/**/*.test.ts"
+  },
+  "dependencies": {
+    "@ai-sdk/anthropic": "^2.0.44",
+    "@ai-sdk/google": "^2.0.31",
+    "@ai-sdk/mcp": "^0.0.8",
+    "@ai-sdk/openai": "^2.0.65",
+    "@ai-sdk/openai-compatible": "^1.0.27",
+    "@modelcontextprotocol/sdk": "^1.19.1",
+    "@openrouter/ai-sdk-provider": "^1.2.0",
+    "ai": "^5.0.92",
+    "axios": "^1.7.9",
+    "chalk": "^5.4.1",
+    "commander": "^14.0.2",
+    "create-better-t-stack": "^3.0.10",
+    "dotenv": "^16.4.7",
+    "inquirer": "^12.11.0",
+    "zod": "^3.25.76"
+  },
+  "devDependencies": {
+    "@types/inquirer": "^9.0.7",
+    "@types/mocha": "^10.0.10",
+    "@types/node": "^20",
+    "mocha": "^11.7.4",
+    "ts-node": "^10.9.2",
+    "tsx": "^4.19.2",
+    "typescript": "^5"
+  }
+}

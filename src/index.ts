@@ -1,0 +1,70 @@
+#!/usr/bin/env node
+
+import { Command } from "commander";
+import chalk from "chalk";
+import { configCommand } from "./commands/config";
+import { tasksCommand } from "./commands/tasks";
+import { prdCommand } from "./commands/prd";
+import { initCommand } from "./commands/init";
+import { promptCommand } from "./commands/prompt";
+import { configManager } from "./lib/config";
+
+const program = new Command();
+
+program
+  .name("task-o-matic")
+  .description("AI-powered Task Management CLI for Single Projects")
+  .version("0.1.0")
+  .option("-v, --verbose", "Enable verbose logging");
+
+// Add subcommands
+program.addCommand(configCommand);
+program.addCommand(tasksCommand);
+program.addCommand(prdCommand);
+program.addCommand(promptCommand);
+program.addCommand(initCommand);
+
+// Default action - show help
+program.action(() => {
+  console.log(chalk.blue("🚀 AI-Powered Task Management CLI"));
+  console.log(
+    chalk.cyan(`Project Directory: ${configManager.getTaskOMaticDir()}`)
+  );
+  console.log("");
+  console.log(chalk.yellow("Quick Start:"));
+  console.log("  1. Initialize project: task-o-matic init");
+  console.log(
+    "  2. Configure AI provider: task-o-matic config set-ai-provider openrouter anthropic/claude-3.5-sonnet"
+  );
+  console.log(
+    '  3. Create a task: task-o-matic tasks create --title "Your first task"'
+  );
+  console.log("  4. List tasks: task-o-matic tasks list");
+  console.log("");
+  program.outputHelp();
+});
+
+// Error handling
+program.on("command:*", (operands) => {
+  console.error(chalk.red(`Unknown command: ${operands[0]}`));
+  console.log(
+    chalk.blue("Available commands: config, tasks, prd, prompt, init")
+  );
+  console.log(chalk.blue("Use --help for available commands"));
+  process.exit(1);
+});
+
+// Parse command line arguments
+const main = async () => {
+  try {
+    await program.parseAsync(process.argv);
+  } catch (error) {
+    console.error(
+      chalk.red("Error:"),
+      error instanceof Error ? error.message : "Unknown error"
+    );
+    process.exit(1);
+  }
+};
+
+main();

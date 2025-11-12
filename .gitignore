@@ -1,0 +1,8 @@
+node_modules
+.turbo
+.alchemy
+.env
+dist
+.task-o-matic
+le-croissant-*
+tsconfig.tsbuildinfo
