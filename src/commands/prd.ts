@@ -98,12 +98,17 @@ prdCommand
   .option("--stream", "Show streaming AI output during rework")
   .action(async (options) => {
     try {
+      // Determine working directory from current process location
+      // Service layer should receive this explicitly, not use process.cwd()
+      const workingDirectory = process.cwd();
+
       const streamingOptions = createStreamingOptions(options.stream, 'Rework');
 
       const outputPath = await prdService.reworkPRD({
         file: options.file,
         feedback: options.feedback,
         output: options.output,
+        workingDirectory, // Pass working directory explicitly to service
         aiOptions: {
           aiProvider: options.aiProvider,
           aiModel: options.aiModel,

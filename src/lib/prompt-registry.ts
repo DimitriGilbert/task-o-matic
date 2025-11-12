@@ -104,7 +104,7 @@ export class PromptRegistry {
         description: "Improve PRD based on user feedback",
         type: "user",
         requiredVariables: ["PRD_CONTENT", "USER_FEEDBACK"],
-        optionalVariables: [],
+        optionalVariables: ["STACK_INFO"],
         promptText: PRD_REWORK_PROMPT,
       },
     ],

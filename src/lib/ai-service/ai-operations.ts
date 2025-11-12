@@ -439,21 +439,41 @@ export class AIOperations {
     userMessage?: string,
     streamingOptions?: StreamingOptions,
     retryConfig?: Partial<RetryConfig>,
+    workingDirectory?: string, // Working directory passed from service layer
   ): Promise<string> {
     return this.retryHandler.executeWithRetry(
       async () => {
+        // Get stack context for better PRD rework using PromptBuilder
+        // Pass working directory explicitly to avoid process.cwd() issues
+        let stackInfo = "";
+        try {
+          stackInfo = await PromptBuilder.detectStackInfo(workingDirectory);
+          if (stackInfo === "Not detected") {
+            stackInfo = "";
+          }
+        } catch (error) {
+          // Stack info not available, will use empty string
+        }
+
         // Use PromptBuilder if no prompt override provided
         let prompt: string;
         if (promptOverride) {
           prompt = promptOverride;
         } else {
+          const variables: Record<string, string> = {
+            PRD_CONTENT: prdContent,
+            USER_FEEDBACK: feedback,
+          };
+
+          // Only include stack info if we have it
+          if (stackInfo) {
+            variables.STACK_INFO = stackInfo;
+          }
+
           const promptResult = PromptBuilder.buildPrompt({
             name: "prd-rework",
             type: "user",
-            variables: {
-              PRD_CONTENT: prdContent,
-              USER_FEEDBACK: feedback,
-            },
+            variables,
           });
 
           if (!promptResult.success) {
