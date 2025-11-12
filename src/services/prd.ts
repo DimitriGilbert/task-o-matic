@@ -201,6 +201,7 @@ export class PRDService {
     file: string;
     feedback: string;
     output?: string;
+    workingDirectory?: string; // Working directory passed from CLI layer
     aiOptions?: AIOptions;
     promptOverride?: string;
     messageOverride?: string;
@@ -216,6 +217,10 @@ export class PRDService {
     if (!existsSync(input.file)) {
       throw new Error(`PRD file not found: ${input.file}`);
     }
+
+    // Set working directory from CLI layer (defaults to process.cwd() for backward compatibility)
+    const workingDir = input.workingDirectory || process.cwd();
+    configManager.setWorkingDirectory(workingDir);
 
     input.callbacks?.onProgress?.({
       type: 'progress',
@@ -242,7 +247,9 @@ export class PRDService {
       aiConfig,
       input.promptOverride,
       input.messageOverride,
-      input.streamingOptions
+      input.streamingOptions,
+      undefined, // retryConfig
+      workingDir // Pass working directory to AI operations
     );
 
     input.callbacks?.onProgress?.({

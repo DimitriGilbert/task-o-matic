@@ -22,12 +22,12 @@ Provide an improved version of the PRD that:
 - Ensures requirements are implementable with the current tools and frameworks
 
 ## Stack-Aware Considerations:
-- Align technical requirements with the existing frontend ({FRONTEND}) and backend ({BACKEND}) technologies
-- Consider authentication system ({AUTH}) capabilities and patterns
-- Leverage database/ORM setup ({DATABASE}/{ORM}) for data requirements
-- Utilize addon capabilities ({ADDONS}) where relevant
+- Align technical requirements with the existing technology stack
+- Consider authentication system capabilities and patterns
+- Leverage database/ORM setup for data requirements
+- Utilize addon capabilities where relevant
 - Ensure compatibility with the current project architecture
-- Consider package manager ({PACKAGE_MANAGER}) and deployment constraints
+- Consider package manager and deployment constraints
 
 Focus on making the PRD more actionable and comprehensive while preserving the original intent and ensuring it's well-suited for the existing technology stack.
 `;
