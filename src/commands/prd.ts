@@ -23,10 +23,15 @@ prdCommand
   .option("--stream", "Show streaming AI output during parsing")
   .action(async (options) => {
     try {
+      // Determine working directory from current process location
+      // Service layer should receive this explicitly, not use process.cwd()
+      const workingDirectory = process.cwd();
+
       const streamingOptions = createStreamingOptions(options.stream, 'Parsing');
 
       const result = await prdService.parsePRD({
         file: options.file,
+        workingDirectory, // Pass working directory explicitly to service
         aiOptions: {
           aiProvider: options.aiProvider,
           aiModel: options.aiModel,

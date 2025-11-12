@@ -87,19 +87,24 @@ export class BetterTStackService {
 
   private async saveBTSConfig(name: string, config: BTSConfig): Promise<void> {
     const taskOMaticDir = configManager.getTaskOMaticDir();
-    const configPath = join(taskOMaticDir, `${name}-bts-config.json`);
-    writeFileSync(
-      configPath,
-      JSON.stringify(
-        {
-          ...config,
-          projectName: config.projectName || name,
-          createdAt: new Date().toISOString(),
-        },
-        null,
-        2
-      )
+
+    const configData = JSON.stringify(
+      {
+        ...config,
+        projectName: config.projectName || name,
+        createdAt: new Date().toISOString(),
+      },
+      null,
+      2
     );
+
+    // Save with project-specific name for tracking multiple projects
+    const namedConfigPath = join(taskOMaticDir, `${name}-bts-config.json`);
+    writeFileSync(namedConfigPath, configData);
+
+    // Also save as canonical stack.json for easy discovery by context-builder
+    const stackConfigPath = join(taskOMaticDir, "stack.json");
+    writeFileSync(stackConfigPath, configData);
   }
 }
 
