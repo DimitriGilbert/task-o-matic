@@ -1,10 +1,11 @@
-# 🚀 AI-Powered Task Management CLI
+# 🚀 task-o-matic
 
-A comprehensive CLI tool that uses AI to manage tasks for single projects. Parse PRDs, enhance tasks with AI, and bootstrap projects using local file storage only. No backend connectivity required.
+AI-powered task management for CLI, TUI, and web applications. Parse PRDs, enhance tasks with AI, and integrate task management into your applications using local file storage only. No backend connectivity required.
 
 ## ✨ Features
 
 - 🤖 **AI-Powered**: Parse PRDs and enhance tasks using multiple AI providers
+- 📦 **Multi-Purpose Package**: Use as CLI tool, library, or MCP server
 - 📁 **Project-Local Storage**: All data stored locally in `.task-o-matic/` directory
 - 🎯 **Task Management**: Full CRUD operations with AI enhancement
 - 📋 **PRD Processing**: Convert Product Requirements Documents into actionable tasks
@@ -13,48 +14,223 @@ A comprehensive CLI tool that uses AI to manage tasks for single projects. Parse
 - 📊 **Smart Breakdown**: AI-powered task decomposition into subtasks
 - 🌊 **Real-time Streaming**: Watch AI responses generate live with streaming output
 - 🏠 **Single-Project Focus**: Self-contained within each project directory
+- 💻 **Framework-Agnostic**: Easily integrate into TUI, web apps, or any Node.js project
+
+## 📦 Installation
+
+### As a CLI Tool
+
+```bash
+# Install globally
+npm install -g task-o-matic
+
+# Or use with npx
+npx task-o-matic init
+```
+
+### As a Library (for TUI/Web Apps)
+
+```bash
+# Install in your project
+npm install task-o-matic
+```
+
+### For Development
+
+```bash
+# Clone and install dependencies
+git clone https://github.com/DimitriGilbert/task-o-matic.git
+cd task-o-matic
+npm install
+npm run build
+```
 
 ## 🏗️ Architecture & Mindset
 
-### Architecture
+### Package Structure
 
 ```
-apps/task-o-matic/
+task-o-matic/
+├── dist/              # Compiled output (published)
+│   ├── lib/           # Library entry point + core exports
+│   ├── cli/           # CLI binary
+│   ├── services/      # Business logic layer
+│   ├── commands/      # CLI commands
+│   ├── mcp/           # MCP server
+│   └── types/         # TypeScript definitions
 ├── src/
-│   ├── commands/     # CLI command implementations
-│   ├── lib/          # Core services (AI, Storage, Config, Operations)
-│   ├── mcp/          # MCP server implementation
-│   ├── prompts/      # AI prompt templates with auto-detection
-│   ├── test/         # Comprehensive test suite
-│   ├── types/        # TypeScript type definitions
-│   └── utils/        # Shared utilities (AI factory, formatters)
-└── docs/            # Documentation
+│   ├── lib/           # Core library (Storage, Config, AI, etc.)
+│   │   └── index.ts   # Main library exports
+│   ├── services/      # TaskService, PRDService (framework-agnostic)
+│   ├── cli/           # CLI-specific logic
+│   │   └── bin.ts     # CLI binary entry point
+│   ├── commands/      # Commander.js command implementations
+│   ├── mcp/           # MCP server implementation
+│   ├── prompts/       # AI prompt templates
+│   ├── types/         # TypeScript type definitions
+│   └── utils/         # Shared utilities
+└── docs/              # Documentation
 ```
 
 ### Core Components
 
+- **Service Layer** (`TaskService`, `PRDService`): Framework-agnostic business logic
 - **AI Service**: Uses Vercel AI SDK for multi-provider support
 - **Local Storage**: JSON-based file storage in `.task-o-matic/` directory
 - **Configuration**: Project-local config with AI provider settings
 - **Prompt Templates**: Structured AI prompts for consistent results
 
-### Mindset
+### Design Philosophy
 
+- **Separation of Concerns**: CLI, Services, and Core are cleanly separated
+- **Framework-Agnostic**: Services can be used in any environment (CLI, TUI, web)
 - **Project-Local**: Each project manages its own tasks and configuration
 - **AI-Enhanced**: Use AI to improve clarity and break down complexity
-- **Developer-Friendly**: Simple, intuitive commands with helpful output
+- **Developer-Friendly**: Simple, intuitive APIs with helpful output
 - **Self-Contained**: No external dependencies, everything works offline
 
 ## 🚀 Quick Start
 
-### 1. Installation
+### Library Usage (TUI/Web Apps)
+
+#### Installation
 
 ```bash
-cd apps/task-o-matic
-npm install
+npm install task-o-matic
 ```
 
-### 2. Initialize Your Project
+#### Basic Example
+
+```typescript
+import { TaskService, PRDService, type Task, type AIConfig } from 'task-o-matic';
+
+// Initialize the service
+const taskService = new TaskService();
+
+// Create a task with AI enhancement
+const result = await taskService.createTask({
+  title: 'Implement user authentication',
+  content: 'Add login and signup functionality',
+  aiEnhance: true,
+  aiOptions: {
+    provider: 'anthropic',
+    model: 'claude-3-5-sonnet',
+    apiKey: process.env.ANTHROPIC_API_KEY
+  },
+  callbacks: {
+    onProgress: (event) => {
+      console.log(`Progress: ${event.message}`);
+    }
+  }
+});
+
+console.log('Task created:', result.task);
+```
+
+#### TUI Integration Example
+
+```typescript
+import { TaskService } from 'task-o-matic';
+import type { ProgressCallback } from 'task-o-matic';
+
+const taskService = new TaskService();
+
+// Progress callback for TUI updates
+const progressCallback: ProgressCallback = {
+  onProgress: (event) => {
+    // Update your TUI with progress
+    tuiStatusBar.update(event.message);
+  }
+};
+
+// Create task with streaming
+const result = await taskService.createTask({
+  title: 'Add payment integration',
+  aiEnhance: true,
+  streamingOptions: {
+    enabled: true,
+    onChunk: (chunk) => {
+      // Update TUI in real-time
+      tuiTextArea.append(chunk);
+    },
+    onFinish: ({ text }) => {
+      tuiStatusBar.success('Task enhanced!');
+    }
+  },
+  callbacks: progressCallback
+});
+```
+
+#### PRD Parsing Example
+
+```typescript
+import { PRDService } from 'task-o-matic';
+
+const prdService = new PRDService();
+
+const result = await prdService.parsePRD({
+  file: './requirements.md',
+  workingDirectory: process.cwd(),
+  aiOptions: {
+    provider: 'openrouter',
+    model: 'anthropic/claude-3.5-sonnet',
+    apiKey: process.env.OPENROUTER_API_KEY
+  },
+  callbacks: {
+    onProgress: (event) => {
+      console.log(event.message);
+    }
+  }
+});
+
+console.log(`Created ${result.tasks.length} tasks from PRD`);
+result.tasks.forEach(task => {
+  console.log(`- ${task.title}`);
+});
+```
+
+#### Using Utility Factories
+
+```typescript
+import {
+  getStorage,
+  getAIOperations,
+  buildAIConfig
+} from 'task-o-matic';
+
+// Get singleton instances
+const storage = getStorage();
+const aiOps = getAIOperations();
+
+// Build AI configuration
+const aiConfig = buildAIConfig({
+  provider: 'openai',
+  model: 'gpt-4',
+  apiKey: process.env.OPENAI_API_KEY
+});
+
+// Use storage directly
+const allTasks = await storage.getAllTasks();
+```
+
+#### TypeScript Support
+
+The package includes full TypeScript type definitions:
+
+```typescript
+import type {
+  Task,
+  AIConfig,
+  StreamingOptions,
+  CreateTaskOptions,
+  PRDParseResult,
+  TaskAIMetadata
+} from 'task-o-matic';
+```
+
+### CLI Usage
+
+#### 1. Initialize Your Project
 
 ```bash
 # Navigate to your project directory
@@ -234,27 +410,74 @@ your-project/
 
 ## 🛠️ Development
 
+### Building from Source
+
 ```bash
-# Install dependencies
+# Clone and install
+git clone https://github.com/DimitriGilbert/task-o-matic.git
+cd task-o-matic
 npm install
 
-# Run the CLI in development
-npm run dev:tom
+# Build everything (library + CLI + MCP server)
+npm run build
+
+# Build and watch for changes
+npm run build:watch
+
+# Clean build artifacts
+npm run clean
+```
+
+### Development Mode
+
+```bash
+# Run the CLI in development mode
+npm run dev
 
 # Run the MCP server in development
 npm run dev:mcp
 
-# Type checking
-npm run check-types:tom
+# Type checking (without compilation)
+npm run check-types
 
 # Run tests
 npm run test
+```
 
-# Build the CLI
-npm run build:tom
+### Testing Your Changes
 
-# Build the MCP server
-npm run build:mcp
+```bash
+# Link for local testing
+npm link
+
+# Use the linked package
+task-o-matic --version
+
+# In another project
+cd /path/to/test-project
+npm link task-o-matic
+
+# Test library import
+node -e "const {TaskService} = require('task-o-matic'); console.log('Works!');"
+```
+
+### Package Structure
+
+The package is structured for both CLI and library use:
+
+```json
+{
+  "main": "./dist/lib/index.js",          // CommonJS library entry
+  "types": "./dist/lib/index.d.ts",       // TypeScript definitions
+  "bin": {
+    "task-o-matic": "./dist/cli/bin.js",  // CLI binary
+    "task-o-matic-mcp": "./dist/mcp/server.js"  // MCP server binary
+  },
+  "exports": {
+    ".": "./dist/lib/index.js",           // Main library export
+    "./types": "./dist/types/index.js"    // Type-only exports
+  }
+}
 ```
 
 ## 🤖 MCP Server Integration
