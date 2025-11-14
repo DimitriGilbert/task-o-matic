@@ -15,6 +15,8 @@ interface PromptCommandOptions {
   contextInfo?: string;
   userFeedback?: string;
   var?: string[];
+  fullContext?: boolean;
+  executor?: "opencode" | "claude" | "gemini" | "codex";
 }
 
 export const promptCommand = new Command("prompt")
@@ -56,6 +58,15 @@ export const promptCommand = new Command("prompt")
       return [...previous, value];
     },
     []
+  )
+  .option(
+    "--full-context",
+    "Include comprehensive project context (file structure, dependencies, etc.)",
+    false
+  )
+  .option(
+    "--executor <type>",
+    "Format output for specific executor: opencode, claude, gemini, codex"
   )
   .action(async (name: string | undefined, options: PromptCommandOptions) => {
     try {
@@ -177,17 +188,25 @@ export const promptCommand = new Command("prompt")
       // Build CONTEXT_INFO from stack and PRD if not explicitly provided
       if (!options.contextInfo && !variables.CONTEXT_INFO) {
         const contextParts: string[] = [];
-        
+
         // Add stack info if available
         if (variables.STACK_INFO) {
           contextParts.push(`**Technology Stack:** ${variables.STACK_INFO}`);
         }
-        
+
         // Add PRD content if available
         if (variables.PRD_CONTENT) {
           contextParts.push(`**Product Requirements:**\n${variables.PRD_CONTENT}`);
         }
-        
+
+        // Add full context if requested
+        if (options.fullContext) {
+          const fullContext = await PromptBuilder.buildFullProjectContext(process.cwd());
+          if (fullContext) {
+            contextParts.push(fullContext);
+          }
+        }
+
         // Set combined context info
         if (contextParts.length > 0) {
           variables.CONTEXT_INFO = contextParts.join('\n\n');
@@ -204,12 +223,12 @@ export const promptCommand = new Command("prompt")
 
       // Build the prompt
       const result = PromptBuilder.buildPrompt({
-        name,
+        name: name!, // name is checked above, will not be undefined here
         type: options.type,
         variables,
       });
 
-      if (!result.success) {
+      if (!result.success || !result.prompt) {
         console.error(`Error: ${result.error}`);
         if (result.missingVariables && result.missingVariables.length > 0) {
           console.error("\nMissing required variables:");
@@ -235,8 +254,14 @@ export const promptCommand = new Command("prompt")
         exit(1);
       }
 
+      // Format output based on executor if specified
+      let outputPrompt = result.prompt;
+      if (options.executor) {
+        outputPrompt = PromptBuilder.formatForExecutor(result.prompt, options.executor);
+      }
+
       // Output the built prompt
-      console.log(result.prompt);
+      console.log(outputPrompt);
     } catch (error) {
       console.error(
         `Error: ${error instanceof Error ? error.message : "Unknown error"}`
