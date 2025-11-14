@@ -187,7 +187,7 @@ export class AIOperations {
             ...filesystemTools,
           };
 
-          const result = streamText({
+          const result = await streamText({
             model,
             tools: allTools, // Filesystem tools for project analysis
             system: PRD_PARSING_SYSTEM_PROMPT + `
@@ -218,7 +218,7 @@ Use these tools to understand the project structure, existing code patterns, and
               : undefined,
           });
 
-          response = (await result).text;
+          response = await result.text;
         } else {
           // Use standard streamText without tools
           response = await this.streamText(
@@ -373,7 +373,7 @@ Use these tools to understand the project structure, existing code patterns, and
             ...filesystemTools,
           };
 
-          const result = streamText({
+          const result = await streamText({
             model,
             tools: allTools, // Filesystem tools for project analysis
             system: TASK_BREAKDOWN_SYSTEM_PROMPT + `
@@ -404,7 +404,7 @@ Use these tools to understand the project structure, existing code, and dependen
               : undefined,
           });
 
-          response = (await result).text;
+          response = await result.text;
         } else {
           // Use standard streamText without tools
           response = await this.streamText(
@@ -587,7 +587,7 @@ Use these tools to understand the project structure, existing code, and dependen
             ...filesystemTools,
           };
 
-          const result = streamText({
+          const result = await streamText({
             model,
             tools: allTools, // Filesystem tools for project analysis
             system: PRD_REWORK_SYSTEM_PROMPT + `
@@ -618,7 +618,7 @@ Use these tools to understand the current project structure, existing code patte
               : undefined,
           });
 
-          return (await result).text;
+          return await result.text;
         } else {
           // Use standard streamText without tools
           return this.streamText(
@@ -714,7 +714,7 @@ Use these tools to understand the current project structure, existing code patte
             ...filesystemTools,
           };
 
-          const result = streamText({
+          const result = await streamText({
             model,
             tools: allTools, // Context7 MCP tools + filesystem tools
             system:
@@ -878,7 +878,7 @@ ${existingResearchContext}`,
             ...(mcpTools as ToolSet),
           };
 
-          const result = streamText({
+          const result = await streamText({
             model,
             tools: allTools,
             system: `You are an expert developer.\nYou have access to Context7 MCP tools for documentation research.\nFetch documentation relevant to the task in the project context and create a document giving that knowledge to the AI assistant that will implement the task.`,
