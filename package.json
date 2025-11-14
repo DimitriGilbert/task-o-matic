@@ -1,6 +1,6 @@
 {
   "name": "task-o-matic",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "AI-powered task management CLI",
   "keywords": [
     "task-management",
