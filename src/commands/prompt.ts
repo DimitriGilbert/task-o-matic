@@ -116,10 +116,98 @@ export const promptCommand = new Command("prompt")
         exit(1);
       }
 
-      // Build variables object
+      // Build variables object with AUTOMATIC DETECTION FIRST (like all other commands)
       const variables: Record<string, string> = {};
 
-      // Parse custom variables (--var key=value)
+      // STEP 1: AUTO-DETECT EVERYTHING (default behavior)
+
+      // Auto-detect PRD content ALWAYS
+      const autoPrdContent = await PromptBuilder.autoDetectPRDContent();
+      if (autoPrdContent) {
+        variables.PRD_CONTENT = autoPrdContent;
+      }
+
+      // Auto-detect stack info ALWAYS
+      const autoStackInfo = await PromptBuilder.detectStackInfo(process.cwd());
+      if (autoStackInfo !== "Not detected") {
+        variables.STACK_INFO = autoStackInfo;
+      }
+
+      // STEP 2: OVERRIDE with explicit options if provided
+
+      // Override PRD if explicitly provided
+      if (options.prdFile) {
+        variables.PRD_CONTENT = PromptBuilder.loadPRDContent(options.prdFile);
+      } else if (options.prdContent) {
+        variables.PRD_CONTENT = options.prdContent;
+      }
+
+      // Override stack if explicitly provided
+      if (options.stackInfo) {
+        variables.STACK_INFO = options.stackInfo;
+      }
+
+      // Handle task information
+      if (options.taskTitle) {
+        variables.TASK_TITLE = options.taskTitle;
+      }
+
+      if (options.taskFile) {
+        variables.TASK_DESCRIPTION = await PromptBuilder.buildTaskContext(
+          options.taskTitle || "",
+          "",
+          options.taskFile
+        );
+      } else if (options.taskDescription) {
+        variables.TASK_DESCRIPTION = options.taskDescription;
+      }
+
+      // Build rich task context if we have title and description
+      if (options.taskTitle && (options.taskDescription || options.taskFile)) {
+        variables.TASK_CONTEXT = await PromptBuilder.buildTaskContext(
+          options.taskTitle,
+          options.taskDescription,
+          options.taskFile
+        );
+      }
+
+      // Handle user feedback
+      if (options.userFeedback) {
+        variables.USER_FEEDBACK = options.userFeedback;
+      }
+
+      // Build comprehensive CONTEXT_INFO (combining everything)
+      const contextParts: string[] = [];
+
+      // Add stack info if available
+      if (variables.STACK_INFO) {
+        contextParts.push(`**Technology Stack:** ${variables.STACK_INFO}`);
+      }
+
+      // Add PRD content if available
+      if (variables.PRD_CONTENT) {
+        contextParts.push(`**Product Requirements:**\n${variables.PRD_CONTENT}`);
+      }
+
+      // Add full context if requested
+      if (options.fullContext) {
+        const fullContext = await PromptBuilder.buildFullProjectContext(process.cwd());
+        if (fullContext) {
+          contextParts.push(fullContext);
+        }
+      }
+
+      // Set combined context info
+      if (contextParts.length > 0) {
+        variables.CONTEXT_INFO = contextParts.join('\n\n');
+      }
+
+      // Override context info if explicitly provided
+      if (options.contextInfo) {
+        variables.CONTEXT_INFO = options.contextInfo;
+      }
+
+      // STEP 3: FINAL OVERRIDE with custom --var variables (highest priority)
       if (options.var) {
         for (const varPair of options.var) {
           const [key, ...valueParts] = varPair.split("=");
@@ -131,94 +219,6 @@ export const promptCommand = new Command("prompt")
           }
           variables[key] = valueParts.join("=");
         }
-      }
-
-      // Handle PRD content
-      let prdContent = options.prdContent;
-      if (options.prdFile) {
-        prdContent = PromptBuilder.loadPRDContent(options.prdFile);
-      }
-      if (prdContent) {
-        variables.PRD_CONTENT = prdContent;
-      } else if (!prdContent && !variables.PRD_CONTENT) {
-        // Auto-detect PRD content if not provided
-        prdContent = await PromptBuilder.autoDetectPRDContent();
-        if (prdContent) {
-          variables.PRD_CONTENT = prdContent;
-        }
-      }
-
-      // Handle task information
-      let taskDescription = options.taskDescription;
-      if (options.taskFile) {
-        taskDescription = await PromptBuilder.buildTaskContext(
-          "",
-          "",
-          options.taskFile
-        );
-      }
-      if (options.taskTitle) {
-        variables.TASK_TITLE = options.taskTitle;
-      }
-      if (taskDescription) {
-        variables.TASK_DESCRIPTION = taskDescription;
-      }
-      
-      // If we have both title and description, build rich context
-      if (options.taskTitle && (options.taskDescription || options.taskFile)) {
-        const richContext = await PromptBuilder.buildTaskContext(
-          options.taskTitle,
-          options.taskDescription,
-          options.taskFile
-        );
-        variables.TASK_CONTEXT = richContext;
-      }
-
-      // Handle stack info (don't auto-detect if custom var provided)
-      if (options.stackInfo) {
-        variables.STACK_INFO = options.stackInfo;
-      } else if (!variables.STACK_INFO) {
-        // Auto-detect stack info from current directory
-        const stackInfo = await PromptBuilder.detectStackInfo(process.cwd());
-        if (stackInfo !== "Not detected") {
-          variables.STACK_INFO = stackInfo;
-        }
-      }
-
-      // Build CONTEXT_INFO from stack and PRD if not explicitly provided
-      if (!options.contextInfo && !variables.CONTEXT_INFO) {
-        const contextParts: string[] = [];
-
-        // Add stack info if available
-        if (variables.STACK_INFO) {
-          contextParts.push(`**Technology Stack:** ${variables.STACK_INFO}`);
-        }
-
-        // Add PRD content if available
-        if (variables.PRD_CONTENT) {
-          contextParts.push(`**Product Requirements:**\n${variables.PRD_CONTENT}`);
-        }
-
-        // Add full context if requested
-        if (options.fullContext) {
-          const fullContext = await PromptBuilder.buildFullProjectContext(process.cwd());
-          if (fullContext) {
-            contextParts.push(fullContext);
-          }
-        }
-
-        // Set combined context info
-        if (contextParts.length > 0) {
-          variables.CONTEXT_INFO = contextParts.join('\n\n');
-        }
-      }
-      
-      // Handle other variables
-      if (options.contextInfo) {
-        variables.CONTEXT_INFO = options.contextInfo;
-      }
-      if (options.userFeedback) {
-        variables.USER_FEEDBACK = options.userFeedback;
       }
 
       // Build the prompt
