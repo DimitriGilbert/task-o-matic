@@ -701,7 +701,6 @@ export class LocalStorage {
     let cleanedCount = 0;
 
     try {
-      const { readdirSync } = await import("fs");
       const files = readdirSync(tasksDir);
 
       for (const file of files) {
