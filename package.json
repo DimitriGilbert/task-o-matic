@@ -50,6 +50,7 @@
     "start": "node dist/cli/bin.js",
     "check-types": "node_modules/.bin/tsc --noEmit --skipLibCheck",
     "test": "node_modules/.bin/mocha -r tsx/cjs src/test/**/*.test.ts",
+    "prepare": "npm run build",
     "prepublishOnly": "bun run build && bun test"
   },
   "dependencies": {
