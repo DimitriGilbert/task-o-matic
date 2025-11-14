@@ -2,6 +2,7 @@ import { taskService } from "../services/tasks";
 import { ExecuteTaskOptions, ExecutorTool } from "../types";
 import { ExecutorFactory } from "./executors/executor-factory";
 import { runValidations } from "./validation";
+import { ContextBuilder } from "./context-builder";
 import chalk from "chalk";
 
 async function executeSingleTask(
@@ -21,19 +22,65 @@ async function executeSingleTask(
     ),
   );
 
-  // Build execution message
-  let executionMessage: string;
+  // Build comprehensive execution message with full context
+  const contextBuilder = new ContextBuilder();
+  const taskContext = await contextBuilder.buildContext(taskId);
+
+  // Build execution message with ALL context
+  const messageParts: string[] = [];
+
+  // Add task plan if available
   const planData = await taskService.getTaskPlan(taskId);
   if (planData) {
-    executionMessage = `Execute this task plan:\n\n${planData.plan}`;
+    messageParts.push(`# Task Plan\n\n${planData.plan}\n`);
   } else {
-    executionMessage = `Execute this task: ${task.title}\n\nDescription: ${task.description || "No description"}`;
+    messageParts.push(`# Task: ${task.title}\n\n${task.description || "No description"}\n`);
   }
 
-  if (!dry) {
-    //   console.log(chalk.yellow(`📝 Message that would be sent:`));
-    //   console.log(chalk.cyan(executionMessage));
-    // } else {
+  // Add PRD context if available
+  if (taskContext.prdContent) {
+    messageParts.push(`\n# Product Requirements Document\n\n${taskContext.prdContent}\n`);
+  }
+
+  // Add stack/technology context
+  if (taskContext.stack) {
+    messageParts.push(`\n# Technology Stack\n\n`);
+    messageParts.push(`- **Project**: ${taskContext.stack.projectName}\n`);
+    messageParts.push(`- **Frontend**: ${taskContext.stack.frontend}\n`);
+    messageParts.push(`- **Backend**: ${taskContext.stack.backend}\n`);
+    if (taskContext.stack.database !== "none") {
+      messageParts.push(`- **Database**: ${taskContext.stack.database}\n`);
+    }
+    if (taskContext.stack.orm !== "none") {
+      messageParts.push(`- **ORM**: ${taskContext.stack.orm}\n`);
+    }
+    messageParts.push(`- **Auth**: ${taskContext.stack.auth}\n`);
+    if (taskContext.stack.addons.length > 0) {
+      messageParts.push(`- **Addons**: ${taskContext.stack.addons.join(", ")}\n`);
+    }
+    messageParts.push(`- **Package Manager**: ${taskContext.stack.packageManager}\n`);
+  }
+
+  // Add documentation context if available
+  if (taskContext.documentation) {
+    messageParts.push(`\n# Documentation Context\n\n`);
+    messageParts.push(`${taskContext.documentation.recap}\n`);
+    if (taskContext.documentation.files.length > 0) {
+      messageParts.push(`\n**Relevant Documentation Files**:\n`);
+      taskContext.documentation.files.forEach((file) => {
+        messageParts.push(`- ${file.path}\n`);
+      });
+    }
+  }
+
+  const executionMessage = messageParts.join('');
+
+  if (dry) {
+    console.log(chalk.yellow(`\n📝 Message that would be sent to ${tool}:\n`));
+    console.log(chalk.cyan('─'.repeat(80)));
+    console.log(chalk.cyan(executionMessage));
+    console.log(chalk.cyan('─'.repeat(80)));
+  } else {
     // Update task status to in-progress
     await taskService.setTaskStatus(taskId, "in-progress");
     console.log(chalk.yellow("⏳ Task status updated to in-progress"));
@@ -145,8 +192,10 @@ export async function executeTask(options: ExecuteTaskOptions): Promise<void> {
     );
 
     if (dry) {
-      console.log(chalk.yellow(`📝 Custom message that would be sent:`));
+      console.log(chalk.yellow(`\n📝 Custom message that would be sent to ${tool}:\n`));
+      console.log(chalk.cyan('─'.repeat(80)));
       console.log(chalk.cyan(message));
+      console.log(chalk.cyan('─'.repeat(80)));
     } else {
       await taskService.setTaskStatus(taskId, "in-progress");
       console.log(chalk.yellow("⏳ Task status updated to in-progress"));
