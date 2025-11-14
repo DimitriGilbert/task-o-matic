@@ -27,6 +27,7 @@ import { JSONParser } from "./json-parser";
 import { Context7Client } from "./mcp-client";
 import { RetryHandler } from "./retry-handler";
 import { ModelProvider } from "./model-provider";
+import { filesystemTools } from "./filesystem-tools";
 
 export class AIOperations {
   private jsonParser = new JSONParser();
@@ -131,6 +132,7 @@ export class AIOperations {
     streamingOptions?: StreamingOptions,
     retryConfig?: Partial<RetryConfig>,
     workingDirectory?: string, // Working directory passed from service layer
+    enableFilesystemTools?: boolean,
   ): Promise<AIPRDParseResult> {
     return this.retryHandler.executeWithRetry(
       async () => {
@@ -175,14 +177,59 @@ export class AIOperations {
           enhancedPrompt = promptResult.prompt!; // TypeScript: prompt is guaranteed when success is true
         }
 
-        const response = await this.streamText(
-          "", // empty prompt since we use messages
-          config,
-          PRD_PARSING_SYSTEM_PROMPT,
-          userMessage || enhancedPrompt,
-          streamingOptions,
-          { maxAttempts: 1 }, // Disable retries here since we're handling them at the outer level
-        );
+        let response: string;
+
+        if (enableFilesystemTools) {
+          // Use filesystem tools when enabled
+          const model = this.modelProvider.getModel({ ...this.modelProvider.getAIConfig(), ...config });
+          
+          const allTools = {
+            ...filesystemTools,
+          };
+
+          const result = streamText({
+            model,
+            tools: allTools, // Filesystem tools for project analysis
+            system: PRD_PARSING_SYSTEM_PROMPT + `
+
+You have access to filesystem tools that allow you to:
+- readFile: Read the contents of any file in the project
+- listDirectory: List contents of directories
+
+Use these tools to understand the project structure, existing code patterns, and dependencies when parsing the PRD and creating tasks.`,
+            messages: [{ role: "user", content: userMessage || enhancedPrompt }],
+            maxRetries: 0,
+            onChunk: streamingOptions?.onChunk
+              ? ({ chunk }) => {
+                  if (chunk.type === "text-delta") {
+                    streamingOptions.onChunk!(chunk.text);
+                  }
+                }
+              : undefined,
+            onFinish: streamingOptions?.onFinish
+              ? ({ text, finishReason, usage }) => {
+                  streamingOptions.onFinish!({
+                    text,
+                    finishReason,
+                    usage,
+                    isAborted: false,
+                  });
+                }
+              : undefined,
+          });
+
+          response = (await result).text;
+        } else {
+          // Use standard streamText without tools
+          response = await this.streamText(
+            "", // empty prompt since we use messages
+            config,
+            PRD_PARSING_SYSTEM_PROMPT,
+            userMessage || enhancedPrompt,
+            streamingOptions,
+            { maxAttempts: 1 }, // Disable retries here since we're handling them at the outer level
+          );
+        }
 
         // Parse JSON from response using proper typing
         const parseResult =
@@ -263,6 +310,7 @@ export class AIOperations {
     fullContent?: string,
     stackInfo?: string,
     existingSubtasks?: Task[],
+    enableFilesystemTools?: boolean,
   ): Promise<
     Array<{ title: string; content: string; estimatedEffort?: string }>
   > {
@@ -315,14 +363,59 @@ export class AIOperations {
           prompt = promptResult.prompt!;
         }
 
-        const response = await this.streamText(
-          "", // empty prompt since we use messages
-          config,
-          TASK_BREAKDOWN_SYSTEM_PROMPT,
-          userMessage || prompt,
-          streamingOptions,
-          { maxAttempts: 1 }, // Disable retries here since we're handling them at the outer level
-        );
+        let response: string;
+
+        if (enableFilesystemTools) {
+          // Use filesystem tools when enabled
+          const model = this.modelProvider.getModel({ ...this.modelProvider.getAIConfig(), ...config });
+          
+          const allTools = {
+            ...filesystemTools,
+          };
+
+          const result = streamText({
+            model,
+            tools: allTools, // Filesystem tools for project analysis
+            system: TASK_BREAKDOWN_SYSTEM_PROMPT + `
+
+You have access to filesystem tools that allow you to:
+- readFile: Read the contents of any file in the project
+- listDirectory: List contents of directories
+
+Use these tools to understand the project structure, existing code, and dependencies when breaking down tasks into subtasks.`,
+            messages: [{ role: "user", content: userMessage || prompt }],
+            maxRetries: 0,
+            onChunk: streamingOptions?.onChunk
+              ? ({ chunk }) => {
+                  if (chunk.type === "text-delta") {
+                    streamingOptions.onChunk!(chunk.text);
+                  }
+                }
+              : undefined,
+            onFinish: streamingOptions?.onFinish
+              ? ({ text, finishReason, usage }) => {
+                  streamingOptions.onFinish!({
+                    text,
+                    finishReason,
+                    usage,
+                    isAborted: false,
+                  });
+                }
+              : undefined,
+          });
+
+          response = (await result).text;
+        } else {
+          // Use standard streamText without tools
+          response = await this.streamText(
+            "", // empty prompt since we use messages
+            config,
+            TASK_BREAKDOWN_SYSTEM_PROMPT,
+            userMessage || prompt,
+            streamingOptions,
+            { maxAttempts: 1 }, // Disable retries here since we're handling them at the outer level
+          );
+        }
 
         // Parse JSON from response using proper typing
         const parseResult = this.jsonParser.parseJSONFromResponse<{
@@ -440,6 +533,7 @@ export class AIOperations {
     streamingOptions?: StreamingOptions,
     retryConfig?: Partial<RetryConfig>,
     workingDirectory?: string, // Working directory passed from service layer
+    enableFilesystemTools?: boolean,
   ): Promise<string> {
     return this.retryHandler.executeWithRetry(
       async () => {
@@ -485,14 +579,57 @@ export class AIOperations {
           prompt = promptResult.prompt!;
         }
 
-        return this.streamText(
-          "", // empty prompt since we use messages
-          config,
-          PRD_REWORK_SYSTEM_PROMPT,
-          userMessage || prompt,
-          streamingOptions,
-          { maxAttempts: 1 }, // Disable retries here since we're handling them at the outer level
-        );
+        if (enableFilesystemTools) {
+          // Use filesystem tools when enabled
+          const model = this.modelProvider.getModel({ ...this.modelProvider.getAIConfig(), ...config });
+          
+          const allTools = {
+            ...filesystemTools,
+          };
+
+          const result = streamText({
+            model,
+            tools: allTools, // Filesystem tools for project analysis
+            system: PRD_REWORK_SYSTEM_PROMPT + `
+
+You have access to filesystem tools that allow you to:
+- readFile: Read the contents of any file in the project
+- listDirectory: List contents of directories
+
+Use these tools to understand the current project structure, existing code patterns, and dependencies when reworking the PRD based on feedback.`,
+            messages: [{ role: "user", content: userMessage || prompt }],
+            maxRetries: 0,
+            onChunk: streamingOptions?.onChunk
+              ? ({ chunk }) => {
+                  if (chunk.type === "text-delta") {
+                    streamingOptions.onChunk!(chunk.text);
+                  }
+                }
+              : undefined,
+            onFinish: streamingOptions?.onFinish
+              ? ({ text, finishReason, usage }) => {
+                  streamingOptions.onFinish!({
+                    text,
+                    finishReason,
+                    usage,
+                    isAborted: false,
+                  });
+                }
+              : undefined,
+          });
+
+          return (await result).text;
+        } else {
+          // Use standard streamText without tools
+          return this.streamText(
+            "", // empty prompt since we use messages
+            config,
+            PRD_REWORK_SYSTEM_PROMPT,
+            userMessage || prompt,
+            streamingOptions,
+            { maxAttempts: 1 }, // Disable retries here since we're handling them at the outer level
+          );
+        }
       },
       retryConfig,
       "PRD rework",
@@ -571,24 +708,30 @@ export class AIOperations {
 
           const prompt = promptResult.prompt!;
 
-          // Merge Context7 MCP tools with custom research tools
+          // Merge Context7 MCP tools with filesystem tools
           const allTools = {
             ...(mcpTools as ToolSet),
-            // ...customResearchTools,
+            ...filesystemTools,
           };
 
           const result = streamText({
             model,
-            tools: allTools, // Context7 MCP tools + custom research tools
+            tools: allTools, // Context7 MCP tools + filesystem tools
             system:
               TASK_ENHANCEMENT_SYSTEM_PROMPT +
               `
 
-You have access to Context7 documentation tools.
+You have access to Context7 documentation tools and filesystem tools.
+
+## Available Tools:
+- Context7 MCP tools (context7_resolve_library_id, context7_get_library_docs) for library documentation
+- readFile: Read the contents of any file in the project
+- listDirectory: List contents of directories
 
 ## Research Strategy:
-1. Use Context7 MCP tools (context7_resolve_library_id, context7_get_library_docs) for any new research needed
-2. Synthesize information from all sources to enhance the task
+1. Use Context7 MCP tools for library documentation research
+2. Use filesystem tools to understand project structure, existing code, and dependencies
+3. Synthesize information from all sources to enhance the task
 
 Technology stack context: ${stackInfo || "Not specified"}
 
@@ -949,17 +1092,48 @@ Please provide a 2-3 sentence summary of what documentation is available and how
           prompt = promptResult.prompt!;
         }
 
-        const response = await this.streamText(
-          "", // empty prompt since we use messages
-          config,
-          TASK_PLANNING_SYSTEM_PROMPT,
-          userMessage || prompt,
-          streamingOptions,
-          { maxAttempts: 1 }, // Disable retries here since we're handling them at the outer level
-        );
+        const model = this.modelProvider.getModel({ ...this.modelProvider.getAIConfig(), ...config });
+        
+        // Get MCP tools and merge with filesystem tools
+        const mcpTools = await this.context7Client.getMCPTools();
+        const allTools = {
+          ...(mcpTools as ToolSet),
+          ...filesystemTools,
+        };
+
+        const result = streamText({
+          model,
+          tools: allTools, // Context7 MCP tools + filesystem tools
+          system: TASK_PLANNING_SYSTEM_PROMPT + `
+
+You have access to filesystem tools that allow you to:
+- readFile: Read the contents of any file in the project
+- listDirectory: List contents of directories
+
+Use these tools to understand the project structure, existing code, and dependencies when creating implementation plans.`,
+          messages: [{ role: "user", content: userMessage || prompt }],
+          maxRetries: 0,
+          onChunk: streamingOptions?.onChunk
+            ? ({ chunk }) => {
+                if (chunk.type === "text-delta") {
+                  streamingOptions.onChunk!(chunk.text);
+                }
+              }
+            : undefined,
+          onFinish: streamingOptions?.onFinish
+            ? ({ text, finishReason, usage }) => {
+                streamingOptions.onFinish!({
+                  text,
+                  finishReason,
+                  usage,
+                  isAborted: false,
+                });
+              }
+            : undefined,
+        });
 
         // Return the plan text directly - no JSON parsing needed
-        return response;
+        return (await result).text;
       },
       retryConfig,
       "Task planning",

@@ -21,6 +21,7 @@ prdCommand
   .option("--ai-provider-url <url>", "AI provider URL override")
   .option("--ai-reasoning <tokens>", "Enable reasoning for OpenRouter models (max reasoning tokens)")
   .option("--stream", "Show streaming AI output during parsing")
+  .option("--tools", "Enable filesystem tools for project analysis")
   .action(async (options) => {
     try {
       // Determine working directory from current process location
@@ -32,6 +33,7 @@ prdCommand
       const result = await prdService.parsePRD({
         file: options.file,
         workingDirectory, // Pass working directory explicitly to service
+        enableFilesystemTools: options.tools,
         aiOptions: {
           aiProvider: options.aiProvider,
           aiModel: options.aiModel,
@@ -96,6 +98,7 @@ prdCommand
   .option("--ai-provider-url <url>", "AI provider URL override")
   .option("--ai-reasoning <tokens>", "Enable reasoning for OpenRouter models (max reasoning tokens)")
   .option("--stream", "Show streaming AI output during rework")
+  .option("--tools", "Enable filesystem tools for project analysis")
   .action(async (options) => {
     try {
       // Determine working directory from current process location
@@ -109,6 +112,7 @@ prdCommand
         feedback: options.feedback,
         output: options.output,
         workingDirectory, // Pass working directory explicitly to service
+        enableFilesystemTools: options.tools,
         aiOptions: {
           aiProvider: options.aiProvider,
           aiModel: options.aiModel,

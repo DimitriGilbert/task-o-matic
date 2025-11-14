@@ -17,6 +17,7 @@ export class PRDService {
   async parsePRD(input: {
     file: string;
     workingDirectory?: string; // Working directory passed from CLI layer
+    enableFilesystemTools?: boolean;
     aiOptions?: AIOptions;
     promptOverride?: string;
     messageOverride?: string;
@@ -108,7 +109,8 @@ export class PRDService {
       input.messageOverride,
       input.streamingOptions,
       undefined, // retryConfig
-      workingDir // Pass working directory to AI operations
+      workingDir, // Pass working directory to AI operations
+      input.enableFilesystemTools
     );
 
     steps.push({
@@ -202,6 +204,7 @@ export class PRDService {
     feedback: string;
     output?: string;
     workingDirectory?: string; // Working directory passed from CLI layer
+    enableFilesystemTools?: boolean;
     aiOptions?: AIOptions;
     promptOverride?: string;
     messageOverride?: string;
@@ -249,7 +252,8 @@ export class PRDService {
       input.messageOverride,
       input.streamingOptions,
       undefined, // retryConfig
-      workingDir // Pass working directory to AI operations
+      workingDir, // Pass working directory to AI operations
+      input.enableFilesystemTools
     );
 
     input.callbacks?.onProgress?.({

@@ -300,6 +300,7 @@ tasksCommand
   .option("--ai-key <key>", "AI API key override")
   .option("--ai-provider-url <url>", "AI provider URL override")
   .option("--reasoning <tokens>", "Enable reasoning for OpenRouter models (max reasoning tokens)")
+  .option("--tools", "Enable filesystem tools for project analysis")
   .action(async (options) => {
     try {
       if (!options.taskId && !options.all) {
@@ -332,7 +333,8 @@ tasksCommand
             {
               onProgress: displayProgress,
               onError: displayError,
-            }
+            },
+            options.tools
           );
 
           displaySubtaskCreation(result.subtasks);
@@ -743,6 +745,113 @@ tasksCommand
         chalk.red("Execution failed:"),
         error instanceof Error ? error.message : "Unknown error"
       );
+      process.exit(1);
+    }
+  });
+
+// Get task documentation
+tasksCommand
+  .command("get-documentation")
+  .description("Get existing documentation for a task")
+  .requiredOption("--id <id>", "Task ID")
+  .action(async (options) => {
+    try {
+      const task = await taskService.getTask(options.id);
+      if (!task) {
+        throw new Error(`Task with ID ${options.id} not found`);
+      }
+
+      const documentation = await taskService.getTaskDocumentation(options.id);
+      
+      if (!documentation) {
+        console.log(chalk.yellow(`⚠️  No documentation found for task ${options.id}`));
+        console.log(chalk.gray(`   Task: ${task.title}`));
+        return;
+      }
+
+      console.log(chalk.blue(`\n📖 Documentation for Task: ${task.title} (${options.id})`));
+      console.log(chalk.gray(`   File: .task-o-matic/docs/tasks/${options.id}.md`));
+      console.log("");
+      console.log(documentation);
+    } catch (error) {
+      displayError(error);
+      process.exit(1);
+    }
+  });
+
+// Add documentation from file
+tasksCommand
+  .command("add-documentation")
+  .description("Add documentation to a task from a file")
+  .requiredOption("--id <id>", "Task ID")
+  .requiredOption("--doc-file <path>", "Path to documentation file")
+  .option("--overwrite", "Overwrite existing documentation")
+  .action(async (options) => {
+    try {
+      const task = await taskService.getTask(options.id);
+      if (!task) {
+        throw new Error(`Task with ID ${options.id} not found`);
+      }
+
+      // Check if documentation already exists
+      const existingDoc = await taskService.getTaskDocumentation(options.id);
+      if (existingDoc && !options.overwrite) {
+        console.log(chalk.yellow(`⚠️  Documentation already exists for task ${options.id}`));
+        console.log(chalk.gray(`   Use --overwrite to replace existing documentation`));
+        return;
+      }
+
+      const result = await taskService.addTaskDocumentationFromFile(options.id, options.docFile);
+      
+      console.log(chalk.green(`✓ Documentation added to task: ${task.title} (${options.id})`));
+      console.log(chalk.gray(`   Source file: ${options.docFile}`));
+      console.log(chalk.gray(`   Saved to: ${result.filePath}`));
+      
+      if (options.overwrite) {
+        console.log(chalk.cyan(`   Previous documentation was overwritten`));
+      }
+    } catch (error) {
+      displayError(error);
+      process.exit(1);
+    }
+  });
+
+// Set task plan
+tasksCommand
+  .command("set-plan")
+  .description("Set implementation plan for a task")
+  .requiredOption("--id <id>", "Task ID")
+  .option("--plan <text>", "Plan text (use quotes for multi-line)")
+  .option("--plan-file <path>", "Path to file containing the plan")
+  .action(async (options) => {
+    try {
+      const task = await taskService.getTask(options.id);
+      if (!task) {
+        throw new Error(`Task with ID ${options.id} not found`);
+      }
+
+      if (!options.plan && !options.planFile) {
+        throw new Error("Either --plan or --plan-file must be specified");
+      }
+
+      if (options.plan && options.planFile) {
+        throw new Error("Cannot specify both --plan and --plan-file");
+      }
+
+      const result = await taskService.setTaskPlan(
+        options.id,
+        options.plan || undefined,
+        options.planFile || undefined
+      );
+
+      console.log(chalk.green(`✓ Plan set for task: ${task.title} (${options.id})`));
+      console.log(chalk.gray(`   Plan file: ${result.planFile}`));
+      
+      if (options.planFile) {
+        console.log(chalk.gray(`   Source file: ${options.planFile}`));
+      }
+    } catch (error) {
+      displayError(error);
       process.exit(1);
     }
   });

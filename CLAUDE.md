@@ -6,22 +6,22 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ### Building and Development
 ```bash
-npm run build          # Clean build (removes dist and rebuilds everything)
-npm run build:watch    # Build with watch mode for development
-npm run clean          # Clean dist directory and build artifacts
-npm run dev            # Run CLI in development mode with tsx
-npm run dev:mcp        # Run MCP server in development mode
-npm run check-types    # Type checking without compilation
+bun run build          # Clean build (removes dist and rebuilds everything)
+bun run build:watch    # Build with watch mode for development
+bun run clean          # Clean dist directory and build artifacts
+bun run dev            # Run CLI in development mode with tsx
+bun run dev:mcp        # Run MCP server in development mode
+bun run check-types    # Type checking without compilation
 ```
 
 ### Testing
 ```bash
-npm test              # Run tests with Mocha using tsx
-npm run test          # Same as above
+bun test              # Run tests with Mocha using tsx
+bun run test          # Same as above
 ```
 
 ### Package Management
-- Uses `bun.lock` for dependency management (not npm's package-lock.json)
+- Uses `bun.lock` for dependency management (not bun's bun.lock)
 - Run `bun install` for installing dependencies
 
 ## Architecture Overview

@@ -499,7 +499,8 @@ export class TaskService {
     promptOverride?: string,
     messageOverride?: string,
     streamingOptions?: StreamingOptions,
-    callbacks?: ProgressCallback
+    callbacks?: ProgressCallback,
+    enableFilesystemTools?: boolean
   ): Promise<SplitTaskResult> {
     const startTime = Date.now();
 
@@ -550,7 +551,8 @@ export class TaskService {
       undefined,
       fullContent,
       stackInfo,
-      existingSubtasks
+      existingSubtasks,
+      enableFilesystemTools
     );
 
     callbacks?.onProgress?.({
@@ -856,6 +858,89 @@ export class TaskService {
         aiProvider: aiConfig.provider,
         aiModel: aiConfig.model,
       },
+    };
+  }
+
+  // ============================================================================
+  // DOCUMENTATION OPERATIONS
+  // ============================================================================
+
+  async getTaskDocumentation(taskId: string): Promise<string | null> {
+    return getStorage().getTaskDocumentation(taskId);
+  }
+
+  async addTaskDocumentationFromFile(
+    taskId: string, 
+    filePath: string
+  ): Promise<{ filePath: string; task: Task }> {
+    const task = await this.getTask(taskId);
+    if (!task) {
+      throw new Error(`Task with ID ${taskId} not found`);
+    }
+
+    try {
+      const { readFileSync, existsSync } = await import('fs');
+      const { resolve } = await import('path');
+      
+      const resolvedPath = resolve(filePath);
+      if (!existsSync(resolvedPath)) {
+        throw new Error(`Documentation file not found: ${filePath}`);
+      }
+
+      const content = readFileSync(resolvedPath, 'utf-8');
+      const savedPath = await getStorage().saveTaskDocumentation(taskId, content);
+      
+      return {
+        filePath: savedPath,
+        task,
+      };
+    } catch (error) {
+      throw new Error(
+        `Failed to add documentation from file: ${error instanceof Error ? error.message : 'Unknown error'}`
+      );
+    }
+  }
+
+  async setTaskPlan(
+    taskId: string,
+    planText?: string,
+    planFilePath?: string
+  ): Promise<{ planFile: string; task: Task }> {
+    const task = await this.getTask(taskId);
+    if (!task) {
+      throw new Error(`Task with ID ${taskId} not found`);
+    }
+
+    let plan: string;
+
+    if (planFilePath) {
+      try {
+        const { readFileSync, existsSync } = await import('fs');
+        const { resolve } = await import('path');
+        
+        const resolvedPath = resolve(planFilePath);
+        if (!existsSync(resolvedPath)) {
+          throw new Error(`Plan file not found: ${planFilePath}`);
+        }
+
+        plan = readFileSync(resolvedPath, 'utf-8');
+      } catch (error) {
+        throw new Error(
+          `Failed to read plan file: ${error instanceof Error ? error.message : 'Unknown error'}`
+        );
+      }
+    } else if (planText) {
+      plan = planText;
+    } else {
+      throw new Error('Either planText or planFilePath must be provided');
+    }
+
+    await getStorage().savePlan(taskId, plan);
+    const planFile = `plans/${taskId}.md`;
+    
+    return {
+      planFile,
+      task,
     };
   }
 
