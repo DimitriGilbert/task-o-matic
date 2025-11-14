@@ -1,7 +1,7 @@
 {
   "name": "task-o-matic",
-  "version": "1.0.0",
-  "description": "AI-powered task management for CLI, TUI, and web applications",
+  "version": "0.0.1",
+  "description": "AI-powered task management CLI",
   "keywords": [
     "task-management",
     "ai",
@@ -16,13 +16,13 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/DimitriGilbert/task-o-matic.git"
+    "url": "git+https://github.com/DimitriGilbert/task-o-matic.git"
   },
   "main": "./dist/lib/index.js",
   "types": "./dist/lib/index.d.ts",
   "bin": {
-    "task-o-matic": "./dist/cli/bin.js",
-    "task-o-matic-mcp": "./dist/mcp/server.js"
+    "task-o-matic": "dist/cli/bin.js",
+    "task-o-matic-mcp": "dist/mcp/server.js"
   },
   "exports": {
     ".": {
@@ -44,12 +44,12 @@
   "scripts": {
     "clean": "rm -rf dist tsconfig.tsbuildinfo",
     "build": "rm -rf dist tsconfig.tsbuildinfo && node_modules/.bin/tsc",
-    "build:watch": "node_modules/.bin/tsc --watch",
-    "dev": "node_modules/.bin/tsx src/cli/bin.ts",
-    "dev:mcp": "node_modules/.bin/tsx src/mcp/server.ts",
+    "build:watch": "tsc --watch",
+    "dev": "tsx src/cli/bin.ts",
+    "dev:mcp": "tsx src/mcp/server.ts",
     "start": "node dist/cli/bin.js",
-    "check-types": "node_modules/.bin/tsc --noEmit --skipLibCheck",
-    "test": "node_modules/.bin/mocha -r tsx/cjs src/test/**/*.test.ts",
+    "check-types": "tsc --noEmit --skipLibCheck",
+    "test": "mocha -r tsx/cjs src/test/**/*.test.ts",
     "prepare": "npm run build",
     "prepublishOnly": "bun run build && bun test"
   },
