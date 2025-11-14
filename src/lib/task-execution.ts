@@ -75,12 +75,7 @@ async function executeSingleTask(
 
   const executionMessage = messageParts.join('');
 
-  if (dry) {
-    console.log(chalk.yellow(`\n📝 Message that would be sent to ${tool}:\n`));
-    console.log(chalk.cyan('─'.repeat(80)));
-    console.log(chalk.cyan(executionMessage));
-    console.log(chalk.cyan('─'.repeat(80)));
-  } else {
+  if (!dry) {
     // Update task status to in-progress
     await taskService.setTaskStatus(taskId, "in-progress");
     console.log(chalk.yellow("⏳ Task status updated to in-progress"));
@@ -190,12 +185,7 @@ export async function executeTask(options: ExecuteTaskOptions): Promise<void> {
       ),
     );
 
-    if (dry) {
-      console.log(chalk.yellow(`\n📝 Custom message that would be sent to ${tool}:\n`));
-      console.log(chalk.cyan('─'.repeat(80)));
-      console.log(chalk.cyan(message));
-      console.log(chalk.cyan('─'.repeat(80)));
-    } else {
+    if (!dry) {
       await taskService.setTaskStatus(taskId, "in-progress");
       console.log(chalk.yellow("⏳ Task status updated to in-progress"));
     }
