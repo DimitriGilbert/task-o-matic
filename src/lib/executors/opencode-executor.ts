@@ -6,14 +6,11 @@ export class OpencodeExecutor implements ExternalExecutor {
   name = "opencode";
 
   async execute(message: string, dry: boolean = false): Promise<void> {
-    const command = `opencode run "${message}"`;
-
     if (dry) {
-      console.log(chalk.cyan(command));
+      console.log(chalk.cyan(`🔧 Using executor: ${this.name}`));
+      console.log(chalk.cyan(`opencode -p "${message}"`));
       return;
     }
-
-    console.log(`🚀 Launching opencode with message: ${message}`);
 
     // Launch opencode and wait for it to complete
     const child = spawn("opencode", ["-p", message], {

@@ -1,5 +1,8 @@
 import { ExternalExecutor, ExecutorTool } from "../../types";
 import { OpencodeExecutor } from "./opencode-executor";
+import { ClaudeCodeExecutor } from "./claude-code-executor";
+import { GeminiExecutor } from "./gemini-executor";
+import { CodexExecutor } from "./codex-executor";
 
 export class ExecutorFactory {
   static create(tool: ExecutorTool = "opencode"): ExternalExecutor {
@@ -7,11 +10,11 @@ export class ExecutorFactory {
       case "opencode":
         return new OpencodeExecutor();
       case "claude":
-        throw new Error("Claude executor not implemented yet");
+        return new ClaudeCodeExecutor();
       case "gemini":
-        throw new Error("Gemini executor not implemented yet");
+        return new GeminiExecutor();
       case "codex":
-        throw new Error("Codex executor not implemented yet");
+        return new CodexExecutor();
       default:
         throw new Error(`Unknown executor tool: ${tool}`);
     }

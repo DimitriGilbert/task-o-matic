@@ -1,7 +1,8 @@
 import { PromptRegistry, PromptMetadata } from "./prompt-registry";
-import { readFileSync, existsSync } from "fs";
+import { readFileSync, existsSync, readdirSync, statSync } from "fs";
 import { configManager } from "./config";
 import { ContextBuilder } from "./context-builder";
+import { join } from "path";
 
 export interface PromptBuilderOptions {
   name: string;
@@ -229,6 +230,115 @@ export class PromptBuilder {
     } catch (error) {
       console.warn("Could not detect stack info using ContextBuilder:", error);
       return "Not detected";
+    }
+  }
+
+  /**
+   * Build comprehensive project context for external executors
+   */
+  static async buildFullProjectContext(projectPath: string): Promise<string> {
+    const contextParts: string[] = [];
+
+    contextParts.push("**Project Context:**");
+
+    // Detect package.json and dependencies
+    const packageJsonPath = join(projectPath, "package.json");
+    if (existsSync(packageJsonPath)) {
+      try {
+        const packageJson = JSON.parse(readFileSync(packageJsonPath, "utf-8"));
+        const deps = Object.keys(packageJson.dependencies || {});
+        const devDeps = Object.keys(packageJson.devDependencies || {});
+
+        contextParts.push(`\n**Dependencies:**`);
+        if (deps.length > 0) {
+          contextParts.push(`- Production: ${deps.slice(0, 10).join(", ")}${deps.length > 10 ? ` (+${deps.length - 10} more)` : ""}`);
+        }
+        if (devDeps.length > 0) {
+          contextParts.push(`- Development: ${devDeps.slice(0, 10).join(", ")}${devDeps.length > 10 ? ` (+${devDeps.length - 10} more)` : ""}`);
+        }
+
+        if (packageJson.scripts) {
+          const scripts = Object.keys(packageJson.scripts);
+          contextParts.push(`\n**Available Scripts:** ${scripts.join(", ")}`);
+        }
+      } catch (error) {
+        console.warn("Could not parse package.json:", error);
+      }
+    }
+
+    // Detect project structure
+    try {
+      const files = readdirSync(projectPath);
+      const directories = files.filter((f) => {
+        try {
+          const stat = statSync(join(projectPath, f));
+          return stat.isDirectory() && !f.startsWith(".");
+        } catch {
+          return false;
+        }
+      });
+
+      if (directories.length > 0) {
+        contextParts.push(`\n**Project Structure:** ${directories.join(", ")}`);
+      }
+
+      // Detect configuration files
+      const configFiles = files.filter((f) =>
+        f.match(/\.(config|rc)\.(js|ts|json|yaml|yml)$/) ||
+        ["tsconfig.json", "next.config.js", "vite.config.ts", "tailwind.config.js"].includes(f)
+      );
+      if (configFiles.length > 0) {
+        contextParts.push(`\n**Configuration Files:** ${configFiles.join(", ")}`);
+      }
+    } catch (error) {
+      console.warn("Could not read project structure:", error);
+    }
+
+    // Detect frameworks and tools
+    const detectedTools: string[] = [];
+    if (existsSync(join(projectPath, "next.config.js")) || existsSync(join(projectPath, "next.config.ts"))) {
+      detectedTools.push("Next.js");
+    }
+    if (existsSync(join(projectPath, "vite.config.ts")) || existsSync(join(projectPath, "vite.config.js"))) {
+      detectedTools.push("Vite");
+    }
+    if (existsSync(join(projectPath, "tailwind.config.js")) || existsSync(join(projectPath, "tailwind.config.ts"))) {
+      detectedTools.push("Tailwind CSS");
+    }
+    if (existsSync(join(projectPath, "convex"))) {
+      detectedTools.push("Convex");
+    }
+    if (existsSync(join(projectPath, "turbo.json"))) {
+      detectedTools.push("Turborepo");
+    }
+
+    if (detectedTools.length > 0) {
+      contextParts.push(`\n**Detected Tools:** ${detectedTools.join(", ")}`);
+    }
+
+    return contextParts.join("\n");
+  }
+
+  /**
+   * Format prompt for specific executor
+   */
+  static formatForExecutor(prompt: string, executor: "opencode" | "claude" | "gemini" | "codex"): string {
+    // Most executors work well with plain text prompts
+    // This method exists for future customization if needed
+
+    switch (executor) {
+      case "claude":
+        // Claude Code works well with structured markdown
+        return prompt;
+      case "gemini":
+        // Gemini CLI supports file references with @
+        return prompt;
+      case "codex":
+        // Codex CLI supports structured prompts
+        return prompt;
+      case "opencode":
+      default:
+        return prompt;
     }
   }
 }
