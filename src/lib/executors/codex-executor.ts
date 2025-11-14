@@ -6,14 +6,11 @@ export class CodexExecutor implements ExternalExecutor {
   name = "codex";
 
   async execute(message: string, dry: boolean = false): Promise<void> {
-    const command = `codex exec "${message}"`;
-
     if (dry) {
-      console.log(chalk.cyan(command));
+      console.log(chalk.cyan(`🔧 Using executor: ${this.name}`));
+      console.log(chalk.cyan(`codex exec "${message}"`));
       return;
     }
-
-    console.log(`🚀 Launching Codex CLI with message: ${message}`);
 
     // Launch codex and wait for it to complete
     const child = spawn("codex", ["exec", message], {

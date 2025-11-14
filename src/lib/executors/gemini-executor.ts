@@ -6,14 +6,11 @@ export class GeminiExecutor implements ExternalExecutor {
   name = "gemini";
 
   async execute(message: string, dry: boolean = false): Promise<void> {
-    const command = `gemini -p "${message}"`;
-
     if (dry) {
-      console.log(chalk.cyan(command));
+      console.log(chalk.cyan(`🔧 Using executor: ${this.name}`));
+      console.log(chalk.cyan(`gemini -p "${message}"`));
       return;
     }
-
-    console.log(`🚀 Launching Gemini CLI with message: ${message}`);
 
     // Launch gemini and wait for it to complete
     const child = spawn("gemini", ["-p", message], {

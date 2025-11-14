@@ -89,7 +89,6 @@ async function executeSingleTask(
   try {
     // Create executor and run
     const executor = ExecutorFactory.create(tool);
-    console.log(chalk.cyan(`🔧 Using executor: ${executor.name}`));
 
     await executor.execute(executionMessage, dry);
 
@@ -203,7 +202,6 @@ export async function executeTask(options: ExecuteTaskOptions): Promise<void> {
 
     try {
       const executor = ExecutorFactory.create(tool);
-      console.log(chalk.cyan(`🔧 Using executor: ${executor.name}`));
 
       await executor.execute(message, dry);
 

@@ -6,14 +6,11 @@ export class ClaudeCodeExecutor implements ExternalExecutor {
   name = "claude";
 
   async execute(message: string, dry: boolean = false): Promise<void> {
-    const command = `claude -p "${message}"`;
-
     if (dry) {
-      console.log(chalk.cyan(command));
+      console.log(chalk.cyan(`🔧 Using executor: ${this.name}`));
+      console.log(chalk.cyan(`claude -p "${message}"`));
       return;
     }
-
-    console.log(`🚀 Launching Claude Code with message: ${message}`);
 
     // Launch claude and wait for it to complete
     const child = spawn("claude", ["-p", message], {
