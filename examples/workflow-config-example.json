@@ -1,0 +1,19 @@
+{
+  "projectName": "my-saas-app",
+  "initMethod": "quick",
+  "frontend": "next",
+  "backend": "hono",
+  "database": "postgres",
+  "auth": true,
+  "bootstrap": false,
+  "prdMethod": "ai",
+  "prdDescription": "A SaaS platform for team collaboration with real-time features, authentication, and payment integration. The app should have a modern UI, support for multiple teams, role-based access control, and integration with popular tools like Slack and GitHub.",
+  "skipRefine": true,
+  "generateMethod": "ai",
+  "generateInstructions": "Focus on MVP features, break into small tasks of 2-4 hours each, prioritize core functionality over nice-to-haves",
+  "skipSplit": true,
+  "aiProvider": "openrouter",
+  "aiModel": "anthropic/claude-3.5-sonnet",
+  "stream": true,
+  "autoAccept": true
+}

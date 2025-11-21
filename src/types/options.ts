@@ -173,3 +173,6 @@ export interface InitConfigChoice {
   auth?: boolean;
   reasoning?: string;
 }
+
+// Export workflow automation options
+export * from "./workflow-options";

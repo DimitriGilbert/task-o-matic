@@ -24,20 +24,93 @@ import {
 } from "../utils/workflow-prompts";
 import { createStreamingOptions } from "../utils/streaming-options";
 import { displayProgress, displayError } from "../cli/display/progress";
-import type { WorkflowState, InitConfigChoice } from "../types/options";
+import type {
+  WorkflowState,
+  InitConfigChoice,
+  WorkflowAutomationOptions,
+} from "../types/options";
 import type { Task } from "../types";
 
 export const workflowCommand = new Command("workflow")
   .description(
     "Interactive workflow for complete project setup and task management"
   )
+  // Existing AI options
   .option("--stream", "Show streaming AI output")
   .option("--ai-provider <provider>", "AI provider override")
   .option("--ai-model <model>", "AI model override")
   .option("--ai-key <key>", "AI API key override")
-  .action(async (options) => {
+  .option("--ai-provider-url <url>", "AI provider URL override")
+
+  // Global workflow control
+  .option("--skip-all", "Skip all optional steps (use defaults)")
+  .option("--auto-accept", "Auto-accept all AI suggestions")
+  .option("--config-file <path>", "Load workflow options from JSON file")
+
+  // Step 1: Initialize
+  .option("--skip-init", "Skip initialization step")
+  .option("--project-name <name>", "Project name")
+  .option("--init-method <method>", "Initialization method: quick, custom, ai")
+  .option(
+    "--project-description <desc>",
+    "Project description for AI-assisted init"
+  )
+  .option("--use-existing-config", "Use existing configuration if found")
+  .option("--frontend <framework>", "Frontend framework")
+  .option("--backend <framework>", "Backend framework")
+  .option("--database <db>", "Database choice")
+  .option("--auth", "Include authentication")
+  .option("--no-auth", "Exclude authentication")
+  .option("--bootstrap", "Bootstrap with Better-T-Stack")
+  .option("--no-bootstrap", "Skip bootstrapping")
+
+  // Step 2: Define PRD
+  .option("--skip-prd", "Skip PRD definition")
+  .option("--prd-method <method>", "PRD method: upload, manual, ai, skip")
+  .option("--prd-file <path>", "Path to existing PRD file")
+  .option("--prd-description <desc>", "Product description for AI-assisted PRD")
+  .option("--prd-content <content>", "Direct PRD content")
+
+  // Step 3: Refine PRD
+  .option("--skip-refine", "Skip PRD refinement")
+  .option("--refine-method <method>", "Refinement method: manual, ai, skip")
+  .option("--refine-feedback <feedback>", "Feedback for AI refinement")
+
+  // Step 4: Generate Tasks
+  .option("--skip-generate", "Skip task generation")
+  .option("--generate-method <method>", "Generation method: standard, ai")
+  .option(
+    "--generate-instructions <instructions>",
+    "Custom task generation instructions"
+  )
+
+  // Step 5: Split Tasks
+  .option("--skip-split", "Skip task splitting")
+  .option("--split-tasks <ids>", "Comma-separated task IDs to split")
+  .option("--split-all", "Split all tasks")
+  .option(
+    "--split-method <method>",
+    "Split method: interactive, standard, custom"
+  )
+  .option("--split-instructions <instructions>", "Custom split instructions")
+  .action(async (cliOptions) => {
     try {
+      // Load and merge options from config file if specified
+      const options = await loadWorkflowOptions(cliOptions);
+
       console.log(chalk.blue.bold("\n🚀 Task-O-Matic Interactive Workflow\n"));
+
+      // Show automation status
+      if (options.configFile) {
+        console.log(chalk.cyan(`📋 Using config: ${options.configFile}`));
+      }
+      if (options.skipAll) {
+        console.log(chalk.yellow("⚡ Fast mode: Skipping all optional steps"));
+      }
+      if (options.autoAccept) {
+        console.log(chalk.yellow("✓ Auto-accepting all AI suggestions"));
+      }
+
       console.log(chalk.gray("This wizard will guide you through:"));
       console.log(chalk.gray("  1. Project initialization & bootstrap"));
       console.log(chalk.gray("  2. PRD definition"));
@@ -51,32 +124,25 @@ export const workflowCommand = new Command("workflow")
         projectDir: process.cwd(),
       };
 
-      // Store AI options for later use
-      const aiOptions = {
-        aiProvider: options.aiProvider,
-        aiModel: options.aiModel,
-        aiKey: options.aiKey,
-      };
-
       const streamingOptions = createStreamingOptions(
         options.stream,
         "Workflow"
       );
 
       // Step 1: Initialize/Bootstrap
-      await stepInitialize(state, aiOptions, streamingOptions);
+      await stepInitialize(state, options, streamingOptions);
 
       // Step 2: Define PRD
-      await stepDefinePRD(state, aiOptions, streamingOptions);
+      await stepDefinePRD(state, options, streamingOptions);
 
       // Step 3: Refine PRD
-      await stepRefinePRD(state, aiOptions, streamingOptions);
+      await stepRefinePRD(state, options, streamingOptions);
 
       // Step 4: Generate Tasks
-      await stepGenerateTasks(state, aiOptions, streamingOptions);
+      await stepGenerateTasks(state, options, streamingOptions);
 
       // Step 5: Split Tasks
-      await stepSplitTasks(state, aiOptions, streamingOptions);
+      await stepSplitTasks(state, options, streamingOptions);
 
       // Complete
       state.currentStep = "complete";
@@ -95,14 +161,68 @@ export const workflowCommand = new Command("workflow")
   });
 
 /**
+ * Load and merge workflow options from config file if specified
+ */
+async function loadWorkflowOptions(
+  cliOptions: any
+): Promise<WorkflowAutomationOptions> {
+  let options = { ...cliOptions };
+
+  if (cliOptions.configFile) {
+    try {
+      const configPath = resolve(cliOptions.configFile);
+      if (existsSync(configPath)) {
+        const configContent = readFileSync(configPath, "utf-8");
+        const fileOptions = JSON.parse(configContent);
+
+        // CLI options override file options
+        options = { ...fileOptions, ...cliOptions };
+        console.log(chalk.green(`✓ Loaded workflow config from ${configPath}`));
+      } else {
+        console.log(chalk.yellow(`⚠ Config file not found: ${configPath}`));
+      }
+    } catch (error) {
+      console.log(chalk.red(`✗ Failed to load config file: ${error}`));
+    }
+  }
+
+  return options;
+}
+
+/**
+ * Helper to get pre-answered value or prompt user
+ */
+async function getOrPrompt<T>(
+  preAnswered: T | undefined,
+  promptFn: () => Promise<T>,
+  skipCondition: boolean = false
+): Promise<T> {
+  if (skipCondition) {
+    throw new Error("Step skipped");
+  }
+  if (preAnswered !== undefined) {
+    return preAnswered;
+  }
+  return promptFn();
+}
+
+/**
  * Step 1: Initialize/Bootstrap
  */
 async function stepInitialize(
   state: WorkflowState,
-  aiOptions: any,
+  options: WorkflowAutomationOptions,
   streamingOptions: any
 ): Promise<void> {
   console.log(chalk.blue.bold("\n📦 Step 1: Project Initialization\n"));
+
+  // Check skip flag
+  if (options.skipInit) {
+    console.log(chalk.yellow("⚠ Skipping initialization (--skip-init)"));
+    state.initialized = false;
+    state.currentStep = "define-prd";
+    return;
+  }
 
   // Check if already initialized in current directory
   const taskOMaticDir = configManager.getTaskOMaticDir();
@@ -110,9 +230,8 @@ async function stepInitialize(
 
   if (alreadyInitialized) {
     console.log(chalk.yellow("✓ Project already initialized"));
-    const useExisting = await confirmPrompt(
-      "Use existing configuration?",
-      true
+    const useExisting = await getOrPrompt(options.useExistingConfig, () =>
+      confirmPrompt("Use existing configuration?", true)
     );
 
     if (useExisting) {
@@ -122,9 +241,9 @@ async function stepInitialize(
     }
   }
 
-  const shouldInitialize = await confirmPrompt(
-    "Initialize a new task-o-matic project?",
-    true
+  const shouldInitialize = await getOrPrompt(
+    options.skipInit === false ? true : undefined,
+    () => confirmPrompt("Initialize a new task-o-matic project?", true)
   );
 
   if (!shouldInitialize) {
@@ -134,9 +253,8 @@ async function stepInitialize(
     return;
   }
 
-  const projectName = await textInputPrompt(
-    "What is the name of your project?",
-    "my-app"
+  const projectName = await getOrPrompt(options.projectName, () =>
+    textInputPrompt("What is the name of your project?", "my-app")
   );
 
   // IMMEDIATE DIRECTORY CREATION AND SWITCH
@@ -169,18 +287,19 @@ async function stepInitialize(
   // AI Configuration Step - ALWAYS ask for this first
   console.log(chalk.blue.bold("\n🤖 Step 1.1: AI Configuration\n"));
 
-  const aiProvider = await selectPrompt("Select AI Provider:", [
-    { name: "OpenRouter", value: "openrouter" },
-    { name: "Anthropic", value: "anthropic" },
-    { name: "OpenAI", value: "openai" },
-    { name: "Custom (e.g. local LLM)", value: "custom" },
-  ]);
+  const aiProvider = await getOrPrompt(options.aiProvider, () =>
+    selectPrompt("Select AI Provider:", [
+      { name: "OpenRouter", value: "openrouter" },
+      { name: "Anthropic", value: "anthropic" },
+      { name: "OpenAI", value: "openai" },
+      { name: "Custom (e.g. local LLM)", value: "custom" },
+    ])
+  );
 
   let aiProviderUrl: string | undefined;
   if (aiProvider === "custom") {
-    aiProviderUrl = await textInputPrompt(
-      "Enter Custom Provider URL:",
-      "http://localhost:11434/v1"
+    aiProviderUrl = await getOrPrompt(options.aiProviderUrl, () =>
+      textInputPrompt("Enter Custom Provider URL:", "http://localhost:11434/v1")
     );
   }
 
@@ -193,7 +312,9 @@ async function stepInitialize(
       ? "gpt-4o"
       : "llama3";
 
-  const aiModel = await textInputPrompt("Enter AI Model:", defaultModel);
+  const aiModel = await getOrPrompt(options.aiModel, () =>
+    textInputPrompt("Enter AI Model:", defaultModel)
+  );
 
   // Check/Ask for API Key
   const providerKeyName =
@@ -206,7 +327,7 @@ async function stepInitialize(
       : "AI_API_KEY";
 
   // Check if key exists in current env
-  let apiKey = process.env[providerKeyName];
+  let apiKey = options.aiKey || process.env[providerKeyName];
 
   if (!apiKey) {
     console.log(chalk.yellow(`\n⚠️  No API key found for ${aiProvider}`));
@@ -257,21 +378,22 @@ async function stepInitialize(
   console.log(chalk.blue.bold("\n📦 Step 1.2: Stack Configuration\n"));
 
   // Choose initialization method
-  let initMethod = await selectPrompt(
-    "How would you like to configure your project stack?",
-    [
+  let initMethod = await getOrPrompt(options.initMethod, () =>
+    selectPrompt("How would you like to configure your project stack?", [
       { name: "Quick start (recommended defaults)", value: "quick" },
       { name: "Custom configuration", value: "custom" },
       { name: "AI-assisted (describe your project)", value: "ai" },
-    ]
+    ])
   );
 
   let config: InitConfigChoice;
 
   if (initMethod === "ai") {
     console.log(chalk.cyan("\n🤖 AI-Assisted Stack Configuration\n"));
-    const description = await textInputPrompt(
-      "Describe your project (e.g., 'A SaaS app for team collaboration with real-time features'):"
+    const description = await getOrPrompt(options.projectDescription, () =>
+      textInputPrompt(
+        "Describe your project (e.g., 'A SaaS app for team collaboration with real-time features'):"
+      )
     );
 
     console.log(chalk.gray("\n  Analyzing your requirements...\n"));
@@ -302,9 +424,9 @@ async function stepInitialize(
       console.log(chalk.gray(`\n  ${config.reasoning}\n`));
     }
 
-    const acceptRecommendation = await confirmPrompt(
-      "Accept these recommendations?",
-      true
+    const acceptRecommendation = await getOrPrompt(
+      options.autoAccept ? true : undefined,
+      () => confirmPrompt("Accept these recommendations?", true)
     );
 
     if (!acceptRecommendation) {
@@ -331,40 +453,49 @@ async function stepInitialize(
       aiModel: aiModel,
     };
 
-    const shouldBootstrap = await confirmPrompt(
-      "Bootstrap with Better-T-Stack?",
-      true
+    const shouldBootstrap = await getOrPrompt(options.bootstrap, () =>
+      confirmPrompt("Bootstrap with Better-T-Stack?", true)
     );
 
     if (shouldBootstrap) {
-      config.frontend = await selectPrompt("Frontend framework:", [
-        "next",
-        "tanstack-router",
-        "react-router",
-        "vite-react",
-        "remix",
-      ]);
-      config.backend = await selectPrompt("Backend framework:", [
-        "hono",
-        "express",
-        "elysia",
-        "fastify",
-      ]);
-      config.database = await selectPrompt("Database:", [
-        "sqlite",
-        "postgres",
-        "mysql",
-        "mongodb",
-        "turso",
-        "neon",
-      ]);
-      config.auth = await confirmPrompt("Include authentication?", true);
+      config.frontend = await getOrPrompt(options.frontend, () =>
+        selectPrompt("Frontend framework:", [
+          "next",
+          "tanstack-router",
+          "react-router",
+          "vite-react",
+          "remix",
+        ])
+      );
+      config.backend = await getOrPrompt(options.backend, () =>
+        selectPrompt("Backend framework:", [
+          "hono",
+          "express",
+          "elysia",
+          "fastify",
+        ])
+      );
+      config.database = await getOrPrompt(options.database, () =>
+        selectPrompt("Database:", [
+          "sqlite",
+          "postgres",
+          "mysql",
+          "mongodb",
+          "turso",
+          "neon",
+        ])
+      );
+      config.auth = await getOrPrompt(options.auth, () =>
+        confirmPrompt("Include authentication?", true)
+      );
     }
   }
 
   // Bootstrap Logic
   if (config!.frontend || config!.backend) {
-    const shouldBootstrap = await confirmPrompt("Bootstrap project now?", true);
+    const shouldBootstrap = await getOrPrompt(options.bootstrap, () =>
+      confirmPrompt("Bootstrap project now?", true)
+    );
 
     if (shouldBootstrap) {
       console.log(chalk.cyan("\n  Bootstrapping with Better-T-Stack...\n"));
@@ -449,19 +580,24 @@ async function stepInitialize(
  */
 async function stepDefinePRD(
   state: WorkflowState,
-  aiOptions: any,
+  options: WorkflowAutomationOptions,
   streamingOptions: any
 ): Promise<void> {
   console.log(chalk.blue.bold("\n📝 Step 2: Define PRD\n"));
 
-  const prdMethod = await selectPrompt(
-    "How would you like to define your PRD?",
-    [
+  if (options.skipPrd) {
+    console.log(chalk.yellow("⚠ Skipping PRD definition (--skip-prd)"));
+    state.currentStep = "refine-prd";
+    return;
+  }
+
+  const prdMethod = await getOrPrompt(options.prdMethod, () =>
+    selectPrompt("How would you like to define your PRD?", [
       { name: "Upload existing file", value: "upload" },
       { name: "Write manually (open editor)", value: "manual" },
       { name: "AI-assisted creation", value: "ai" },
       { name: "Skip (use existing PRD)", value: "skip" },
-    ]
+    ])
   );
 
   const taskOMaticDir = configManager.getTaskOMaticDir();
@@ -477,11 +613,13 @@ async function stepDefinePRD(
   let prdFilename = "prd.md";
 
   if (prdMethod === "upload") {
-    const filePath = await textInputPrompt("Path to PRD file:");
+    const filePath = await getOrPrompt(options.prdFile, () =>
+      textInputPrompt("Path to PRD file:")
+    );
 
     if (!existsSync(filePath)) {
       console.log(chalk.red(`✗ File not found: ${filePath}`));
-      return stepDefinePRD(state, aiOptions, streamingOptions);
+      return stepDefinePRD(state, options, streamingOptions);
     }
 
     prdContent = readFileSync(filePath, "utf-8");
@@ -494,25 +632,28 @@ async function stepDefinePRD(
     );
   } else if (prdMethod === "ai") {
     console.log(chalk.cyan("\n🤖 AI-Assisted PRD Creation\n"));
-    const description = await textInputPrompt(
-      "Describe your product in detail:"
+    const description = await getOrPrompt(options.prdDescription, () =>
+      textInputPrompt("Describe your product in detail:")
     );
 
     console.log(chalk.gray("\n  Generating PRD...\n"));
     prdContent = await workflowAIAssistant.assistPRDCreation({
       userDescription: description,
-      aiOptions,
+      aiOptions: options,
       streamingOptions,
     });
 
     console.log(chalk.green("\n✓ PRD generated"));
     console.log(chalk.gray("\n" + prdContent.substring(0, 500) + "...\n"));
 
-    const acceptPRD = await confirmPrompt("Accept this PRD?", true);
+    const acceptPRD = await getOrPrompt(
+      options.autoAccept ? true : undefined,
+      () => confirmPrompt("Accept this PRD?", true)
+    );
 
     if (!acceptPRD) {
       console.log(chalk.yellow("⚠ Regenerating..."));
-      return stepDefinePRD(state, aiOptions, streamingOptions);
+      return stepDefinePRD(state, options, streamingOptions);
     }
   }
 
@@ -532,7 +673,7 @@ async function stepDefinePRD(
  */
 async function stepRefinePRD(
   state: WorkflowState,
-  aiOptions: any,
+  options: WorkflowAutomationOptions,
   streamingOptions: any
 ): Promise<void> {
   console.log(chalk.blue.bold("\n✨ Step 3: Refine PRD\n"));
@@ -543,7 +684,16 @@ async function stepRefinePRD(
     return;
   }
 
-  const shouldRefine = await confirmPrompt("Refine your PRD?", false);
+  if (options.skipRefine || options.skipAll) {
+    console.log(chalk.gray("  Skipping refinement"));
+    state.currentStep = "generate-tasks";
+    return;
+  }
+
+  const shouldRefine = await getOrPrompt(
+    options.skipRefine === false ? true : undefined,
+    () => confirmPrompt("Refine your PRD?", false)
+  );
 
   if (!shouldRefine) {
     console.log(chalk.gray("  Skipping refinement"));
@@ -551,11 +701,13 @@ async function stepRefinePRD(
     return;
   }
 
-  const refineMethod = await selectPrompt("How would you like to refine?", [
-    { name: "Manual editing (open editor)", value: "manual" },
-    { name: "AI-assisted refinement", value: "ai" },
-    { name: "Skip", value: "skip" },
-  ]);
+  const refineMethod = await getOrPrompt(options.refineMethod, () =>
+    selectPrompt("How would you like to refine?", [
+      { name: "Manual editing (open editor)", value: "manual" },
+      { name: "AI-assisted refinement", value: "ai" },
+      { name: "Skip", value: "skip" },
+    ])
+  );
 
   if (refineMethod === "skip") {
     state.currentStep = "generate-tasks";
@@ -572,22 +724,27 @@ async function stepRefinePRD(
     );
   } else if (refineMethod === "ai") {
     console.log(chalk.cyan("\n🤖 AI-Assisted Refinement\n"));
-    const feedback = await textInputPrompt(
-      "What would you like to improve? (e.g., 'Add more technical details', 'Focus on MVP features'):"
+    const feedback = await getOrPrompt(options.refineFeedback, () =>
+      textInputPrompt(
+        "What would you like to improve? (e.g., 'Add more technical details', 'Focus on MVP features'):"
+      )
     );
 
     console.log(chalk.gray("\n  Refining PRD...\n"));
     refinedContent = await workflowAIAssistant.assistPRDRefinement({
       currentPRD: refinedContent,
       userFeedback: feedback,
-      aiOptions,
+      aiOptions: options,
       streamingOptions,
     });
 
     console.log(chalk.green("\n✓ PRD refined"));
     console.log(chalk.gray("\n" + refinedContent.substring(0, 500) + "...\n"));
 
-    const acceptRefinement = await confirmPrompt("Accept refinements?", true);
+    const acceptRefinement = await getOrPrompt(
+      options.autoAccept ? true : undefined,
+      () => confirmPrompt("Accept refinements?", true)
+    );
 
     if (!acceptRefinement) {
       console.log(chalk.yellow("⚠ Keeping original PRD"));
@@ -609,7 +766,7 @@ async function stepRefinePRD(
  */
 async function stepGenerateTasks(
   state: WorkflowState,
-  aiOptions: any,
+  options: WorkflowAutomationOptions,
   streamingOptions: any
 ): Promise<void> {
   console.log(chalk.blue.bold("\n🎯 Step 4: Generate Tasks\n"));
@@ -620,7 +777,16 @@ async function stepGenerateTasks(
     return;
   }
 
-  const shouldGenerate = await confirmPrompt("Generate tasks from PRD?", true);
+  if (options.skipGenerate || options.skipAll) {
+    console.log(chalk.gray("  Skipping task generation"));
+    state.currentStep = "split-tasks";
+    return;
+  }
+
+  const shouldGenerate = await getOrPrompt(
+    options.skipGenerate === false ? true : undefined,
+    () => confirmPrompt("Generate tasks from PRD?", true)
+  );
 
   if (!shouldGenerate) {
     console.log(chalk.gray("  Skipping task generation"));
@@ -628,17 +794,21 @@ async function stepGenerateTasks(
     return;
   }
 
-  const generationMethod = await selectPrompt("Choose generation method:", [
-    { name: "Standard parsing", value: "standard" },
-    { name: "AI-assisted with custom instructions", value: "ai" },
-  ]);
+  const generationMethod = await getOrPrompt(options.generateMethod, () =>
+    selectPrompt("Choose generation method:", [
+      { name: "Standard parsing", value: "standard" },
+      { name: "AI-assisted with custom instructions", value: "ai" },
+    ])
+  );
 
   let customInstructions: string | undefined;
 
   if (generationMethod === "ai") {
-    customInstructions = await textInputPrompt(
-      "Custom instructions (e.g., 'Focus on MVP features', 'Break into small tasks'):",
-      ""
+    customInstructions = await getOrPrompt(options.generateInstructions, () =>
+      textInputPrompt(
+        "Custom instructions (e.g., 'Focus on MVP features', 'Break into small tasks'):",
+        ""
+      )
     );
   }
 
@@ -647,7 +817,7 @@ async function stepGenerateTasks(
   const result = await prdService.parsePRD({
     file: state.prdFile,
     workingDirectory: state.projectDir,
-    aiOptions,
+    aiOptions: options,
     messageOverride: customInstructions,
     streamingOptions,
     callbacks: {
@@ -684,7 +854,7 @@ async function stepGenerateTasks(
  */
 async function stepSplitTasks(
   state: WorkflowState,
-  aiOptions: any,
+  options: WorkflowAutomationOptions,
   streamingOptions: any
 ): Promise<void> {
   console.log(chalk.blue.bold("\n🔀 Step 5: Split Complex Tasks\n"));
@@ -694,26 +864,42 @@ async function stepSplitTasks(
     return;
   }
 
-  const shouldSplit = await confirmPrompt(
-    "Split any complex tasks into subtasks?",
-    false
-  );
-
-  if (!shouldSplit) {
+  if (options.skipSplit || options.skipAll) {
     console.log(chalk.gray("  Skipping task splitting"));
     return;
   }
 
-  // Show tasks with effort estimates
-  const tasksToSplit = await multiSelectPrompt(
-    "Select tasks to split:",
-    state.tasks.map((t) => ({
-      name: `${t.title}${
-        t.description ? ` - ${t.description.substring(0, 50)}...` : ""
-      }`,
-      value: t.id,
-    }))
-  );
+  // Handle --split-tasks and --split-all options
+  let tasksToSplit: string[];
+  if (options.splitAll) {
+    tasksToSplit = state.tasks?.map((t) => t.id) || [];
+    console.log(chalk.cyan(`  Splitting all ${tasksToSplit.length} tasks`));
+  } else if (options.splitTasks) {
+    tasksToSplit = options.splitTasks.split(",").map((id) => id.trim());
+    console.log(
+      chalk.cyan(`  Splitting ${tasksToSplit.length} specified tasks`)
+    );
+  } else {
+    const shouldSplit = await confirmPrompt(
+      "Split any complex tasks into subtasks?",
+      false
+    );
+
+    if (!shouldSplit) {
+      console.log(chalk.gray("  Skipping task splitting"));
+      return;
+    }
+
+    tasksToSplit = await multiSelectPrompt(
+      "Select tasks to split:",
+      state.tasks.map((t) => ({
+        name: `${t.title}${
+          t.description ? ` - ${t.description.substring(0, 50)}...` : ""
+        }`,
+        value: t.id,
+      }))
+    );
+  }
 
   if (tasksToSplit.length === 0) {
     console.log(chalk.gray("  No tasks selected"));
@@ -724,19 +910,22 @@ async function stepSplitTasks(
   let globalCustomInstructions: string | undefined;
 
   if (tasksToSplit.length > 1) {
-    globalSplitMethod = await selectPrompt(
-      "How would you like to split these tasks?",
-      [
+    globalSplitMethod = await getOrPrompt(options.splitMethod, () =>
+      selectPrompt("How would you like to split these tasks?", [
         { name: "Interactive (ask for each task)", value: "interactive" },
         { name: "Standard AI split for ALL", value: "standard" },
         { name: "Same custom instructions for ALL", value: "custom" },
-      ]
+      ])
     );
 
     if (globalSplitMethod === "custom") {
-      globalCustomInstructions = await textInputPrompt(
-        "Custom instructions for ALL tasks (e.g., 'Break into 2-4 hour chunks'):",
-        ""
+      globalCustomInstructions = await getOrPrompt(
+        options.splitInstructions,
+        () =>
+          textInputPrompt(
+            "Custom instructions for ALL tasks (e.g., 'Break into 2-4 hour chunks'):",
+            ""
+          )
       );
     }
   }
@@ -767,7 +956,7 @@ async function stepSplitTasks(
     try {
       const result = await taskService.splitTask(
         taskId,
-        aiOptions,
+        options,
         undefined, // promptOverride
         customInstructions,
         streamingOptions
