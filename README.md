@@ -5,6 +5,7 @@ AI-powered task management for CLI, TUI, and web applications. Parse PRDs, enhan
 ## ✨ Features
 
 - 🤖 **AI-Powered**: Parse PRDs and enhance tasks using multiple AI providers
+- 🎭 **Interactive Workflow**: Guided setup from project init to task generation with AI assistance
 - 📦 **Multi-Purpose Package**: Use as CLI tool, library, or MCP server
 - 📁 **Project-Local Storage**: All data stored locally in `.task-o-matic/` directory
 - 🎯 **Task Management**: Full CRUD operations with AI enhancement
@@ -102,36 +103,41 @@ npm install task-o-matic
 #### Basic Example
 
 ```typescript
-import { TaskService, PRDService, type Task, type AIConfig } from 'task-o-matic';
+import {
+  TaskService,
+  PRDService,
+  type Task,
+  type AIConfig,
+} from "task-o-matic";
 
 // Initialize the service
 const taskService = new TaskService();
 
 // Create a task with AI enhancement
 const result = await taskService.createTask({
-  title: 'Implement user authentication',
-  content: 'Add login and signup functionality',
+  title: "Implement user authentication",
+  content: "Add login and signup functionality",
   aiEnhance: true,
   aiOptions: {
-    provider: 'anthropic',
-    model: 'claude-3-5-sonnet',
-    apiKey: process.env.ANTHROPIC_API_KEY
+    provider: "anthropic",
+    model: "claude-3-5-sonnet",
+    apiKey: process.env.ANTHROPIC_API_KEY,
   },
   callbacks: {
     onProgress: (event) => {
       console.log(`Progress: ${event.message}`);
-    }
-  }
+    },
+  },
 });
 
-console.log('Task created:', result.task);
+console.log("Task created:", result.task);
 ```
 
 #### TUI Integration Example
 
 ```typescript
-import { TaskService } from 'task-o-matic';
-import type { ProgressCallback } from 'task-o-matic';
+import { TaskService } from "task-o-matic";
+import type { ProgressCallback } from "task-o-matic";
 
 const taskService = new TaskService();
 
@@ -140,12 +146,12 @@ const progressCallback: ProgressCallback = {
   onProgress: (event) => {
     // Update your TUI with progress
     tuiStatusBar.update(event.message);
-  }
+  },
 };
 
 // Create task with streaming
 const result = await taskService.createTask({
-  title: 'Add payment integration',
+  title: "Add payment integration",
   aiEnhance: true,
   streamingOptions: {
     enabled: true,
@@ -154,37 +160,37 @@ const result = await taskService.createTask({
       tuiTextArea.append(chunk);
     },
     onFinish: ({ text }) => {
-      tuiStatusBar.success('Task enhanced!');
-    }
+      tuiStatusBar.success("Task enhanced!");
+    },
   },
-  callbacks: progressCallback
+  callbacks: progressCallback,
 });
 ```
 
 #### PRD Parsing Example
 
 ```typescript
-import { PRDService } from 'task-o-matic';
+import { PRDService } from "task-o-matic";
 
 const prdService = new PRDService();
 
 const result = await prdService.parsePRD({
-  file: './requirements.md',
+  file: "./requirements.md",
   workingDirectory: process.cwd(),
   aiOptions: {
-    provider: 'openrouter',
-    model: 'anthropic/claude-3.5-sonnet',
-    apiKey: process.env.OPENROUTER_API_KEY
+    provider: "openrouter",
+    model: "anthropic/claude-3.5-sonnet",
+    apiKey: process.env.OPENROUTER_API_KEY,
   },
   callbacks: {
     onProgress: (event) => {
       console.log(event.message);
-    }
-  }
+    },
+  },
 });
 
 console.log(`Created ${result.tasks.length} tasks from PRD`);
-result.tasks.forEach(task => {
+result.tasks.forEach((task) => {
   console.log(`- ${task.title}`);
 });
 ```
@@ -192,11 +198,7 @@ result.tasks.forEach(task => {
 #### Using Utility Factories
 
 ```typescript
-import {
-  getStorage,
-  getAIOperations,
-  buildAIConfig
-} from 'task-o-matic';
+import { getStorage, getAIOperations, buildAIConfig } from "task-o-matic";
 
 // Get singleton instances
 const storage = getStorage();
@@ -204,9 +206,9 @@ const aiOps = getAIOperations();
 
 // Build AI configuration
 const aiConfig = buildAIConfig({
-  provider: 'openai',
-  model: 'gpt-4',
-  apiKey: process.env.OPENAI_API_KEY
+  provider: "openai",
+  model: "gpt-4",
+  apiKey: process.env.OPENAI_API_KEY,
 });
 
 // Use storage directly
@@ -224,8 +226,8 @@ import type {
   StreamingOptions,
   CreateTaskOptions,
   PRDParseResult,
-  TaskAIMetadata
-} from 'task-o-matic';
+  TaskAIMetadata,
+} from "task-o-matic";
 ```
 
 ### CLI Usage
@@ -298,16 +300,70 @@ task-o-matic prd parse --file my-prd.md --stream
 task-o-matic tasks list
 ```
 
+### 7. Interactive Workflow (Recommended for New Projects)
+
+The interactive workflow guides you through the entire setup process:
+
+```bash
+# Start the interactive workflow
+task-o-matic workflow
+
+# With streaming AI output
+task-o-matic workflow --stream
+```
+
+**The workflow will guide you through:**
+
+1. **Project Initialization** - Choose quick start, custom, or AI-assisted configuration
+2. **PRD Definition** - Upload file, write manually, or use AI to generate from description
+3. **PRD Refinement** - Optional AI-assisted improvements
+4. **Task Generation** - Parse PRD into actionable tasks
+5. **Task Splitting** - Break down complex tasks into subtasks
+
+**AI Assistance at Every Step:**
+
+At each step, you can choose "AI-assisted" to describe your needs in natural language:
+
+```bash
+# Example AI-assisted workflow
+task-o-matic workflow --stream
+
+# Step 1: "I want to build a SaaS platform for team collaboration"
+# Step 2: "Real-time chat, file sharing, and task management features"
+# Step 3: "Add more details about authentication and security"
+# Step 4: "Focus on MVP features first"
+# Step 5: "Break tasks into 2-4 hour chunks"
+```
+
 ## 📚 Documentation
 
 - [Configuration](docs/configuration.md) - AI providers and settings
 - [Task Management](docs/tasks.md) - Full task lifecycle with AI features
 - [PRD Processing](docs/prd.md) - Parse and rework Product Requirements Documents
+- [Interactive Workflow](docs/workflow-command.md) - Guided setup with AI assistance
 - [AI Integration](docs/ai-integration.md) - AI providers and prompt engineering
 - [Project Initialization](docs/projects.md) - Project setup and bootstrapping
 - [Streaming Output](docs/streaming.md) - Real-time AI streaming capabilities
 
 ## 🎯 Common Workflows
+
+### Workflow 0: Interactive Guided Setup (Recommended)
+
+```bash
+# One command to rule them all
+task-o-matic workflow --stream
+
+# The workflow will guide you through:
+# 1. Project initialization with AI-assisted configuration
+# 2. PRD creation (manual, upload, or AI-generated)
+# 3. PRD refinement with AI feedback
+# 4. Task generation from PRD
+# 5. Complex task splitting
+
+# After completion:
+task-o-matic tasks list
+task-o-matic tasks tree
+```
 
 ### Workflow 1: From PRD to Tasks
 
@@ -467,15 +523,15 @@ The package is structured for both CLI and library use:
 
 ```json
 {
-  "main": "./dist/lib/index.js",          // CommonJS library entry
-  "types": "./dist/lib/index.d.ts",       // TypeScript definitions
+  "main": "./dist/lib/index.js", // CommonJS library entry
+  "types": "./dist/lib/index.d.ts", // TypeScript definitions
   "bin": {
-    "task-o-matic": "./dist/cli/bin.js",  // CLI binary
-    "task-o-matic-mcp": "./dist/mcp/server.js"  // MCP server binary
+    "task-o-matic": "./dist/cli/bin.js", // CLI binary
+    "task-o-matic-mcp": "./dist/mcp/server.js" // MCP server binary
   },
   "exports": {
-    ".": "./dist/lib/index.js",           // Main library export
-    "./types": "./dist/types/index.js"    // Type-only exports
+    ".": "./dist/lib/index.js", // Main library export
+    "./types": "./dist/types/index.js" // Type-only exports
   }
 }
 ```

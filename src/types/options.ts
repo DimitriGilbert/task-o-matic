@@ -130,3 +130,45 @@ export interface ReworkPrdOptions extends StreamingAIOptions {
   prompt?: string;
   message?: string;
 }
+
+// Workflow command types
+export type WorkflowStep =
+  | "initialize"
+  | "define-prd"
+  | "refine-prd"
+  | "generate-tasks"
+  | "split-tasks"
+  | "complete";
+
+export interface WorkflowState {
+  projectName?: string;
+  projectDir?: string;
+  initialized: boolean;
+  prdFile?: string;
+  prdContent?: string;
+  tasks?: Array<{ id: string; title: string; description?: string }>;
+  currentStep: WorkflowStep;
+  aiConfig?: {
+    provider: string;
+    model: string;
+    key?: string;
+  };
+}
+
+export interface AIAssistedChoice<T = any> {
+  userInput: string;
+  availableOptions: T[];
+  context: string;
+  recommendation?: T;
+}
+
+export interface InitConfigChoice {
+  projectName: string;
+  aiProvider: string;
+  aiModel: string;
+  frontend?: string;
+  backend?: string;
+  database?: string;
+  auth?: boolean;
+  reasoning?: string;
+}

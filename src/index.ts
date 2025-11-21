@@ -12,6 +12,7 @@ import { tasksCommand } from "./commands/tasks";
 import { prdCommand } from "./commands/prd";
 import { initCommand } from "./commands/init";
 import { promptCommand } from "./commands/prompt";
+import { workflowCommand } from "./commands/workflow";
 import { configManager } from "./lib/config";
 
 const program = new Command();
@@ -28,6 +29,7 @@ program.addCommand(tasksCommand);
 program.addCommand(prdCommand);
 program.addCommand(promptCommand);
 program.addCommand(initCommand);
+program.addCommand(workflowCommand);
 
 // Default action - show help
 program.action(() => {
@@ -53,7 +55,7 @@ program.action(() => {
 program.on("command:*", (operands) => {
   console.error(chalk.red(`Unknown command: ${operands[0]}`));
   console.log(
-    chalk.blue("Available commands: config, tasks, prd, prompt, init")
+    chalk.blue("Available commands: config, tasks, prd, prompt, init, workflow")
   );
   console.log(chalk.blue("Use --help for available commands"));
   process.exit(1);
