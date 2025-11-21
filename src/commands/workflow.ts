@@ -5,6 +5,7 @@ import chalk from "chalk";
 import { existsSync, writeFileSync, mkdirSync, readFileSync } from "fs";
 import { join, resolve } from "path";
 import { configManager } from "../lib/config";
+import { runBetterTStackCLI } from "../lib/better-t-stack-cli";
 import { prdService } from "../services/prd";
 import { taskService } from "../services/tasks";
 import { workflowAIAssistant } from "../services/workflow-ai-assistant";
@@ -261,27 +262,38 @@ async function stepInitialize(
 
     if (shouldBootstrap) {
       console.log(chalk.cyan("\n  Bootstrapping with Better-T-Stack...\n"));
-      console.log(chalk.gray("  (This may take a few minutes)\n"));
 
-      // Note: Actual bootstrap would call Better-T-Stack CLI
-      // For now, we'll just note the configuration
-      const btsConfig = {
-        projectName: config!.projectName,
-        frontend: config!.frontend,
-        backend: config!.backend,
-        database: config!.database,
-        auth: config!.auth,
-      };
+      try {
+        const result = await runBetterTStackCLI(
+          {
+            projectName: config!.projectName,
+            frontend: config!.frontend || "next",
+            backend: config!.backend || "hono",
+            database: config!.database || "sqlite",
+            noAuth: !config!.auth,
+            // Default values for required fields that might be missing from simple config
+            orm: "drizzle",
+            packageManager: "npm",
+            runtime: "node",
+            noInstall: false,
+            noGit: false,
+          },
+          state.projectDir
+        );
 
-      writeFileSync(
-        join(taskOMaticDir, "bts-config.json"),
-        JSON.stringify(btsConfig, null, 2)
-      );
-
-      console.log(chalk.yellow("ℹ Bootstrap configuration saved"));
-      console.log(
-        chalk.gray("  Run 'task-o-matic init bootstrap' to complete setup\n")
-      );
+        if (result.success) {
+          console.log(chalk.green(`\n✓ ${result.message}\n`));
+        } else {
+          console.log(chalk.red(`\n✗ Bootstrap failed: ${result.message}\n`));
+          console.log(
+            chalk.yellow(
+              "You can try running 'task-o-matic init bootstrap' manually later.\n"
+            )
+          );
+        }
+      } catch (error) {
+        console.log(chalk.red(`\n✗ Bootstrap failed: ${error}\n`));
+      }
     }
   }
 
