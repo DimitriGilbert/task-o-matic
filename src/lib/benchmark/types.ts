@@ -37,6 +37,9 @@ export interface BenchmarkResult {
   };
   responseSize?: number; // bytes
   bps?: number; // bytes per second
+  tps?: number; // tokens per second (output)
+  timeToFirstToken?: number; // ms
+  cost?: number; // estimated cost in USD
 }
 
 export interface BenchmarkRun {

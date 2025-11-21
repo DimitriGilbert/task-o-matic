@@ -81,55 +81,97 @@ benchmarkCommand
         workingDirectory: process.cwd(), // Always pass current working directory
       };
 
-      const lastUpdate: Record<string, number> = {};
+      // Prepare dashboard
+      console.log(chalk.bold("\nBenchmark Progress:"));
+      const modelMap = new Map<string, number>();
+      const modelStatus = new Map<string, string>();
+
+      // Print initial lines and map indices
+      models.forEach((m, i) => {
+        const id = `${m.provider}:${m.model}${
+          m.reasoningTokens ? `:reasoning=${m.reasoningTokens}` : ""
+        }`;
+        modelMap.set(id, i);
+        modelStatus.set(id, "Waiting...");
+        console.log(chalk.dim(`- ${id}: Waiting...`));
+      });
+      const totalModels = models.length;
 
       const run = await benchmarkService.runBenchmark(
         operation,
         input,
         config,
         (event) => {
+          const index = modelMap.get(event.modelId);
+          if (index === undefined) return;
+
+          // Update status in memory
+          let statusStr = "";
           if (event.type === "start") {
-            console.log(chalk.gray(`→ Starting ${event.modelId}...`));
-          } else if (event.type === "complete") {
-            console.log(
-              chalk.green(`✓ Completed ${event.modelId} (${event.duration}ms)`)
-            );
-          } else if (event.type === "error") {
-            console.log(chalk.red(`✗ Failed ${event.modelId}: ${event.error}`));
+            statusStr = chalk.yellow("Starting...");
           } else if (event.type === "progress") {
-            const now = Date.now();
-            if (
-              !lastUpdate[event.modelId] ||
-              now - lastUpdate[event.modelId] > 1000
-            ) {
-              lastUpdate[event.modelId] = now;
-              const bps = event.currentBps
-                ? `${event.currentBps} B/s`
-                : "0 B/s";
-              const size = event.currentSize ? `${event.currentSize} B` : "0 B";
-              console.log(chalk.dim(`  ↳ [${event.modelId}] ${size} (${bps})`));
-            }
+            const bps = event.currentBps ? `${event.currentBps} B/s` : "0 B/s";
+            const size = event.currentSize ? `${event.currentSize} B` : "0 B";
+            statusStr = `${chalk.blue(
+              "Running"
+            )} - Size: ${size}, Speed: ${bps}`;
+          } else if (event.type === "complete") {
+            statusStr = chalk.green(`Completed (${event.duration}ms)`);
+          } else if (event.type === "error") {
+            statusStr = chalk.red(`Failed: ${event.error}`);
           }
+          modelStatus.set(event.modelId, statusStr);
+
+          // Update display
+          // Move cursor up to the specific line
+          // Distance from bottom = totalModels - index
+          const up = totalModels - index;
+          process.stdout.write(`\x1B[${up}A`); // Move up
+          process.stdout.write(`\x1B[2K`); // Clear line
+          process.stdout.write(
+            `- ${chalk.bold(event.modelId)}: ${statusStr}\r`
+          );
+          process.stdout.write(`\x1B[${up}B`); // Move down
         }
       );
 
       console.log(chalk.green(`\n✓ Benchmark completed! Run ID: ${run.id}`));
 
-      // Summary
-      console.log(chalk.bold("\nResults:"));
-      run.results.forEach((res) => {
-        const status = res.error ? chalk.red("FAILED") : chalk.green("SUCCESS");
-        const duration = `${res.duration}ms`;
-        const tokens = res.tokenUsage ? `${res.tokenUsage.total}t` : "?";
-        const bps = res.bps ? `${res.bps}B/s` : "?";
+      console.log(
+        chalk.bold(
+          `\n${"Model".padEnd(40)} | ${"Duration".padEnd(10)} | ${"TTFT".padEnd(
+            8
+          )} | ${"Tokens".padEnd(10)} | ${"TPS".padEnd(8)} | ${"BPS".padEnd(
+            8
+          )} | ${"Size".padEnd(10)} | ${"Cost".padEnd(10)}`
+        )
+      );
+      console.log("-".repeat(130)); // Adjusted line length for new columns
+
+      run.results.forEach((r) => {
+        const duration = `${r.duration}ms`.padEnd(10);
+        const ttft = r.timeToFirstToken
+          ? `${r.timeToFirstToken}ms`.padEnd(8)
+          : "-".padEnd(8);
+        const tokens = r.tokenUsage
+          ? `${r.tokenUsage.total}`.padEnd(10)
+          : "-".padEnd(10);
+        const tps = r.tps ? `${r.tps}`.padEnd(8) : "-".padEnd(8);
+        const bps = r.bps ? `${r.bps}`.padEnd(8) : "-".padEnd(8);
+        const size = r.responseSize
+          ? `${r.responseSize}`.padEnd(10)
+          : "-".padEnd(10);
+        const cost = r.cost
+          ? `$${r.cost.toFixed(6)}`.padEnd(10)
+          : "-".padEnd(10);
 
         console.log(
-          `- ${chalk.cyan(
-            res.modelId
-          )}: ${status} (${duration}, ${tokens}, ${bps})`
+          `${r.modelId.padEnd(
+            40
+          )} | ${duration} | ${ttft} | ${tokens} | ${tps} | ${bps} | ${size} | ${cost}`
         );
-        if (res.error) {
-          console.log(chalk.red(`  Error: ${res.error}`));
+        if (r.error) {
+          console.log(chalk.red(`  Error: ${r.error}`));
         }
       });
     } catch (error: any) {
@@ -175,26 +217,35 @@ benchmarkCommand
     console.log(`Delay: ${run.config.delay}ms`);
 
     console.log(chalk.bold("\nResults:"));
-    run.results.forEach((res) => {
-      console.log(chalk.cyan(`\n[${res.modelId}]`));
-      console.log(`Duration: ${res.duration}ms`);
-      if (res.tokenUsage) {
+    const results = run.results;
+    results.forEach((result) => {
+      console.log(chalk.bold(`\n[${result.modelId}]`));
+      console.log(`Duration: ${result.duration}ms`);
+      if (result.timeToFirstToken) {
+        console.log(`TTFT: ${result.timeToFirstToken}ms`);
+      }
+      if (result.tokenUsage) {
         console.log(
-          `Tokens: ${res.tokenUsage.total} (Prompt: ${res.tokenUsage.prompt}, Completion: ${res.tokenUsage.completion})`
+          `Tokens: ${result.tokenUsage.total} (Prompt: ${result.tokenUsage.prompt}, Completion: ${result.tokenUsage.completion})`
         );
       }
-      if (res.bps) {
-        console.log(`Throughput: ${res.bps} B/s`);
+      if (result.bps) {
+        console.log(`Throughput: ${result.bps} B/s`);
       }
-      if (res.responseSize) {
-        console.log(`Size: ${res.responseSize} bytes`);
+      if (result.responseSize) {
+        console.log(`Size: ${result.responseSize} bytes`);
+      }
+      if (result.cost) {
+        console.log(`Estimated Cost: $${result.cost.toFixed(6)}`);
       }
 
-      if (res.error) {
-        console.log(chalk.red(`Error: ${res.error}`));
+      if (result.error) {
+        console.log(chalk.red(`Error: ${result.error}`));
       } else {
-        // Truncate output for display
-        const outputStr = JSON.stringify(res.output, null, 2);
+        const outputStr =
+          typeof result.output === "string"
+            ? result.output
+            : JSON.stringify(result.output, null, 2);
         const preview =
           outputStr.length > 500
             ? outputStr.substring(0, 500) + "..."

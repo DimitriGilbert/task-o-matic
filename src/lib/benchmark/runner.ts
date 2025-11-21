@@ -47,6 +47,7 @@ export class BenchmarkRunner {
         | { prompt: number; completion: number; total: number }
         | undefined;
       let responseSize = 0;
+      let firstTokenTime: number | undefined;
 
       // Emit start event
       onProgress?.({ type: "start", modelId });
@@ -64,8 +65,12 @@ export class BenchmarkRunner {
           onFinish: async (result: any) => {
             if (result.usage) {
               tokenUsage = {
-                prompt: result.usage.promptTokens || 0,
-                completion: result.usage.completionTokens || 0,
+                prompt:
+                  result.usage.inputTokens || result.usage.promptTokens || 0,
+                completion:
+                  result.usage.outputTokens ||
+                  result.usage.completionTokens ||
+                  0,
                 total: result.usage.totalTokens || 0,
               };
             }
@@ -76,6 +81,9 @@ export class BenchmarkRunner {
           },
           onChunk: (chunk: string) => {
             if (chunk) {
+              if (!firstTokenTime) {
+                firstTokenTime = Date.now();
+              }
               const chunkSize = Buffer.byteLength(chunk, "utf8");
               responseSize += chunkSize;
 
@@ -116,6 +124,10 @@ export class BenchmarkRunner {
         duration > 0 && responseSize > 0
           ? Math.round(responseSize / (duration / 1000))
           : 0;
+      const tps =
+        duration > 0 && tokenUsage?.completion
+          ? Math.round(tokenUsage.completion / (duration / 1000))
+          : 0;
 
       results.push({
         modelId,
@@ -126,6 +138,10 @@ export class BenchmarkRunner {
         tokenUsage,
         responseSize,
         bps,
+        tps,
+        timeToFirstToken: firstTokenTime
+          ? firstTokenTime - startTime
+          : undefined,
       });
 
       // Emit complete event
