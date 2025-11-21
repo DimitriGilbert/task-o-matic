@@ -1,4 +1,10 @@
-import { readFileSync, existsSync, copyFileSync, writeFileSync, mkdirSync } from "fs";
+import {
+  readFileSync,
+  existsSync,
+  copyFileSync,
+  writeFileSync,
+  mkdirSync,
+} from "fs";
 import { join, basename, relative } from "path";
 import { getAIOperations, getStorage } from "../utils/ai-service-factory";
 import { buildAIConfig, AIOptions } from "../utils/ai-config-builder";
@@ -13,7 +19,6 @@ import { ProgressCallback } from "../types/callbacks";
  * Handles PRD parsing, task extraction, and PRD improvement
  */
 export class PRDService {
-
   async parsePRD(input: {
     file: string;
     workingDirectory?: string; // Working directory passed from CLI layer
@@ -27,14 +32,14 @@ export class PRDService {
     const startTime = Date.now();
     const steps: Array<{
       step: string;
-      status: 'completed' | 'failed';
+      status: "completed" | "failed";
       duration: number;
       details?: any;
     }> = [];
 
     input.callbacks?.onProgress?.({
-      type: 'started',
-      message: 'Starting PRD parsing...',
+      type: "started",
+      message: "Starting PRD parsing...",
     });
 
     // Validate file exists
@@ -55,16 +60,16 @@ export class PRDService {
     configManager.setWorkingDirectory(workingDir);
 
     input.callbacks?.onProgress?.({
-      type: 'progress',
-      message: 'Reading PRD file...',
+      type: "progress",
+      message: "Reading PRD file...",
     });
 
     const prdContent = readFileSync(input.file, "utf-8");
 
     // Save PRD file to .task-o-matic/prd directory
     input.callbacks?.onProgress?.({
-      type: 'progress',
-      message: 'Saving PRD to project directory...',
+      type: "progress",
+      message: "Saving PRD to project directory...",
     });
 
     const stepStart1 = Date.now();
@@ -84,21 +89,24 @@ export class PRDService {
     const relativePrdPath = relative(taskOMaticDir, savedPrdPath);
 
     steps.push({
-      step: 'Save PRD File',
-      status: 'completed',
+      step: "Save PRD File",
+      status: "completed",
       duration: Date.now() - stepStart1,
     });
 
     // Validate AI provider if specified
-    if (input.aiOptions?.aiProvider && !isValidAIProvider(input.aiOptions.aiProvider)) {
+    if (
+      input.aiOptions?.aiProvider &&
+      !isValidAIProvider(input.aiOptions.aiProvider)
+    ) {
       throw new Error(`Invalid AI provider: ${input.aiOptions.aiProvider}`);
     }
 
     const aiConfig = buildAIConfig(input.aiOptions);
 
     input.callbacks?.onProgress?.({
-      type: 'progress',
-      message: 'Parsing PRD with AI...',
+      type: "progress",
+      message: "Parsing PRD with AI...",
     });
 
     const stepStart2 = Date.now();
@@ -114,14 +122,14 @@ export class PRDService {
     );
 
     steps.push({
-      step: 'AI Parsing',
-      status: 'completed',
+      step: "AI Parsing",
+      status: "completed",
       duration: Date.now() - stepStart2,
       details: { tasksFound: result.tasks.length },
     });
 
     input.callbacks?.onProgress?.({
-      type: 'progress',
+      type: "progress",
       message: `Creating ${result.tasks.length} tasks...`,
     });
 
@@ -133,7 +141,7 @@ export class PRDService {
       const task = result.tasks[i];
 
       input.callbacks?.onProgress?.({
-        type: 'progress',
+        type: "progress",
         message: `Creating task ${i + 1}/${result.tasks.length}: ${task.title}`,
         current: i + 1,
         total: result.tasks.length,
@@ -168,14 +176,14 @@ export class PRDService {
     }
 
     steps.push({
-      step: 'Create Tasks',
-      status: 'completed',
+      step: "Create Tasks",
+      status: "completed",
       duration: Date.now() - stepStart3,
       details: { count: createdTasks.length },
     });
 
     input.callbacks?.onProgress?.({
-      type: 'completed',
+      type: "completed",
       message: `Successfully created ${createdTasks.length} tasks from PRD`,
     });
 
@@ -199,6 +207,68 @@ export class PRDService {
     };
   }
 
+  async generateQuestions(input: {
+    file: string;
+    workingDirectory?: string;
+    enableFilesystemTools?: boolean;
+    aiOptions?: AIOptions;
+    promptOverride?: string;
+    messageOverride?: string;
+    streamingOptions?: StreamingOptions;
+    callbacks?: ProgressCallback;
+  }): Promise<string[]> {
+    input.callbacks?.onProgress?.({
+      type: "started",
+      message: "Generating clarifying questions...",
+    });
+
+    if (!existsSync(input.file)) {
+      throw new Error(`PRD file not found: ${input.file}`);
+    }
+
+    const workingDir = input.workingDirectory || process.cwd();
+    configManager.setWorkingDirectory(workingDir);
+
+    input.callbacks?.onProgress?.({
+      type: "progress",
+      message: "Reading PRD file...",
+    });
+
+    const prdContent = readFileSync(input.file, "utf-8");
+
+    if (
+      input.aiOptions?.aiProvider &&
+      !isValidAIProvider(input.aiOptions.aiProvider)
+    ) {
+      throw new Error(`Invalid AI provider: ${input.aiOptions.aiProvider}`);
+    }
+
+    const aiConfig = buildAIConfig(input.aiOptions);
+
+    input.callbacks?.onProgress?.({
+      type: "progress",
+      message: "Analyzing PRD with AI...",
+    });
+
+    const questions = await getAIOperations().generatePRDQuestions(
+      prdContent,
+      aiConfig,
+      input.promptOverride,
+      input.messageOverride,
+      input.streamingOptions,
+      undefined,
+      workingDir,
+      input.enableFilesystemTools
+    );
+
+    input.callbacks?.onProgress?.({
+      type: "completed",
+      message: `Generated ${questions.length} questions`,
+    });
+
+    return questions;
+  }
+
   async reworkPRD(input: {
     file: string;
     feedback: string;
@@ -212,8 +282,8 @@ export class PRDService {
     callbacks?: ProgressCallback;
   }): Promise<string> {
     input.callbacks?.onProgress?.({
-      type: 'started',
-      message: 'Starting PRD improvement...',
+      type: "started",
+      message: "Starting PRD improvement...",
     });
 
     // Validate file exists
@@ -226,22 +296,25 @@ export class PRDService {
     configManager.setWorkingDirectory(workingDir);
 
     input.callbacks?.onProgress?.({
-      type: 'progress',
-      message: 'Reading PRD file...',
+      type: "progress",
+      message: "Reading PRD file...",
     });
 
     const prdContent = readFileSync(input.file, "utf-8");
 
     // Validate AI provider if specified
-    if (input.aiOptions?.aiProvider && !isValidAIProvider(input.aiOptions.aiProvider)) {
+    if (
+      input.aiOptions?.aiProvider &&
+      !isValidAIProvider(input.aiOptions.aiProvider)
+    ) {
       throw new Error(`Invalid AI provider: ${input.aiOptions.aiProvider}`);
     }
 
     const aiConfig = buildAIConfig(input.aiOptions);
 
     input.callbacks?.onProgress?.({
-      type: 'progress',
-      message: 'Calling AI to improve PRD...',
+      type: "progress",
+      message: "Calling AI to improve PRD...",
     });
 
     const improvedPRD = await getAIOperations().reworkPRD(
@@ -257,15 +330,15 @@ export class PRDService {
     );
 
     input.callbacks?.onProgress?.({
-      type: 'progress',
-      message: 'Saving improved PRD...',
+      type: "progress",
+      message: "Saving improved PRD...",
     });
 
     const outputPath = input.output || input.file;
     writeFileSync(outputPath, improvedPRD);
 
     input.callbacks?.onProgress?.({
-      type: 'completed',
+      type: "completed",
       message: `PRD improved and saved to ${outputPath}`,
     });
 

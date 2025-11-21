@@ -124,6 +124,10 @@ export interface TaskBreakdownResponse {
   subtasks: ParsedAITask[];
 }
 
+export interface PRDQuestionResponse {
+  questions: string[];
+}
+
 // Better-T-Stack Integration
 export interface BTSConfig {
   frontend: "react" | "next" | "vue" | "none";

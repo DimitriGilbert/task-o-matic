@@ -11,6 +11,7 @@ import {
   ParsedAITask,
   PRDResponse,
   TaskDocumentation,
+  PRDQuestionResponse,
 } from "../../types";
 import { ContextBuilder } from "../context-builder";
 import { PromptBuilder } from "../prompt-builder";
@@ -658,6 +659,119 @@ Use these tools to understand the current project structure, existing code patte
       },
       retryConfig,
       "PRD rework"
+    );
+  }
+
+  async generatePRDQuestions(
+    prdContent: string,
+    config?: Partial<AIConfig>,
+    promptOverride?: string,
+    userMessage?: string,
+    streamingOptions?: StreamingOptions,
+    retryConfig?: Partial<RetryConfig>,
+    workingDirectory?: string,
+    enableFilesystemTools?: boolean
+  ): Promise<string[]> {
+    return this.retryHandler.executeWithRetry(
+      async () => {
+        let stackInfo = "";
+        try {
+          stackInfo = await PromptBuilder.detectStackInfo(workingDirectory);
+          if (stackInfo === "Not detected") {
+            stackInfo = "";
+          }
+        } catch (error) {
+          // Stack info not available
+        }
+
+        let prompt: string;
+        if (promptOverride) {
+          prompt = promptOverride;
+        } else {
+          const variables: Record<string, string> = {
+            PRD_CONTENT: prdContent,
+          };
+          if (stackInfo) {
+            variables.STACK_INFO = stackInfo;
+          }
+
+          const promptResult = PromptBuilder.buildPrompt({
+            name: "prd-question",
+            type: "user",
+            variables,
+          });
+
+          if (!promptResult.success) {
+            throw new Error(
+              `Failed to build PRD question prompt: ${promptResult.error}`
+            );
+          }
+
+          prompt = promptResult.prompt!;
+        }
+
+        // Use PRD_QUESTION_SYSTEM_PROMPT import
+        const { PRD_QUESTION_SYSTEM_PROMPT } = await import("../../prompts");
+
+        let response: string;
+
+        if (enableFilesystemTools) {
+          const model = this.modelProvider.getModel({
+            ...this.modelProvider.getAIConfig(),
+            ...config,
+          });
+
+          const allTools = { ...filesystemTools };
+
+          const result = await streamText({
+            model,
+            tools: allTools,
+            system:
+              PRD_QUESTION_SYSTEM_PROMPT +
+              `\n\nYou have access to filesystem tools to check existing code/structure if needed.`,
+            messages: [{ role: "user", content: userMessage || prompt }],
+            maxRetries: 0,
+            onChunk: streamingOptions?.onChunk
+              ? ({ chunk }) => {
+                  if (chunk.type === "text-delta") {
+                    streamingOptions.onChunk!(chunk.text);
+                  }
+                }
+              : undefined,
+            onFinish: streamingOptions?.onFinish
+              ? ({ text, finishReason, usage }) => {
+                  streamingOptions.onFinish!({
+                    text,
+                    finishReason,
+                    usage,
+                    isAborted: false,
+                  });
+                }
+              : undefined,
+          });
+
+          response = await result.text;
+        } else {
+          response = await this.streamText(
+            "",
+            config,
+            PRD_QUESTION_SYSTEM_PROMPT,
+            userMessage || prompt,
+            streamingOptions,
+            { maxAttempts: 1 }
+          );
+        }
+
+        const parseResult =
+          this.jsonParser.parseJSONFromResponse<PRDQuestionResponse>(response);
+        if (!parseResult.success) {
+          throw new Error(parseResult.error || "Failed to parse PRD questions");
+        }
+
+        return parseResult.data?.questions || [];
+      },
+      retryConfig,
+      "PRD questioning"
     );
   }
 

@@ -10,6 +10,8 @@ import {
   DOCUMENTATION_DETECTION_PROMPT,
   TASK_PLANNING_PROMPT,
   TASK_PLANNING_SYSTEM_PROMPT,
+  PRD_QUESTION_PROMPT,
+  PRD_QUESTION_SYSTEM_PROMPT,
 } from "../prompts";
 
 export interface PromptMetadata {
@@ -157,6 +159,29 @@ export class PromptRegistry {
         promptText: TASK_PLANNING_SYSTEM_PROMPT,
       },
     ],
+    // PRD Question Prompts
+    [
+      "prd-question",
+      {
+        name: "prd-question",
+        description: "Generate clarifying questions for PRD",
+        type: "user",
+        requiredVariables: ["PRD_CONTENT"],
+        optionalVariables: ["STACK_INFO"],
+        promptText: PRD_QUESTION_PROMPT,
+      },
+    ],
+    [
+      "prd-question-system",
+      {
+        name: "prd-question-system",
+        description: "System prompt for PRD questioning",
+        type: "system",
+        requiredVariables: [],
+        optionalVariables: [],
+        promptText: PRD_QUESTION_SYSTEM_PROMPT,
+      },
+    ],
   ]);
 
   static getPrompt(name: string): PromptMetadata | undefined {
@@ -169,7 +194,7 @@ export class PromptRegistry {
 
   static getPromptsByType(type: "system" | "user"): PromptMetadata[] {
     return Array.from(this.prompts.values()).filter(
-      (prompt) => prompt.type === type,
+      (prompt) => prompt.type === type
     );
   }
 
@@ -191,10 +216,14 @@ export class PromptRegistry {
         output += `  ${prompt.name}\n`;
         output += `    ${prompt.description}\n`;
         if (prompt.requiredVariables.length > 0) {
-          output += `    Required variables: ${prompt.requiredVariables.join(", ")}\n`;
+          output += `    Required variables: ${prompt.requiredVariables.join(
+            ", "
+          )}\n`;
         }
         if (prompt.optionalVariables.length > 0) {
-          output += `    Optional variables: ${prompt.optionalVariables.join(", ")}\n`;
+          output += `    Optional variables: ${prompt.optionalVariables.join(
+            ", "
+          )}\n`;
         }
         output += "\n";
       });
@@ -206,10 +235,14 @@ export class PromptRegistry {
         output += `  ${prompt.name}\n`;
         output += `    ${prompt.description}\n`;
         if (prompt.requiredVariables.length > 0) {
-          output += `    Required variables: ${prompt.requiredVariables.join(", ")}\n`;
+          output += `    Required variables: ${prompt.requiredVariables.join(
+            ", "
+          )}\n`;
         }
         if (prompt.optionalVariables.length > 0) {
-          output += `    Optional variables: ${prompt.optionalVariables.join(", ")}\n`;
+          output += `    Optional variables: ${prompt.optionalVariables.join(
+            ", "
+          )}\n`;
         }
         output += "\n";
       });
@@ -220,7 +253,7 @@ export class PromptRegistry {
 
   static validatePrompt(
     name: string,
-    variables: Record<string, string>,
+    variables: Record<string, string>
   ): {
     valid: boolean;
     missingRequired: string[];
@@ -236,10 +269,10 @@ export class PromptRegistry {
     }
 
     const missingRequired = prompt.requiredVariables.filter(
-      (variable) => !variables[variable],
+      (variable) => !variables[variable]
     );
     const missingOptional = prompt.optionalVariables.filter(
-      (variable) => !variables[variable],
+      (variable) => !variables[variable]
     );
 
     return {
