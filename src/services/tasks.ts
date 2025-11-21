@@ -22,6 +22,7 @@ import {
   DocumentTaskResult,
   DeleteTaskResult,
 } from "../types/results";
+import { hooks } from "../lib/hooks";
 
 /**
  * TaskService - Centralized business logic for all task operations
@@ -49,8 +50,8 @@ export class TaskService {
 
     if (input.aiEnhance) {
       input.callbacks?.onProgress?.({
-        type: 'progress',
-        message: 'Building context for task...',
+        type: "progress",
+        message: "Building context for task...",
       });
 
       const context = await getContextBuilder().buildContextForNewTask(
@@ -62,8 +63,8 @@ export class TaskService {
       const enhancementAIConfig = buildAIConfig(input.aiOptions);
 
       input.callbacks?.onProgress?.({
-        type: 'progress',
-        message: 'Enhancing task with AI documentation...',
+        type: "progress",
+        message: "Enhancing task with AI documentation...",
       });
 
       const taskDescription = input.content ?? "";
@@ -83,7 +84,8 @@ export class TaskService {
       aiMetadata = {
         taskId: "",
         aiGenerated: true,
-        aiPrompt: "Enhance task with relevant documentation using Context7 tools",
+        aiPrompt:
+          "Enhance task with relevant documentation using Context7 tools",
         confidence: 0.9,
         aiProvider: aiConfig.provider,
         aiModel: aiConfig.model,
@@ -92,8 +94,8 @@ export class TaskService {
     }
 
     input.callbacks?.onProgress?.({
-      type: 'progress',
-      message: 'Saving task...',
+      type: "progress",
+      message: "Saving task...",
     });
 
     const task = await getStorage().createTask(
@@ -102,23 +104,27 @@ export class TaskService {
         description: input.content ?? "",
         content,
         parentId: input.parentId,
-        estimatedEffort: input.effort as "small" | "medium" | "large" | undefined,
+        estimatedEffort: input.effort as
+          | "small"
+          | "medium"
+          | "large"
+          | undefined,
       },
       aiMetadata
     );
 
     input.callbacks?.onProgress?.({
-      type: 'completed',
-      message: 'Task created successfully',
+      type: "completed",
+      message: "Task created successfully",
     });
+
+    // Emit task:created event
+    await hooks.emit("task:created", { task });
 
     return { success: true, task, aiMetadata };
   }
 
-  async listTasks(filters: {
-    status?: string;
-    tag?: string;
-  }): Promise<Task[]> {
+  async listTasks(filters: { status?: string; tag?: string }): Promise<Task[]> {
     const storage = getStorage();
     const topLevelTasks = await storage.getTopLevelTasks();
 
@@ -202,6 +208,21 @@ export class TaskService {
       throw new Error(`Failed to update task ${id}`);
     }
 
+    // Emit task:updated event
+    await hooks.emit("task:updated", {
+      task: updatedTask,
+      changes: finalUpdates,
+    });
+
+    // Emit task:status-changed event if status changed
+    if (updates.status && updates.status !== existingTask.status) {
+      await hooks.emit("task:status-changed", {
+        task: updatedTask,
+        oldStatus: existingTask.status,
+        newStatus: updates.status,
+      });
+    }
+
     return updatedTask;
   }
 
@@ -241,7 +262,10 @@ export class TaskService {
     } else if (cascade) {
       // Recursively delete subtasks
       for (const subtask of subtasks) {
-        const result = await this.deleteTask(subtask.id, { cascade: true, force: true });
+        const result = await this.deleteTask(subtask.id, {
+          cascade: true,
+          force: true,
+        });
         deleted.push(...result.deleted);
         orphanedSubtasks.push(...result.orphanedSubtasks);
       }
@@ -251,6 +275,8 @@ export class TaskService {
     const success = await storage.deleteTask(id);
     if (success) {
       deleted.push(taskToDelete);
+      // Emit task:deleted event
+      await hooks.emit("task:deleted", { taskId: id });
     }
 
     return { success: true, deleted, orphanedSubtasks };
@@ -398,8 +424,8 @@ export class TaskService {
     const startTime = Date.now();
 
     callbacks?.onProgress?.({
-      type: 'started',
-      message: 'Starting task enhancement...',
+      type: "started",
+      message: "Starting task enhancement...",
     });
 
     const task = await getStorage().getTask(taskId);
@@ -408,8 +434,8 @@ export class TaskService {
     }
 
     callbacks?.onProgress?.({
-      type: 'progress',
-      message: 'Building context...',
+      type: "progress",
+      message: "Building context...",
     });
 
     const context = await getContextBuilder().buildContext(taskId);
@@ -418,24 +444,25 @@ export class TaskService {
     const enhancementAIConfig = buildAIConfig(aiOptions);
 
     callbacks?.onProgress?.({
-      type: 'progress',
-      message: 'Calling AI for enhancement...',
+      type: "progress",
+      message: "Calling AI for enhancement...",
     });
 
-    const enhancedContent = await getAIOperations().enhanceTaskWithDocumentation(
-      task.id,
-      task.title,
-      task.description ?? "",
-      stackInfo,
-      streamingOptions,
-      undefined,
-      enhancementAIConfig,
-      context.existingResearch
-    );
+    const enhancedContent =
+      await getAIOperations().enhanceTaskWithDocumentation(
+        task.id,
+        task.title,
+        task.description ?? "",
+        stackInfo,
+        streamingOptions,
+        undefined,
+        enhancementAIConfig,
+        context.existingResearch
+      );
 
     callbacks?.onProgress?.({
-      type: 'progress',
-      message: 'Saving enhanced content...',
+      type: "progress",
+      message: "Saving enhanced content...",
     });
 
     const originalLength = task.description?.length || 0;
@@ -472,8 +499,8 @@ export class TaskService {
     const duration = Date.now() - startTime;
 
     callbacks?.onProgress?.({
-      type: 'completed',
-      message: 'Task enhancement completed',
+      type: "completed",
+      message: "Task enhancement completed",
     });
 
     return {
@@ -505,8 +532,8 @@ export class TaskService {
     const startTime = Date.now();
 
     callbacks?.onProgress?.({
-      type: 'started',
-      message: 'Starting task breakdown...',
+      type: "started",
+      message: "Starting task breakdown...",
     });
 
     const task = await getStorage().getTask(taskId);
@@ -523,8 +550,8 @@ export class TaskService {
     }
 
     callbacks?.onProgress?.({
-      type: 'progress',
-      message: 'Building context...',
+      type: "progress",
+      message: "Building context...",
     });
 
     // Build comprehensive context
@@ -537,8 +564,8 @@ export class TaskService {
     const breakdownAIConfig = buildAIConfig(aiOptions);
 
     callbacks?.onProgress?.({
-      type: 'progress',
-      message: 'Calling AI to break down task...',
+      type: "progress",
+      message: "Calling AI to break down task...",
     });
 
     // Use AI service to break down the task with enhanced context
@@ -556,7 +583,7 @@ export class TaskService {
     );
 
     callbacks?.onProgress?.({
-      type: 'progress',
+      type: "progress",
       message: `Creating ${subtaskData.length} subtasks...`,
     });
 
@@ -566,8 +593,10 @@ export class TaskService {
       const subtask = subtaskData[i];
 
       callbacks?.onProgress?.({
-        type: 'progress',
-        message: `Creating subtask ${i + 1}/${subtaskData.length}: ${subtask.title}`,
+        type: "progress",
+        message: `Creating subtask ${i + 1}/${subtaskData.length}: ${
+          subtask.title
+        }`,
         current: i + 1,
         total: subtaskData.length,
       });
@@ -600,7 +629,7 @@ export class TaskService {
     const duration = Date.now() - startTime;
 
     callbacks?.onProgress?.({
-      type: 'completed',
+      type: "completed",
       message: `Task split into ${createdSubtasks.length} subtasks`,
     });
 
@@ -630,8 +659,8 @@ export class TaskService {
     const startTime = Date.now();
 
     callbacks?.onProgress?.({
-      type: 'started',
-      message: 'Analyzing documentation needs...',
+      type: "started",
+      message: "Analyzing documentation needs...",
     });
 
     const task = await getStorage().getTask(taskId);
@@ -642,8 +671,8 @@ export class TaskService {
     if (task.documentation && !force) {
       if (getContextBuilder().isDocumentationFresh(task.documentation)) {
         callbacks?.onProgress?.({
-          type: 'info',
-          message: 'Documentation is fresh, skipping analysis',
+          type: "info",
+          message: "Documentation is fresh, skipping analysis",
         });
 
         return {
@@ -658,8 +687,8 @@ export class TaskService {
     }
 
     callbacks?.onProgress?.({
-      type: 'progress',
-      message: 'Building context...',
+      type: "progress",
+      message: "Building context...",
     });
 
     const context = await getContextBuilder().buildContext(taskId);
@@ -679,8 +708,8 @@ export class TaskService {
     const documentations = tasks.map((task) => task.documentation);
 
     callbacks?.onProgress?.({
-      type: 'progress',
-      message: 'Calling AI to analyze documentation needs...',
+      type: "progress",
+      message: "Calling AI to analyze documentation needs...",
     });
 
     // First analyze what documentation is needed
@@ -699,15 +728,20 @@ export class TaskService {
 
     if (analysis.libraries.length > 0) {
       callbacks?.onProgress?.({
-        type: 'progress',
+        type: "progress",
         message: `Fetching documentation for ${analysis.libraries.length} libraries...`,
       });
 
       // Build research object from actual libraries
-      const research: Record<string, Array<{ query: string; doc: string }>> = {};
+      const research: Record<
+        string,
+        Array<{ query: string; doc: string }>
+      > = {};
       for (const lib of analysis.libraries) {
         const sanitizedLibrary = getStorage().sanitizeForFilename(lib.name);
-        const sanitizedQuery = getStorage().sanitizeForFilename(lib.searchQuery);
+        const sanitizedQuery = getStorage().sanitizeForFilename(
+          lib.searchQuery
+        );
         const docFile = `docs/${sanitizedLibrary}/${sanitizedQuery}.md`;
 
         if (!research[lib.name]) {
@@ -720,8 +754,8 @@ export class TaskService {
       }
 
       callbacks?.onProgress?.({
-        type: 'progress',
-        message: 'Generating documentation recap...',
+        type: "progress",
+        message: "Generating documentation recap...",
       });
 
       const recap = await getAIOperations().generateDocumentationRecap(
@@ -735,15 +769,17 @@ export class TaskService {
 
       documentation = {
         lastFetched: Date.now(),
-        libraries: analysis.libraries.map((lib: { context7Id: string }) => lib.context7Id),
+        libraries: analysis.libraries.map(
+          (lib: { context7Id: string }) => lib.context7Id
+        ),
         recap,
         files: analysis.files || [],
         research,
       };
 
       callbacks?.onProgress?.({
-        type: 'progress',
-        message: 'Saving documentation...',
+        type: "progress",
+        message: "Saving documentation...",
       });
 
       await getStorage().updateTask(taskId, { documentation });
@@ -752,8 +788,8 @@ export class TaskService {
     const duration = Date.now() - startTime;
 
     callbacks?.onProgress?.({
-      type: 'completed',
-      message: 'Documentation analysis completed',
+      type: "completed",
+      message: "Documentation analysis completed",
     });
 
     return {
@@ -776,8 +812,8 @@ export class TaskService {
     const startTime = Date.now();
 
     callbacks?.onProgress?.({
-      type: 'started',
-      message: 'Creating implementation plan...',
+      type: "started",
+      message: "Creating implementation plan...",
     });
 
     const task = await getStorage().getTask(taskId);
@@ -789,8 +825,8 @@ export class TaskService {
     const planAIConfig = buildAIConfig(aiOptions);
 
     callbacks?.onProgress?.({
-      type: 'progress',
-      message: 'Building task context...',
+      type: "progress",
+      message: "Building task context...",
     });
 
     // Build task context and details
@@ -802,7 +838,9 @@ export class TaskService {
       const parentTask = await getStorage().getTask(task.parentId);
       if (parentTask) {
         taskContext += `Parent Task ID: ${parentTask.id}\nParent Task Title: ${parentTask.title}\n`;
-        taskDetails += `Parent Task Description: ${parentTask.description || "No description"}\n`;
+        taskDetails += `Parent Task Description: ${
+          parentTask.description || "No description"
+        }\n`;
       }
     }
 
@@ -817,8 +855,8 @@ export class TaskService {
     }
 
     callbacks?.onProgress?.({
-      type: 'progress',
-      message: 'Calling AI to create plan...',
+      type: "progress",
+      message: "Calling AI to create plan...",
     });
 
     const plan = await aiService.planTask(
@@ -831,8 +869,8 @@ export class TaskService {
     );
 
     callbacks?.onProgress?.({
-      type: 'progress',
-      message: 'Saving plan...',
+      type: "progress",
+      message: "Saving plan...",
     });
 
     // Save the plan to storage
@@ -841,8 +879,8 @@ export class TaskService {
     const duration = Date.now() - startTime;
 
     callbacks?.onProgress?.({
-      type: 'completed',
-      message: 'Implementation plan created',
+      type: "completed",
+      message: "Implementation plan created",
     });
 
     const aiConfig = getModelProvider().getAIConfig();
@@ -870,7 +908,7 @@ export class TaskService {
   }
 
   async addTaskDocumentationFromFile(
-    taskId: string, 
+    taskId: string,
     filePath: string
   ): Promise<{ filePath: string; task: Task }> {
     const task = await this.getTask(taskId);
@@ -879,24 +917,29 @@ export class TaskService {
     }
 
     try {
-      const { readFileSync, existsSync } = await import('fs');
-      const { resolve } = await import('path');
-      
+      const { readFileSync, existsSync } = await import("fs");
+      const { resolve } = await import("path");
+
       const resolvedPath = resolve(filePath);
       if (!existsSync(resolvedPath)) {
         throw new Error(`Documentation file not found: ${filePath}`);
       }
 
-      const content = readFileSync(resolvedPath, 'utf-8');
-      const savedPath = await getStorage().saveTaskDocumentation(taskId, content);
-      
+      const content = readFileSync(resolvedPath, "utf-8");
+      const savedPath = await getStorage().saveTaskDocumentation(
+        taskId,
+        content
+      );
+
       return {
         filePath: savedPath,
         task,
       };
     } catch (error) {
       throw new Error(
-        `Failed to add documentation from file: ${error instanceof Error ? error.message : 'Unknown error'}`
+        `Failed to add documentation from file: ${
+          error instanceof Error ? error.message : "Unknown error"
+        }`
       );
     }
   }
@@ -915,29 +958,31 @@ export class TaskService {
 
     if (planFilePath) {
       try {
-        const { readFileSync, existsSync } = await import('fs');
-        const { resolve } = await import('path');
-        
+        const { readFileSync, existsSync } = await import("fs");
+        const { resolve } = await import("path");
+
         const resolvedPath = resolve(planFilePath);
         if (!existsSync(resolvedPath)) {
           throw new Error(`Plan file not found: ${planFilePath}`);
         }
 
-        plan = readFileSync(resolvedPath, 'utf-8');
+        plan = readFileSync(resolvedPath, "utf-8");
       } catch (error) {
         throw new Error(
-          `Failed to read plan file: ${error instanceof Error ? error.message : 'Unknown error'}`
+          `Failed to read plan file: ${
+            error instanceof Error ? error.message : "Unknown error"
+          }`
         );
       }
     } else if (planText) {
       plan = planText;
     } else {
-      throw new Error('Either planText or planFilePath must be provided');
+      throw new Error("Either planText or planFilePath must be provided");
     }
 
     await getStorage().savePlan(taskId, plan);
     const planFile = `plans/${taskId}.md`;
-    
+
     return {
       planFile,
       task,

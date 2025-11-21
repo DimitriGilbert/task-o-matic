@@ -3,12 +3,13 @@ import { ExecuteTaskOptions, ExecutorTool } from "../types";
 import { ExecutorFactory } from "./executors/executor-factory";
 import { runValidations } from "./validation";
 import { ContextBuilder } from "./context-builder";
+import { hooks } from "./hooks";
 import chalk from "chalk";
 
 async function executeSingleTask(
   taskId: string,
   tool: ExecutorTool,
-  dry: boolean,
+  dry: boolean
 ): Promise<void> {
   // Load task
   const task = await taskService.getTask(taskId);
@@ -18,8 +19,8 @@ async function executeSingleTask(
 
   console.log(
     chalk.blue(
-      `🎯 ${dry ? "DRY RUN" : "Executing"} task: ${task.title} (${taskId})`,
-    ),
+      `🎯 ${dry ? "DRY RUN" : "Executing"} task: ${task.title} (${taskId})`
+    )
   );
 
   // Build comprehensive execution message with full context
@@ -34,12 +35,16 @@ async function executeSingleTask(
   if (planData) {
     messageParts.push(`# Task Plan\n\n${planData.plan}\n`);
   } else {
-    messageParts.push(`# Task: ${task.title}\n\n${task.description || "No description"}\n`);
+    messageParts.push(
+      `# Task: ${task.title}\n\n${task.description || "No description"}\n`
+    );
   }
 
   // Add PRD context if available
   if (taskContext.prdContent) {
-    messageParts.push(`\n# Product Requirements Document\n\n${taskContext.prdContent}\n`);
+    messageParts.push(
+      `\n# Product Requirements Document\n\n${taskContext.prdContent}\n`
+    );
   }
 
   // Add stack/technology context
@@ -56,9 +61,13 @@ async function executeSingleTask(
     }
     messageParts.push(`- **Auth**: ${taskContext.stack.auth}\n`);
     if (taskContext.stack.addons.length > 0) {
-      messageParts.push(`- **Addons**: ${taskContext.stack.addons.join(", ")}\n`);
+      messageParts.push(
+        `- **Addons**: ${taskContext.stack.addons.join(", ")}\n`
+      );
     }
-    messageParts.push(`- **Package Manager**: ${taskContext.stack.packageManager}\n`);
+    messageParts.push(
+      `- **Package Manager**: ${taskContext.stack.packageManager}\n`
+    );
   }
 
   // Add documentation context if available
@@ -73,13 +82,16 @@ async function executeSingleTask(
     }
   }
 
-  const executionMessage = messageParts.join('');
+  const executionMessage = messageParts.join("");
 
   if (!dry) {
     // Update task status to in-progress
     await taskService.setTaskStatus(taskId, "in-progress");
     console.log(chalk.yellow("⏳ Task status updated to in-progress"));
   }
+
+  // Emit execution:start event
+  await hooks.emit("execution:start", { taskId, tool });
 
   try {
     // Create executor and run
@@ -92,7 +104,16 @@ async function executeSingleTask(
       await taskService.setTaskStatus(taskId, "completed");
       console.log(chalk.green("✅ Task execution completed successfully"));
     }
+
+    // Emit execution:end event
+    await hooks.emit("execution:end", { taskId, success: true });
   } catch (error) {
+    // Emit execution:error event
+    await hooks.emit("execution:error", {
+      taskId,
+      error: error instanceof Error ? error : new Error(String(error)),
+    });
+
     if (!dry) {
       // Update task status back to todo on failure
       await taskService.setTaskStatus(taskId, "todo");
@@ -105,7 +126,7 @@ async function executeSingleTask(
 async function executeTaskWithSubtasks(
   taskId: string,
   tool: ExecutorTool,
-  dry: boolean,
+  dry: boolean
 ): Promise<void> {
   const task = await taskService.getTask(taskId);
   if (!task) {
@@ -124,16 +145,18 @@ async function executeTaskWithSubtasks(
   // Has subtasks - execute them one by one
   console.log(
     chalk.blue(
-      `📋 Task has ${subtasks.length} subtasks, executing recursively...`,
-    ),
+      `📋 Task has ${subtasks.length} subtasks, executing recursively...`
+    )
   );
 
   for (let i = 0; i < subtasks.length; i++) {
     const subtask = subtasks[i];
     console.log(
       chalk.cyan(
-        `\n[${i + 1}/${subtasks.length}] Executing subtask: ${subtask.title} (${subtask.id})`,
-      ),
+        `\n[${i + 1}/${subtasks.length}] Executing subtask: ${subtask.title} (${
+          subtask.id
+        })`
+      )
     );
 
     try {
@@ -141,8 +164,10 @@ async function executeTaskWithSubtasks(
     } catch (error) {
       console.error(
         chalk.red(
-          `❌ Failed to execute subtask ${subtask.id}: ${error instanceof Error ? error.message : "Unknown error"}`,
-        ),
+          `❌ Failed to execute subtask ${subtask.id}: ${
+            error instanceof Error ? error.message : "Unknown error"
+          }`
+        )
       );
       throw error;
     }
@@ -152,13 +177,13 @@ async function executeTaskWithSubtasks(
   if (!dry) {
     await taskService.setTaskStatus(taskId, "completed");
     console.log(
-      chalk.green(`✅ Main task ${task.title} completed after all subtasks`),
+      chalk.green(`✅ Main task ${task.title} completed after all subtasks`)
     );
   } else {
     console.log(
       chalk.cyan(
-        `🔍 DRY RUN - Main task ${task.title} would be completed after all subtasks`,
-      ),
+        `🔍 DRY RUN - Main task ${task.title} would be completed after all subtasks`
+      )
     );
   }
 }
@@ -181,14 +206,19 @@ export async function executeTask(options: ExecuteTaskOptions): Promise<void> {
 
     console.log(
       chalk.blue(
-        `🎯 ${dry ? "DRY RUN - Would execute" : "Executing"} task with custom message: ${task.title} (${taskId})`,
-      ),
+        `🎯 ${
+          dry ? "DRY RUN - Would execute" : "Executing"
+        } task with custom message: ${task.title} (${taskId})`
+      )
     );
 
     if (!dry) {
       await taskService.setTaskStatus(taskId, "in-progress");
       console.log(chalk.yellow("⏳ Task status updated to in-progress"));
     }
+
+    // Emit execution:start event
+    await hooks.emit("execution:start", { taskId, tool });
 
     try {
       const executor = ExecutorFactory.create(tool);
@@ -200,15 +230,23 @@ export async function executeTask(options: ExecuteTaskOptions): Promise<void> {
         console.log(chalk.green("✅ Task execution completed successfully"));
       }
 
+      // Emit execution:end event
+      await hooks.emit("execution:end", { taskId, success: true });
+
       // Run validations after task completion
       await runValidations(validate, dry);
     } catch (error) {
       if (!dry) {
         await taskService.setTaskStatus(taskId, "todo");
         console.log(
-          chalk.red("❌ Task execution failed, status reset to todo"),
+          chalk.red("❌ Task execution failed, status reset to todo")
         );
       }
+      // Emit execution:error event
+      await hooks.emit("execution:error", {
+        taskId,
+        error: error instanceof Error ? error : new Error(String(error)),
+      });
       throw error;
     }
     return;
