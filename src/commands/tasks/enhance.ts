@@ -1,6 +1,7 @@
 import { Command } from "commander";
 import chalk from "chalk";
 import { taskService } from "../../services/tasks";
+import { hooks } from "../../lib/hooks";
 import { createStreamingOptions } from "../../utils/streaming-options";
 import { displayProgress, displayError } from "../../cli/display/progress";
 
@@ -33,32 +34,39 @@ export const enhanceCommand = new Command("enhance")
           "Enhancement"
         );
 
-        const result = await taskService.enhanceTask(
-          taskId,
-          {
-            aiProvider: options.aiProvider,
-            aiModel: options.aiModel,
-            aiKey: options.aiKey,
-            aiProviderUrl: options.aiProviderUrl,
-            aiReasoning: options.reasoning,
-          },
-          streamingOptions,
-          {
-            onProgress: displayProgress,
-            onError: displayError,
-          }
-        );
+        const progressHandler = (payload: any) => {
+          displayProgress(payload);
+        };
+        hooks.on("task:progress", progressHandler);
 
-        if (result.enhancedContent.length > 200) {
-          console.log(chalk.cyan(`  Enhanced content saved to file.`));
-        } else {
-          console.log(
-            chalk.cyan(`  Enhanced content updated in task description.`)
+        try {
+          const result = await taskService.enhanceTask(
+            taskId,
+            {
+              aiProvider: options.aiProvider,
+              aiModel: options.aiModel,
+              aiKey: options.aiKey,
+              aiProviderUrl: options.aiProviderUrl,
+              aiReasoning: options.reasoning,
+            },
+            streamingOptions
           );
-        }
 
-        console.log(chalk.green("✓ Task enhanced with Context7 documentation"));
-        console.log(chalk.magenta(`  🤖 Enhanced using Context7 MCP tools`));
+          if (result.enhancedContent.length > 200) {
+            console.log(chalk.cyan(`  Enhanced content saved to file.`));
+          } else {
+            console.log(
+              chalk.cyan(`  Enhanced content updated in task description.`)
+            );
+          }
+
+          console.log(
+            chalk.green("✓ Task enhanced with Context7 documentation")
+          );
+          console.log(chalk.magenta(`  🤖 Enhanced using Context7 MCP tools`));
+        } finally {
+          hooks.off("task:progress", progressHandler);
+        }
       };
 
       if (options.taskId) {

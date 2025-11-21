@@ -1,6 +1,7 @@
 import { Command } from "commander";
 import chalk from "chalk";
 import { taskService } from "../../services/tasks";
+import { hooks } from "../../lib/hooks";
 import { createStreamingOptions } from "../../utils/streaming-options";
 import { displayProgress, displayError } from "../../cli/display/progress";
 import { displaySubtaskCreation } from "../../cli/display/task";
@@ -35,6 +36,11 @@ export const splitCommand = new Command("split")
           "Task breakdown"
         );
 
+        const progressHandler = (payload: any) => {
+          displayProgress(payload);
+        };
+        hooks.on("task:progress", progressHandler);
+
         try {
           const result = await taskService.splitTask(
             taskId,
@@ -48,10 +54,6 @@ export const splitCommand = new Command("split")
             undefined,
             undefined,
             streamingOptions,
-            {
-              onProgress: displayProgress,
-              onError: displayError,
-            },
             options.tools
           );
 
@@ -79,6 +81,8 @@ export const splitCommand = new Command("split")
             return;
           }
           throw error;
+        } finally {
+          hooks.off("task:progress", progressHandler);
         }
       };
 

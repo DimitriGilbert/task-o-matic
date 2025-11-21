@@ -1,13 +1,14 @@
-import { LocalStorage } from '../lib/storage';
-import { ContextBuilder } from '../lib/context-builder';
-import { existsSync } from 'fs';
-import { configManager } from '../lib/config';
-import { AIOperations } from '../lib/ai-service/ai-operations';
-import { ModelProvider } from '../lib/ai-service/model-provider';
+import { FileSystemStorage } from "../lib/storage/file-system";
+import { TaskRepository } from "../lib/storage/types";
+import { ContextBuilder } from "../lib/context-builder";
+import { existsSync } from "fs";
+import { configManager } from "../lib/config";
+import { AIOperations } from "../lib/ai-service/ai-operations";
+import { ModelProvider } from "../lib/ai-service/model-provider";
 
 let aiOperations: AIOperations | null = null;
 let modelProvider: ModelProvider | null = null;
-let storage: LocalStorage | null = null;
+let storage: TaskRepository | null = null;
 let contextBuilder: ContextBuilder | null = null;
 
 export function getAIOperations(): AIOperations {
@@ -24,24 +25,25 @@ export function getModelProvider(): ModelProvider {
   return modelProvider;
 }
 
-export function getStorage(): LocalStorage {
+export function getStorage(): TaskRepository {
   if (!storage) {
     // Ensure we're in a task-o-matic project before creating storage
     const taskOMaticDir = configManager.getTaskOMaticDir();
     if (!existsSync(taskOMaticDir)) {
       throw new Error(
-        `Not a task-o-matic project. Run 'task-o-matic init init' first.`,
+        `Not a task-o-matic project. Run 'task-o-matic init init' first.`
       );
     }
 
-    storage = new LocalStorage();
+    storage = new FileSystemStorage();
   }
   return storage;
 }
 
 export function getContextBuilder(): ContextBuilder {
   if (!contextBuilder) {
-    contextBuilder = new ContextBuilder();
+    const storage = getStorage();
+    contextBuilder = new ContextBuilder(storage);
   }
   return contextBuilder;
 }

@@ -1,6 +1,7 @@
 import { Command } from "commander";
 import chalk from "chalk";
 import { taskService } from "../../services/tasks";
+import { hooks } from "../../lib/hooks";
 import { createStreamingOptions } from "../../utils/streaming-options";
 import { displayProgress, displayError } from "../../cli/display/progress";
 import {
@@ -30,45 +31,54 @@ export const documentCommand = new Command("document")
         "Analysis"
       );
 
-      const result = await taskService.documentTask(
-        options.taskId,
-        options.force,
-        {
-          aiProvider: options.aiProvider,
-          aiModel: options.aiModel,
-          aiKey: options.aiKey,
-          aiProviderUrl: options.aiProviderUrl,
-          aiReasoning: options.reasoning,
-        },
-        streamingOptions,
-        {
-          onProgress: displayProgress,
-          onError: displayError,
+      const progressHandler = (payload: any) => {
+        displayProgress(payload);
+      };
+      hooks.on("task:progress", progressHandler);
+
+      try {
+        const result = await taskService.documentTask(
+          options.taskId,
+          options.force,
+          {
+            aiProvider: options.aiProvider,
+            aiModel: options.aiModel,
+            aiKey: options.aiKey,
+            aiProviderUrl: options.aiProviderUrl,
+            aiReasoning: options.reasoning,
+          },
+          streamingOptions
+        );
+
+        if (result.documentation && !options.force) {
+          const daysSinceFetch =
+            (Date.now() - result.documentation.lastFetched) /
+            (24 * 60 * 60 * 1000);
+          console.log(
+            chalk.green(
+              `✓ Documentation is fresh (${Math.round(
+                daysSinceFetch
+              )} days old)`
+            )
+          );
+          console.log(chalk.cyan(`Recap: ${result.documentation.recap}`));
+          console.log(
+            chalk.blue(
+              `Libraries: ${result.documentation.libraries.join(", ")}`
+            )
+          );
+          return;
         }
-      );
 
-      if (result.documentation && !options.force) {
-        const daysSinceFetch =
-          (Date.now() - result.documentation.lastFetched) /
-          (24 * 60 * 60 * 1000);
-        console.log(
-          chalk.green(
-            `✓ Documentation is fresh (${Math.round(daysSinceFetch)} days old)`
-          )
-        );
-        console.log(chalk.cyan(`Recap: ${result.documentation.recap}`));
-        console.log(
-          chalk.blue(`Libraries: ${result.documentation.libraries.join(", ")}`)
-        );
-        return;
-      }
+        if (result.analysis) {
+          displayDocumentationAnalysis(result.analysis);
+        }
 
-      if (result.analysis) {
-        displayDocumentationAnalysis(result.analysis);
-      }
-
-      if (result.documentation?.research) {
-        displayResearchSummary(result.documentation);
+        if (result.documentation?.research) {
+          displayResearchSummary(result.documentation);
+        }
+      } finally {
+        hooks.off("task:progress", progressHandler);
       }
     } catch (error) {
       displayError(error);

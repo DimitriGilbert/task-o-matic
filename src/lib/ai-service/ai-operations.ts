@@ -22,7 +22,7 @@ import {
   PRD_REWORK_SYSTEM_PROMPT,
   TASK_PLANNING_SYSTEM_PROMPT,
 } from "../../prompts";
-import { getStorage } from "../../utils/ai-service-factory";
+import { getStorage, getContextBuilder } from "../../utils/ai-service-factory";
 import { JSONParser } from "./json-parser";
 import { Context7Client } from "./mcp-client";
 import { RetryHandler } from "./retry-handler";
@@ -42,7 +42,7 @@ export class AIOperations {
     systemPrompt?: string,
     userMessage?: string,
     streamingOptions?: StreamingOptions,
-    retryConfig?: Partial<RetryConfig>,
+    retryConfig?: Partial<RetryConfig>
   ): Promise<string> {
     const aiConfig = { ...this.modelProvider.getAIConfig(), ...config };
 
@@ -74,13 +74,13 @@ export class AIOperations {
                     this.context7Client.saveContext7Documentation(
                       chunk.input?.context7CompatibleLibraryID || "unknown",
                       docs.content,
-                      chunk.input?.topic || "general",
+                      chunk.input?.topic || "general"
                     );
                   } else if (docs && typeof docs === "string") {
                     this.context7Client.saveContext7Documentation(
                       chunk.input?.context7CompatibleLibraryID || "unknown",
                       docs,
-                      chunk.input?.topic || "general",
+                      chunk.input?.topic || "general"
                     );
                   }
                 }
@@ -120,7 +120,7 @@ export class AIOperations {
         return fullText;
       },
       retryConfig,
-      "AI streaming",
+      "AI streaming"
     );
   }
 
@@ -132,7 +132,7 @@ export class AIOperations {
     streamingOptions?: StreamingOptions,
     retryConfig?: Partial<RetryConfig>,
     workingDirectory?: string, // Working directory passed from service layer
-    enableFilesystemTools?: boolean,
+    enableFilesystemTools?: boolean
   ): Promise<AIPRDParseResult> {
     return this.retryHandler.executeWithRetry(
       async () => {
@@ -170,7 +170,7 @@ export class AIOperations {
 
           if (!promptResult.success) {
             throw new Error(
-              `Failed to build PRD parsing prompt: ${promptResult.error}`,
+              `Failed to build PRD parsing prompt: ${promptResult.error}`
             );
           }
 
@@ -181,8 +181,11 @@ export class AIOperations {
 
         if (enableFilesystemTools) {
           // Use filesystem tools when enabled
-          const model = this.modelProvider.getModel({ ...this.modelProvider.getAIConfig(), ...config });
-          
+          const model = this.modelProvider.getModel({
+            ...this.modelProvider.getAIConfig(),
+            ...config,
+          });
+
           const allTools = {
             ...filesystemTools,
           };
@@ -190,14 +193,18 @@ export class AIOperations {
           const result = await streamText({
             model,
             tools: allTools, // Filesystem tools for project analysis
-            system: PRD_PARSING_SYSTEM_PROMPT + `
+            system:
+              PRD_PARSING_SYSTEM_PROMPT +
+              `
 
 You have access to filesystem tools that allow you to:
 - readFile: Read the contents of any file in the project
 - listDirectory: List contents of directories
 
 Use these tools to understand the project structure, existing code patterns, and dependencies when parsing the PRD and creating tasks.`,
-            messages: [{ role: "user", content: userMessage || enhancedPrompt }],
+            messages: [
+              { role: "user", content: userMessage || enhancedPrompt },
+            ],
             maxRetries: 0,
             onChunk: streamingOptions?.onChunk
               ? ({ chunk }) => {
@@ -227,7 +234,7 @@ Use these tools to understand the project structure, existing code patterns, and
             PRD_PARSING_SYSTEM_PROMPT,
             userMessage || enhancedPrompt,
             streamingOptions,
-            { maxAttempts: 1 }, // Disable retries here since we're handling them at the outer level
+            { maxAttempts: 1 } // Disable retries here since we're handling them at the outer level
           );
         }
 
@@ -265,7 +272,11 @@ Use these tools to understand the project structure, existing code patterns, and
             if (Object.keys(extraData).length > 0) {
               fullContent += "\n\n## Additional AI-Generated Information\n";
               for (const [key, value] of Object.entries(extraData)) {
-                fullContent += `\n**${key}:** ${JSON.stringify(value, null, 2)}`;
+                fullContent += `\n**${key}:** ${JSON.stringify(
+                  value,
+                  null,
+                  2
+                )}`;
               }
             }
 
@@ -285,7 +296,7 @@ Use these tools to understand the project structure, existing code patterns, and
               dependencies: task.dependencies || [],
               tags: (task.tags as string[]) || [],
             };
-          },
+          }
         );
 
         return {
@@ -296,7 +307,7 @@ Use these tools to understand the project structure, existing code patterns, and
         };
       },
       retryConfig,
-      "PRD parsing",
+      "PRD parsing"
     );
   }
 
@@ -310,7 +321,7 @@ Use these tools to understand the project structure, existing code patterns, and
     fullContent?: string,
     stackInfo?: string,
     existingSubtasks?: Task[],
-    enableFilesystemTools?: boolean,
+    enableFilesystemTools?: boolean
   ): Promise<
     Array<{ title: string; content: string; estimatedEffort?: string }>
   > {
@@ -337,7 +348,9 @@ Use these tools to understand the project structure, existing code patterns, and
             const existingSubtasksText = existingSubtasks
               .map(
                 (subtask, index) =>
-                  `${index + 1}. ${subtask.title}: ${subtask.description || "No description"}`,
+                  `${index + 1}. ${subtask.title}: ${
+                    subtask.description || "No description"
+                  }`
               )
               .join("\n");
             variables.EXISTING_SUBTASKS = existingSubtasksText;
@@ -356,7 +369,7 @@ Use these tools to understand the project structure, existing code patterns, and
 
           if (!promptResult.success) {
             throw new Error(
-              `Failed to build task breakdown prompt: ${promptResult.error}`,
+              `Failed to build task breakdown prompt: ${promptResult.error}`
             );
           }
 
@@ -367,8 +380,11 @@ Use these tools to understand the project structure, existing code patterns, and
 
         if (enableFilesystemTools) {
           // Use filesystem tools when enabled
-          const model = this.modelProvider.getModel({ ...this.modelProvider.getAIConfig(), ...config });
-          
+          const model = this.modelProvider.getModel({
+            ...this.modelProvider.getAIConfig(),
+            ...config,
+          });
+
           const allTools = {
             ...filesystemTools,
           };
@@ -376,7 +392,9 @@ Use these tools to understand the project structure, existing code patterns, and
           const result = await streamText({
             model,
             tools: allTools, // Filesystem tools for project analysis
-            system: TASK_BREAKDOWN_SYSTEM_PROMPT + `
+            system:
+              TASK_BREAKDOWN_SYSTEM_PROMPT +
+              `
 
 You have access to filesystem tools that allow you to:
 - readFile: Read the contents of any file in the project
@@ -413,7 +431,7 @@ Use these tools to understand the project structure, existing code, and dependen
             TASK_BREAKDOWN_SYSTEM_PROMPT,
             userMessage || prompt,
             streamingOptions,
-            { maxAttempts: 1 }, // Disable retries here since we're handling them at the outer level
+            { maxAttempts: 1 } // Disable retries here since we're handling them at the outer level
           );
         }
 
@@ -423,7 +441,7 @@ Use these tools to understand the project structure, existing code, and dependen
         }>(response);
         if (!parseResult.success) {
           throw new Error(
-            parseResult.error || "Failed to parse task breakdown response",
+            parseResult.error || "Failed to parse task breakdown response"
           );
         }
 
@@ -437,7 +455,7 @@ Use these tools to understand the project structure, existing code, and dependen
         }));
       },
       retryConfig,
-      "Task breakdown",
+      "Task breakdown"
     );
   }
 
@@ -449,7 +467,7 @@ Use these tools to understand the project structure, existing code, and dependen
     userMessage?: string,
     taskId?: string,
     streamingOptions?: StreamingOptions,
-    retryConfig?: Partial<RetryConfig>,
+    retryConfig?: Partial<RetryConfig>
   ): Promise<string> {
     return this.retryHandler.executeWithRetry(
       async () => {
@@ -459,7 +477,7 @@ Use these tools to understand the project structure, existing code, and dependen
 
         // If taskId is provided, include existing documentation context
         if (taskId) {
-          const contextBuilder = new ContextBuilder();
+          const contextBuilder = getContextBuilder();
           try {
             const context = await contextBuilder.buildContext(taskId);
             if (context.documentation || context.stack || context.prdContent) {
@@ -472,7 +490,9 @@ Use these tools to understand the project structure, existing code, and dependen
               if (context.documentation) {
                 contextInfo += `Documentation Available: ${context.documentation.recap}\n`;
                 if (context.documentation.files.length > 0) {
-                  contextInfo += `Documentation Files: ${context.documentation.files.map((f) => f.path).join(", ")}\n`;
+                  contextInfo += `Documentation Files: ${context.documentation.files
+                    .map((f) => f.path)
+                    .join(", ")}\n`;
                 }
               }
 
@@ -503,7 +523,7 @@ Use these tools to understand the project structure, existing code, and dependen
 
           if (!promptResult.success) {
             throw new Error(
-              `Failed to build task enhancement prompt: ${promptResult.error}`,
+              `Failed to build task enhancement prompt: ${promptResult.error}`
             );
           }
 
@@ -516,11 +536,11 @@ Use these tools to understand the project structure, existing code, and dependen
           TASK_ENHANCEMENT_SYSTEM_PROMPT,
           userMessage || prompt,
           streamingOptions,
-          { maxAttempts: 1 }, // Disable retries here since we're handling them at the outer level
+          { maxAttempts: 1 } // Disable retries here since we're handling them at the outer level
         );
       },
       retryConfig,
-      "Task enhancement",
+      "Task enhancement"
     );
   }
 
@@ -533,7 +553,7 @@ Use these tools to understand the project structure, existing code, and dependen
     streamingOptions?: StreamingOptions,
     retryConfig?: Partial<RetryConfig>,
     workingDirectory?: string, // Working directory passed from service layer
-    enableFilesystemTools?: boolean,
+    enableFilesystemTools?: boolean
   ): Promise<string> {
     return this.retryHandler.executeWithRetry(
       async () => {
@@ -572,7 +592,7 @@ Use these tools to understand the project structure, existing code, and dependen
 
           if (!promptResult.success) {
             throw new Error(
-              `Failed to build PRD rework prompt: ${promptResult.error}`,
+              `Failed to build PRD rework prompt: ${promptResult.error}`
             );
           }
 
@@ -581,8 +601,11 @@ Use these tools to understand the project structure, existing code, and dependen
 
         if (enableFilesystemTools) {
           // Use filesystem tools when enabled
-          const model = this.modelProvider.getModel({ ...this.modelProvider.getAIConfig(), ...config });
-          
+          const model = this.modelProvider.getModel({
+            ...this.modelProvider.getAIConfig(),
+            ...config,
+          });
+
           const allTools = {
             ...filesystemTools,
           };
@@ -590,7 +613,9 @@ Use these tools to understand the project structure, existing code, and dependen
           const result = await streamText({
             model,
             tools: allTools, // Filesystem tools for project analysis
-            system: PRD_REWORK_SYSTEM_PROMPT + `
+            system:
+              PRD_REWORK_SYSTEM_PROMPT +
+              `
 
 You have access to filesystem tools that allow you to:
 - readFile: Read the contents of any file in the project
@@ -627,12 +652,12 @@ Use these tools to understand the current project structure, existing code patte
             PRD_REWORK_SYSTEM_PROMPT,
             userMessage || prompt,
             streamingOptions,
-            { maxAttempts: 1 }, // Disable retries here since we're handling them at the outer level
+            { maxAttempts: 1 } // Disable retries here since we're handling them at the outer level
           );
         }
       },
       retryConfig,
-      "PRD rework",
+      "PRD rework"
     );
   }
 
@@ -645,7 +670,7 @@ Use these tools to understand the current project structure, existing code patte
     streamingOptions?: StreamingOptions,
     retryConfig?: Partial<RetryConfig>,
     config?: Partial<AIConfig>,
-    existingResearch?: Record<string, Array<{ query: string; doc: string }>>,
+    existingResearch?: Record<string, Array<{ query: string; doc: string }>>
     // existingResearch?: (TaskDocumentation | undefined)[],
   ): Promise<string> {
     return this.retryHandler
@@ -663,7 +688,7 @@ Use these tools to understand the current project structure, existing code patte
           // const customResearchTools = this.researchTools.getResearchTools();
 
           // Build context for this operation using the actual task ID
-          const contextBuilder = new ContextBuilder();
+          const contextBuilder = getContextBuilder();
           const builtContext = await contextBuilder.buildContext("1.1");
 
           // Build existing research context
@@ -671,7 +696,9 @@ Use these tools to understand the current project structure, existing code patte
             ? Object.entries(existingResearch)
                 .map(
                   ([lib, entries]) =>
-                    `### ${lib}\n${entries.map((e) => `- Query: "${e.query}"`).join("\n")}`,
+                    `### ${lib}\n${entries
+                      .map((e) => `- Query: "${e.query}"`)
+                      .join("\n")}`
                 )
                 .join("\n\n")
             : "No existing research available.";
@@ -702,7 +729,7 @@ Use these tools to understand the current project structure, existing code patte
 
           if (!promptResult.success) {
             throw new Error(
-              `Failed to build task enhancement prompt: ${promptResult.error}`,
+              `Failed to build task enhancement prompt: ${promptResult.error}`
             );
           }
 
@@ -778,7 +805,7 @@ ${existingResearchContext}`,
           if (toolCalls.length > 0) {
             console.log(
               "AI made tool calls:",
-              toolCalls.map((tc) => ({ tool: tc.toolName, input: tc.input })),
+              toolCalls.map((tc) => ({ tool: tc.toolName, input: tc.input }))
             );
           }
 
@@ -788,7 +815,7 @@ ${existingResearchContext}`,
               toolResults.map((tr) => ({
                 tool: tr.toolName,
                 output: tr.output,
-              })),
+              }))
             );
           }
 
@@ -804,7 +831,7 @@ ${existingResearchContext}`,
           return fullText;
         },
         retryConfig,
-        "Task enhancement with documentation",
+        "Task enhancement with documentation"
       )
       .finally(async () => {
         await this.context7Client.closeMCPConnection();
@@ -819,7 +846,7 @@ ${existingResearchContext}`,
     streamingOptions?: StreamingOptions,
     retryConfig?: Partial<RetryConfig>,
     config?: Partial<AIConfig>,
-    existingResearch?: (TaskDocumentation | undefined)[],
+    existingResearch?: (TaskDocumentation | undefined)[]
   ): Promise<DocumentationDetection> {
     return this.retryHandler
       .executeWithRetry(
@@ -839,7 +866,9 @@ ${existingResearchContext}`,
                 .map(
                   (rs) =>
                     rs &&
-                    `${rs.recap}\n#### librairies\n${rs.libraries.join(`- \n`)}\n\n#### files:\n${rs.libraries.join(`- \n`)}`,
+                    `${rs.recap}\n#### librairies\n${rs.libraries.join(
+                      `- \n`
+                    )}\n\n#### files:\n${rs.libraries.join(`- \n`)}`
                 )
                 .join("\n\n")
             : "No existing research available.";
@@ -858,7 +887,7 @@ ${existingResearchContext}`,
 
           if (!promptResult.success) {
             throw new Error(
-              `Failed to build documentation detection prompt: ${promptResult.error}`,
+              `Failed to build documentation detection prompt: ${promptResult.error}`
             );
           }
 
@@ -946,7 +975,7 @@ ${existingResearchContext}`,
                               await this.context7Client.saveContext7Documentation(
                                 libraryName,
                                 filename,
-                                content,
+                                content
                               );
 
                             // BUILD THE LIBRARIES ARRAY WITH ACTUAL DATA
@@ -964,7 +993,7 @@ ${existingResearchContext}`,
                         } catch (error) {
                           console.error(
                             "Failed to save Context7 documentation:",
-                            error,
+                            error
                           );
                         }
                       })();
@@ -1000,7 +1029,7 @@ ${existingResearchContext}`,
               const storage = getStorage();
               const taskDocFile = await storage.saveTaskDocumentation(
                 taskId,
-                fullText,
+                fullText
               );
               files.push(taskDocFile);
             } catch (error) {
@@ -1019,7 +1048,7 @@ ${existingResearchContext}`,
           };
         },
         retryConfig,
-        "Documentation needs analysis",
+        "Documentation needs analysis"
       )
       .finally(async () => {
         await this.context7Client.closeMCPConnection();
@@ -1030,15 +1059,19 @@ ${existingResearchContext}`,
     libraries: Array<{ name: string; context7Id: string; reason: string }>,
     documentContents: Array<{ library: string; content: string }>,
     streamingOptions?: StreamingOptions,
-    retryConfig?: Partial<RetryConfig>,
+    retryConfig?: Partial<RetryConfig>
   ): Promise<string> {
     const prompt = `Create a concise recap of the documentation fetched for these libraries:
 
 Libraries:
-${libraries.map((lib) => `- ${lib.name} (${lib.context7Id}): ${lib.reason}`).join("\n")}
+${libraries
+  .map((lib) => `- ${lib.name} (${lib.context7Id}): ${lib.reason}`)
+  .join("\n")}
 
 Documentation Contents:
-${documentContents.map((doc) => `## ${doc.library}\n${doc.content.substring(0, 500)}...`).join("\n\n")}
+${documentContents
+  .map((doc) => `## ${doc.library}\n${doc.content.substring(0, 500)}...`)
+  .join("\n\n")}
 
 Please provide a 2-3 sentence summary of what documentation is available and how it relates to the task.`;
 
@@ -1050,11 +1083,11 @@ Please provide a 2-3 sentence summary of what documentation is available and how
           "You are a technical writer who creates concise summaries of documentation collections.",
           undefined,
           streamingOptions,
-          { maxAttempts: 1 }, // Disable retries here since we're handling them at the outer level
+          { maxAttempts: 1 } // Disable retries here since we're handling them at the outer level
         );
       },
       retryConfig,
-      "Documentation recap generation",
+      "Documentation recap generation"
     );
   }
 
@@ -1065,7 +1098,7 @@ Please provide a 2-3 sentence summary of what documentation is available and how
     promptOverride?: string,
     userMessage?: string,
     streamingOptions?: StreamingOptions,
-    retryConfig?: Partial<RetryConfig>,
+    retryConfig?: Partial<RetryConfig>
   ): Promise<any> {
     return this.retryHandler.executeWithRetry(
       async () => {
@@ -1085,15 +1118,18 @@ Please provide a 2-3 sentence summary of what documentation is available and how
 
           if (!promptResult.success) {
             throw new Error(
-              `Failed to build task planning prompt: ${promptResult.error}`,
+              `Failed to build task planning prompt: ${promptResult.error}`
             );
           }
 
           prompt = promptResult.prompt!;
         }
 
-        const model = this.modelProvider.getModel({ ...this.modelProvider.getAIConfig(), ...config });
-        
+        const model = this.modelProvider.getModel({
+          ...this.modelProvider.getAIConfig(),
+          ...config,
+        });
+
         // Get MCP tools and merge with filesystem tools
         const mcpTools = await this.context7Client.getMCPTools();
         const allTools = {
@@ -1104,7 +1140,9 @@ Please provide a 2-3 sentence summary of what documentation is available and how
         const result = streamText({
           model,
           tools: allTools, // Context7 MCP tools + filesystem tools
-          system: TASK_PLANNING_SYSTEM_PROMPT + `
+          system:
+            TASK_PLANNING_SYSTEM_PROMPT +
+            `
 
 You have access to filesystem tools that allow you to:
 - readFile: Read the contents of any file in the project
@@ -1136,7 +1174,7 @@ Use these tools to understand the project structure, existing code, and dependen
         return (await result).text;
       },
       retryConfig,
-      "Task planning",
+      "Task planning"
     );
   }
 }

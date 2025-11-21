@@ -41,7 +41,6 @@ export class TaskService {
     aiEnhance?: boolean;
     aiOptions?: AIOptions;
     streamingOptions?: StreamingOptions;
-    callbacks?: ProgressCallback;
   }): Promise<CreateTaskResult> {
     const startTime = Date.now();
 
@@ -49,9 +48,9 @@ export class TaskService {
     let aiMetadata;
 
     if (input.aiEnhance) {
-      input.callbacks?.onProgress?.({
-        type: "progress",
+      hooks.emit("task:progress", {
         message: "Building context for task...",
+        type: "progress",
       });
 
       const context = await getContextBuilder().buildContextForNewTask(
@@ -62,9 +61,9 @@ export class TaskService {
 
       const enhancementAIConfig = buildAIConfig(input.aiOptions);
 
-      input.callbacks?.onProgress?.({
-        type: "progress",
+      hooks.emit("task:progress", {
         message: "Enhancing task with AI documentation...",
+        type: "progress",
       });
 
       const taskDescription = input.content ?? "";
@@ -93,9 +92,9 @@ export class TaskService {
       };
     }
 
-    input.callbacks?.onProgress?.({
-      type: "progress",
+    hooks.emit("task:progress", {
       message: "Saving task...",
+      type: "progress",
     });
 
     const task = await getStorage().createTask(
@@ -113,7 +112,7 @@ export class TaskService {
       aiMetadata
     );
 
-    input.callbacks?.onProgress?.({
+    hooks.emit("task:progress", {
       type: "completed",
       message: "Task created successfully",
     });
@@ -418,14 +417,13 @@ export class TaskService {
   async enhanceTask(
     taskId: string,
     aiOptions?: AIOptions,
-    streamingOptions?: StreamingOptions,
-    callbacks?: ProgressCallback
+    streamingOptions?: StreamingOptions
   ): Promise<EnhanceTaskResult> {
     const startTime = Date.now();
 
-    callbacks?.onProgress?.({
-      type: "started",
+    hooks.emit("task:progress", {
       message: "Starting task enhancement...",
+      type: "started",
     });
 
     const task = await getStorage().getTask(taskId);
@@ -433,9 +431,9 @@ export class TaskService {
       throw new Error(`Task with ID ${taskId} not found`);
     }
 
-    callbacks?.onProgress?.({
-      type: "progress",
+    hooks.emit("task:progress", {
       message: "Building context...",
+      type: "progress",
     });
 
     const context = await getContextBuilder().buildContext(taskId);
@@ -443,9 +441,9 @@ export class TaskService {
 
     const enhancementAIConfig = buildAIConfig(aiOptions);
 
-    callbacks?.onProgress?.({
-      type: "progress",
+    hooks.emit("task:progress", {
       message: "Calling AI for enhancement...",
+      type: "progress",
     });
 
     const enhancedContent =
@@ -460,9 +458,9 @@ export class TaskService {
         context.existingResearch
       );
 
-    callbacks?.onProgress?.({
-      type: "progress",
+    hooks.emit("task:progress", {
       message: "Saving enhanced content...",
+      type: "progress",
     });
 
     const originalLength = task.description?.length || 0;
@@ -498,9 +496,9 @@ export class TaskService {
 
     const duration = Date.now() - startTime;
 
-    callbacks?.onProgress?.({
-      type: "completed",
+    hooks.emit("task:progress", {
       message: "Task enhancement completed",
+      type: "completed",
     });
 
     return {
@@ -526,14 +524,13 @@ export class TaskService {
     promptOverride?: string,
     messageOverride?: string,
     streamingOptions?: StreamingOptions,
-    callbacks?: ProgressCallback,
     enableFilesystemTools?: boolean
   ): Promise<SplitTaskResult> {
     const startTime = Date.now();
 
-    callbacks?.onProgress?.({
-      type: "started",
+    hooks.emit("task:progress", {
       message: "Starting task breakdown...",
+      type: "started",
     });
 
     const task = await getStorage().getTask(taskId);
@@ -549,9 +546,9 @@ export class TaskService {
       );
     }
 
-    callbacks?.onProgress?.({
-      type: "progress",
+    hooks.emit("task:progress", {
       message: "Building context...",
+      type: "progress",
     });
 
     // Build comprehensive context
@@ -563,9 +560,9 @@ export class TaskService {
 
     const breakdownAIConfig = buildAIConfig(aiOptions);
 
-    callbacks?.onProgress?.({
-      type: "progress",
+    hooks.emit("task:progress", {
       message: "Calling AI to break down task...",
+      type: "progress",
     });
 
     // Use AI service to break down the task with enhanced context
@@ -582,9 +579,9 @@ export class TaskService {
       enableFilesystemTools
     );
 
-    callbacks?.onProgress?.({
-      type: "progress",
+    hooks.emit("task:progress", {
       message: `Creating ${subtaskData.length} subtasks...`,
+      type: "progress",
     });
 
     // Create subtasks
@@ -592,13 +589,11 @@ export class TaskService {
     for (let i = 0; i < subtaskData.length; i++) {
       const subtask = subtaskData[i];
 
-      callbacks?.onProgress?.({
-        type: "progress",
+      hooks.emit("task:progress", {
         message: `Creating subtask ${i + 1}/${subtaskData.length}: ${
           subtask.title
         }`,
-        current: i + 1,
-        total: subtaskData.length,
+        type: "progress",
       });
 
       const result = await this.createTask({
@@ -628,9 +623,9 @@ export class TaskService {
 
     const duration = Date.now() - startTime;
 
-    callbacks?.onProgress?.({
-      type: "completed",
+    hooks.emit("task:progress", {
       message: `Task split into ${createdSubtasks.length} subtasks`,
+      type: "completed",
     });
 
     return {
@@ -653,14 +648,13 @@ export class TaskService {
     taskId: string,
     force: boolean = false,
     aiOptions?: AIOptions,
-    streamingOptions?: StreamingOptions,
-    callbacks?: ProgressCallback
+    streamingOptions?: StreamingOptions
   ): Promise<DocumentTaskResult> {
     const startTime = Date.now();
 
-    callbacks?.onProgress?.({
-      type: "started",
+    hooks.emit("task:progress", {
       message: "Analyzing documentation needs...",
+      type: "started",
     });
 
     const task = await getStorage().getTask(taskId);
@@ -670,9 +664,9 @@ export class TaskService {
 
     if (task.documentation && !force) {
       if (getContextBuilder().isDocumentationFresh(task.documentation)) {
-        callbacks?.onProgress?.({
-          type: "info",
+        hooks.emit("task:progress", {
           message: "Documentation is fresh, skipping analysis",
+          type: "info",
         });
 
         return {
@@ -686,9 +680,9 @@ export class TaskService {
       }
     }
 
-    callbacks?.onProgress?.({
-      type: "progress",
+    hooks.emit("task:progress", {
       message: "Building context...",
+      type: "progress",
     });
 
     const context = await getContextBuilder().buildContext(taskId);
@@ -707,9 +701,9 @@ export class TaskService {
     const tasks = await getStorage().getTasks();
     const documentations = tasks.map((task) => task.documentation);
 
-    callbacks?.onProgress?.({
-      type: "progress",
+    hooks.emit("task:progress", {
       message: "Calling AI to analyze documentation needs...",
+      type: "progress",
     });
 
     // First analyze what documentation is needed
@@ -727,9 +721,9 @@ export class TaskService {
     let documentation: TaskDocumentation | undefined;
 
     if (analysis.libraries.length > 0) {
-      callbacks?.onProgress?.({
-        type: "progress",
+      hooks.emit("task:progress", {
         message: `Fetching documentation for ${analysis.libraries.length} libraries...`,
+        type: "progress",
       });
 
       // Build research object from actual libraries
@@ -753,9 +747,9 @@ export class TaskService {
         });
       }
 
-      callbacks?.onProgress?.({
-        type: "progress",
+      hooks.emit("task:progress", {
         message: "Generating documentation recap...",
+        type: "progress",
       });
 
       const recap = await getAIOperations().generateDocumentationRecap(
@@ -777,9 +771,9 @@ export class TaskService {
         research,
       };
 
-      callbacks?.onProgress?.({
-        type: "progress",
+      hooks.emit("task:progress", {
         message: "Saving documentation...",
+        type: "progress",
       });
 
       await getStorage().updateTask(taskId, { documentation });
@@ -787,9 +781,9 @@ export class TaskService {
 
     const duration = Date.now() - startTime;
 
-    callbacks?.onProgress?.({
-      type: "completed",
+    hooks.emit("task:progress", {
       message: "Documentation analysis completed",
+      type: "completed",
     });
 
     return {
@@ -806,14 +800,13 @@ export class TaskService {
   async planTask(
     taskId: string,
     aiOptions?: AIOptions,
-    streamingOptions?: StreamingOptions,
-    callbacks?: ProgressCallback
+    streamingOptions?: StreamingOptions
   ): Promise<PlanTaskResult> {
     const startTime = Date.now();
 
-    callbacks?.onProgress?.({
-      type: "started",
+    hooks.emit("task:progress", {
       message: "Creating implementation plan...",
+      type: "started",
     });
 
     const task = await getStorage().getTask(taskId);
@@ -824,9 +817,9 @@ export class TaskService {
     const aiService = getAIOperations();
     const planAIConfig = buildAIConfig(aiOptions);
 
-    callbacks?.onProgress?.({
-      type: "progress",
+    hooks.emit("task:progress", {
       message: "Building task context...",
+      type: "progress",
     });
 
     // Build task context and details
@@ -854,9 +847,9 @@ export class TaskService {
       });
     }
 
-    callbacks?.onProgress?.({
-      type: "progress",
+    hooks.emit("task:progress", {
       message: "Calling AI to create plan...",
+      type: "progress",
     });
 
     const plan = await aiService.planTask(
@@ -868,9 +861,9 @@ export class TaskService {
       streamingOptions
     );
 
-    callbacks?.onProgress?.({
-      type: "progress",
+    hooks.emit("task:progress", {
       message: "Saving plan...",
+      type: "progress",
     });
 
     // Save the plan to storage
@@ -878,9 +871,9 @@ export class TaskService {
 
     const duration = Date.now() - startTime;
 
-    callbacks?.onProgress?.({
-      type: "completed",
+    hooks.emit("task:progress", {
       message: "Implementation plan created",
+      type: "completed",
     });
 
     const aiConfig = getModelProvider().getAIConfig();

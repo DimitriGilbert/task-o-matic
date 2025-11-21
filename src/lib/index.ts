@@ -25,13 +25,13 @@
  * TaskService - Core task management operations
  * Handles creating, updating, listing, enhancing, splitting, and planning tasks
  */
-export { TaskService } from '../services/tasks';
+export { TaskService } from "../services/tasks";
 
 /**
  * PRDService - Product Requirements Document parsing and processing
  * Handles PRD parsing, task extraction, and PRD improvement
  */
-export { PRDService } from '../services/prd';
+export { PRDService } from "../services/prd";
 
 // ============================================================================
 // Core Types - Type Definitions
@@ -41,17 +41,22 @@ export { PRDService } from '../services/prd';
  * Re-export all types from the types module
  * Includes Task, AIConfig, StreamingOptions, and all related interfaces
  */
-export * from '../types';
+export * from "../types";
 
 /**
  * Re-export callback types
  */
-export type { ProgressCallback } from '../types/callbacks';
+export type { ProgressCallback } from "../types/callbacks";
 
 /**
  * Re-export option types
  */
-export type { CreateTaskOptions, SplitTaskOptions, PlanTaskOptions, EnhanceTaskOptions } from '../types/options';
+export type {
+  CreateTaskOptions,
+  SplitTaskOptions,
+  PlanTaskOptions,
+  EnhanceTaskOptions,
+} from "../types/options";
 
 // ============================================================================
 // Utility Factories - Singleton Service Instances
@@ -66,14 +71,14 @@ export {
   getModelProvider,
   getStorage,
   getContextBuilder,
-  resetServiceInstances
-} from '../utils/ai-service-factory';
+  resetServiceInstances,
+} from "../utils/ai-service-factory";
 
 /**
  * AI configuration builder utility
  */
-export { buildAIConfig } from '../utils/ai-config-builder';
-export type { AIOptions } from '../utils/ai-config-builder';
+export { buildAIConfig } from "../utils/ai-config-builder";
+export type { AIOptions } from "../utils/ai-config-builder";
 
 // ============================================================================
 // Core Classes - Direct Class Exports
@@ -83,32 +88,33 @@ export type { AIOptions } from '../utils/ai-config-builder';
  * LocalStorage - File-based storage abstraction for tasks and metadata
  * Note: This is Node.js file-system based and not compatible with browser environments
  */
-export { LocalStorage } from './storage';
+export { FileSystemStorage } from "./storage/file-system";
+export type { TaskRepository } from "./storage/types";
 
 /**
  * ConfigManager - Configuration management for task-o-matic projects
  */
-export { ConfigManager, configManager } from './config';
+export { ConfigManager, configManager } from "./config";
 
 /**
  * AIOperations - AI service operations wrapper
  */
-export { AIOperations } from './ai-service/ai-operations';
+export { AIOperations } from "./ai-service/ai-operations";
 
 /**
  * ModelProvider - AI model provider abstraction
  */
-export { ModelProvider } from './ai-service/model-provider';
+export { ModelProvider } from "./ai-service/model-provider";
 
 /**
  * ContextBuilder - Task context assembly for AI operations
  */
-export { ContextBuilder } from './context-builder';
+export { ContextBuilder } from "./context-builder";
 
 /**
  * PromptBuilder - Prompt template management
  */
-export { PromptBuilder } from './prompt-builder';
+export { PromptBuilder } from "./prompt-builder";
 
 // ============================================================================
 // Utilities
@@ -117,12 +123,15 @@ export { PromptBuilder } from './prompt-builder';
 /**
  * Stack formatter utility
  */
-export { formatStackInfo } from '../utils/stack-formatter';
+export { formatStackInfo } from "../utils/stack-formatter";
 
 /**
  * Streaming options builders
  */
-export { createStreamingOptions, createStreamingOptionsWithCustomHandlers } from '../utils/streaming-options';
+export {
+  createStreamingOptions,
+  createStreamingOptionsWithCustomHandlers,
+} from "../utils/streaming-options";
 
 // ============================================================================
 // Validation
@@ -131,4 +140,4 @@ export { createStreamingOptions, createStreamingOptionsWithCustomHandlers } from
 /**
  * Validation utilities
  */
-export { isValidAIProvider, runValidations } from './validation';
+export { isValidAIProvider, runValidations } from "./validation";

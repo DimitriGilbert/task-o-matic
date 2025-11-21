@@ -1,22 +1,16 @@
-import {
-  readFileSync,
-  writeFileSync,
-  existsSync,
-  mkdirSync,
-  unlinkSync,
-  statSync,
-  readdirSync,
-} from "fs";
+import { readFile, writeFile, mkdir, unlink, stat, readdir } from "fs/promises";
+import { existsSync } from "fs"; // Keep sync for initialization checks if needed, or switch to async
 import { join, dirname } from "path";
-import { Task, CreateTaskRequest, TaskAIMetadata } from "../types";
-import { configManager } from "./config";
+import { Task, CreateTaskRequest, TaskAIMetadata } from "../../types";
+import { configManager } from "../config";
+import { TaskRepository } from "./types";
 
 interface TasksData {
   tasks: Task[];
   nextId: number;
 }
 
-export class LocalStorage {
+export class FileSystemStorage implements TaskRepository {
   private taskOMatic: string | null = null;
   private tasksFile: string | null = null;
   private initialized = false;
@@ -26,12 +20,6 @@ export class LocalStorage {
   }
 
   public sanitizeForFilename(name: string): string {
-    // console.log('=== SANITIZE DEBUG ===');
-    // console.log('name type:', typeof name);
-    // console.log('name value:', name);
-    // console.log("name length:", name.length);
-    // console.log("====================");
-    // Replace slashes with a safe character and remove other invalid characters
     return name.replace(/[\/\?%*:|"<>]/g, "-");
   }
 
@@ -79,10 +67,10 @@ export class LocalStorage {
     this.initialized = true;
   }
 
-  private ensureDirectories(): void {
+  private async ensureDirectories(): Promise<void> {
     this.ensureInitialized();
     if (!this.taskOMatic) {
-      throw new Error("LocalStorage not initialized");
+      throw new Error("FileSystemStorage not initialized");
     }
 
     const dirs = [
@@ -94,22 +82,32 @@ export class LocalStorage {
       "docs/tasks",
       "plans",
     ];
-    dirs.forEach((dir) => {
+
+    for (const dir of dirs) {
       const fullPath = join(this.taskOMatic!, dir);
-      if (!existsSync(fullPath)) {
-        mkdirSync(fullPath, { recursive: true });
+      try {
+        await mkdir(fullPath, { recursive: true });
+      } catch (error: any) {
+        if (error.code !== "EEXIST") throw error;
       }
-    });
+    }
   }
 
-  private loadTasksData(): TasksData {
+  private async loadTasksData(): Promise<TasksData> {
     this.ensureInitialized();
-    if (!this.tasksFile || !existsSync(this.tasksFile)) {
+    if (!this.tasksFile) {
       return { tasks: [], nextId: 1 };
     }
 
     try {
-      const content = readFileSync(this.tasksFile, "utf-8");
+      // Check if file exists using access or stat, or just try reading
+      await stat(this.tasksFile);
+    } catch {
+      return { tasks: [], nextId: 1 };
+    }
+
+    try {
+      const content = await readFile(this.tasksFile, "utf-8");
       return JSON.parse(content);
     } catch (error) {
       console.error("Failed to read tasks file:", error);
@@ -117,23 +115,25 @@ export class LocalStorage {
     }
   }
 
-  private saveTasksData(data: TasksData): void {
+  private async saveTasksData(data: TasksData): Promise<void> {
     this.ensureInitialized();
     if (!this.tasksFile) {
-      throw new Error("LocalStorage not initialized");
+      throw new Error("FileSystemStorage not initialized");
     }
     try {
-      writeFileSync(this.tasksFile, JSON.stringify(data, null, 2));
+      await writeFile(this.tasksFile, JSON.stringify(data, null, 2));
     } catch (error) {
       throw new Error(
-        `Failed to save tasks data: ${error instanceof Error ? error.message : "Unknown error"}`,
+        `Failed to save tasks data: ${
+          error instanceof Error ? error.message : "Unknown error"
+        }`
       );
     }
   }
 
   private findTaskInHierarchy(
     tasks: Task[],
-    id: string,
+    id: string
   ): { task: Task | null; parent: Task | null; index: number } {
     for (let i = 0; i < tasks.length; i++) {
       const task = tasks[i];
@@ -164,34 +164,33 @@ export class LocalStorage {
 
   // Tasks
   async getTasks(): Promise<Task[]> {
-    const data = this.loadTasksData();
+    const data = await this.loadTasksData();
     return this.flattenTasks(data.tasks);
   }
 
   async getTopLevelTasks(): Promise<Task[]> {
-    const data = this.loadTasksData();
+    const data = await this.loadTasksData();
     return data.tasks;
   }
 
   async getTask(id: string): Promise<Task | null> {
     this.validateTaskId(id);
 
-    const data = this.loadTasksData();
+    const data = await this.loadTasksData();
     const result = this.findTaskInHierarchy(data.tasks, id);
     return result.task;
   }
 
   async createTask(
     task: CreateTaskRequest,
-    aiMetadata?: TaskAIMetadata,
+    aiMetadata?: TaskAIMetadata
   ): Promise<Task> {
     this.validateTaskRequest(task);
-    this.ensureDirectories(); // Ensure directories exist when actually creating tasks
-    const data = this.loadTasksData();
+    await this.ensureDirectories();
+    const data = await this.loadTasksData();
     let id: string;
 
     if (task.parentId) {
-      // Generate dot notation ID for subtask
       const parentResult = this.findTaskInHierarchy(data.tasks, task.parentId);
       if (!parentResult.task) {
         throw new Error(`Parent task with ID ${task.parentId} not found`);
@@ -200,19 +199,15 @@ export class LocalStorage {
       const siblingCount = (parentResult.task.subtasks?.length || 0) + 1;
       id = `${task.parentId}.${siblingCount}`;
     } else {
-      // Check if task has a predefined ID (from AI generation)
       if (task.id && typeof task.id === "string") {
         id = task.id;
       } else {
-        // Top-level task - use incremental ID
         id = data.nextId.toString();
         data.nextId++;
       }
     }
 
-    // Validate dependencies if provided
     if (task.dependencies && task.dependencies.length > 0) {
-      // Check if all dependency tasks exist
       for (const depId of task.dependencies) {
         const depExists = this.taskExists(data.tasks, depId);
         if (!depExists) {
@@ -220,7 +215,6 @@ export class LocalStorage {
         }
       }
 
-      // Check for circular dependencies
       if (
         this.wouldCreateCircularDependency(data.tasks, id, task.dependencies)
       ) {
@@ -228,17 +222,13 @@ export class LocalStorage {
       }
     }
 
-    // Handle content separation
     let contentFile: string | undefined;
     let description = task.description || "";
 
     if (task.content && task.content.length > 200) {
-      // Save long content to MD file
       contentFile = await this.saveTaskContent(id, task.content);
-      // Keep first 200 chars as description
       description = task.description || task.content.substring(0, 200) + "...";
     } else if (task.content) {
-      // Short content goes in description
       description = task.description || task.content;
     }
 
@@ -258,7 +248,6 @@ export class LocalStorage {
     };
 
     if (task.parentId) {
-      // Find parent and add as subtask
       const parentResult = this.findTaskInHierarchy(data.tasks, task.parentId);
       if (parentResult.task) {
         if (!parentResult.task.subtasks) {
@@ -267,13 +256,11 @@ export class LocalStorage {
         parentResult.task.subtasks.push(newTask);
       }
     } else {
-      // Top-level task
       data.tasks.push(newTask);
     }
 
-    this.saveTasksData(data);
+    await this.saveTasksData(data);
 
-    // Save AI metadata separately if provided
     if (aiMetadata) {
       await this.saveTaskAIMetadata({
         ...aiMetadata,
@@ -291,7 +278,7 @@ export class LocalStorage {
       throw new Error("Updates must be a valid object");
     }
 
-    const data = this.loadTasksData();
+    const data = await this.loadTasksData();
     const result = this.findTaskInHierarchy(data.tasks, id);
 
     if (!result.task) return null;
@@ -304,61 +291,53 @@ export class LocalStorage {
     };
 
     if (result.parent) {
-      // Update in parent's subtasks
       const parentIndex = result.parent.subtasks!.findIndex((t) => t.id === id);
       result.parent.subtasks![parentIndex] = updatedTask;
     } else {
-      // Update top-level task
       const taskIndex = data.tasks.findIndex((t) => t.id === id);
       data.tasks[taskIndex] = updatedTask;
     }
 
-    this.saveTasksData(data);
+    await this.saveTasksData(data);
     return updatedTask;
   }
 
   async deleteTask(id: string): Promise<boolean> {
     this.validateTaskId(id);
 
-    const data = this.loadTasksData();
+    const data = await this.loadTasksData();
     const result = this.findTaskInHierarchy(data.tasks, id);
 
     if (!result.task) return false;
 
     if (result.parent) {
-      // Remove from parent's subtasks
       const parentIndex = result.parent.subtasks!.findIndex((t) => t.id === id);
       result.parent.subtasks!.splice(parentIndex, 1);
     } else {
-      // Remove top-level task
       const taskIndex = data.tasks.findIndex((t) => t.id === id);
       data.tasks.splice(taskIndex, 1);
     }
 
-    this.saveTasksData(data);
+    await this.saveTasksData(data);
     return true;
   }
 
   async getSubtasks(parentId: string): Promise<Task[]> {
-    const data = this.loadTasksData();
+    const data = await this.loadTasksData();
     const result = this.findTaskInHierarchy(data.tasks, parentId);
     return result.task?.subtasks || [];
   }
 
-  // Helper methods for dependency validation
   private taskExists(tasks: Task[], taskId: string): boolean {
-    // Check for exact match first
     const exactMatch = this.findTaskInHierarchy(tasks, taskId).task;
     if (exactMatch) return true;
 
-    // Check for task- prefix match (AI generates "1" but stored as "task-1")
     const taskPrefixedId = taskId.startsWith("task-")
       ? taskId.substring(5)
       : `task-${taskId}`;
     const prefixedMatch = this.findTaskInHierarchy(tasks, taskPrefixedId).task;
     if (prefixedMatch) return true;
 
-    // Check reverse (stored as "1" but looking for "task-1")
     if (taskId.startsWith("task-")) {
       const numericId = taskId.substring(5);
       const numericMatch = this.findTaskInHierarchy(tasks, numericId).task;
@@ -371,17 +350,17 @@ export class LocalStorage {
   private wouldCreateCircularDependency(
     tasks: Task[],
     newTaskId: string,
-    dependencies: string[],
+    dependencies: string[]
   ): boolean {
     const visited = new Set<string>();
 
     const checkCircular = (taskId: string): boolean => {
       if (visited.has(taskId)) {
-        return true; // Circular dependency detected
+        return true;
       }
 
       if (taskId === newTaskId) {
-        return true; // Found circular reference back to new task
+        return true;
       }
 
       visited.add(taskId);
@@ -399,7 +378,6 @@ export class LocalStorage {
       return false;
     };
 
-    // Check each dependency chain
     for (const depId of dependencies) {
       visited.clear();
       if (checkCircular(depId)) {
@@ -410,23 +388,24 @@ export class LocalStorage {
     return false;
   }
 
-  // AI Metadata
   private getAIMetadataFile(): string {
     this.ensureInitialized();
     if (!this.taskOMatic) {
-      throw new Error("LocalStorage not initialized");
+      throw new Error("FileSystemStorage not initialized");
     }
     return join(this.taskOMatic, "ai-metadata.json");
   }
 
-  private loadAIMetadata(): TaskAIMetadata[] {
+  private async loadAIMetadata(): Promise<TaskAIMetadata[]> {
     const metadataFile = this.getAIMetadataFile();
-    if (!existsSync(metadataFile)) {
+    try {
+      await stat(metadataFile);
+    } catch {
       return [];
     }
 
     try {
-      const content = readFileSync(metadataFile, "utf-8");
+      const content = await readFile(metadataFile, "utf-8");
       return JSON.parse(content);
     } catch (error) {
       console.error("Failed to read AI metadata file:", error);
@@ -434,20 +413,20 @@ export class LocalStorage {
     }
   }
 
-  private saveAIMetadata(metadata: TaskAIMetadata[]): void {
+  private async saveAIMetadata(metadata: TaskAIMetadata[]): Promise<void> {
     const metadataFile = this.getAIMetadataFile();
-    writeFileSync(metadataFile, JSON.stringify(metadata, null, 2));
+    await writeFile(metadataFile, JSON.stringify(metadata, null, 2));
   }
 
   async getTaskAIMetadata(taskId: string): Promise<TaskAIMetadata | null> {
-    const metadata = this.loadAIMetadata();
+    const metadata = await this.loadAIMetadata();
     return metadata.find((meta) => meta.taskId === taskId) || null;
   }
 
   async saveTaskAIMetadata(metadata: TaskAIMetadata): Promise<void> {
-    const allMetadata = this.loadAIMetadata();
+    const allMetadata = await this.loadAIMetadata();
     const existingIndex = allMetadata.findIndex(
-      (meta) => meta.taskId === metadata.taskId,
+      (meta) => meta.taskId === metadata.taskId
     );
 
     if (existingIndex >= 0) {
@@ -456,34 +435,35 @@ export class LocalStorage {
       allMetadata.push(metadata);
     }
 
-    this.saveAIMetadata(allMetadata);
+    await this.saveAIMetadata(allMetadata);
   }
 
   async deleteTaskAIMetadata(taskId: string): Promise<void> {
-    const metadata = this.loadAIMetadata();
+    const metadata = await this.loadAIMetadata();
     const filtered = metadata.filter((meta) => meta.taskId !== taskId);
-    this.saveAIMetadata(filtered);
+    await this.saveAIMetadata(filtered);
   }
 
-  // Task Content Files
   async saveTaskContent(taskId: string, content: string): Promise<string> {
     this.validateTaskId(taskId);
     if (typeof content !== "string") {
       throw new Error("Content must be a string");
     }
 
-    this.ensureDirectories(); // Ensure directories exist when saving content
+    await this.ensureDirectories();
     if (!this.taskOMatic) {
-      throw new Error("LocalStorage not initialized");
+      throw new Error("FileSystemStorage not initialized");
     }
     const contentFileName = `tasks/${taskId}.md`;
     const contentFilePath = join(this.taskOMatic, contentFileName);
 
     try {
-      writeFileSync(contentFilePath, content, "utf-8");
+      await writeFile(contentFilePath, content, "utf-8");
     } catch (error) {
       throw new Error(
-        `Failed to save task content: ${error instanceof Error ? error.message : "Unknown error"}`,
+        `Failed to save task content: ${
+          error instanceof Error ? error.message : "Unknown error"
+        }`
       );
     }
     return contentFileName;
@@ -491,25 +471,27 @@ export class LocalStorage {
 
   async saveEnhancedTaskContent(
     taskId: string,
-    content: string,
+    content: string
   ): Promise<string> {
     this.validateTaskId(taskId);
     if (typeof content !== "string") {
       throw new Error("Content must be a string");
     }
 
-    this.ensureDirectories(); // Ensure directories exist when saving content
+    await this.ensureDirectories();
     if (!this.taskOMatic) {
-      throw new Error("LocalStorage not initialized");
+      throw new Error("FileSystemStorage not initialized");
     }
     const contentFileName = `tasks/enhanced/${taskId}.md`;
     const contentFilePath = join(this.taskOMatic, contentFileName);
 
     try {
-      writeFileSync(contentFilePath, content, "utf-8");
+      await writeFile(contentFilePath, content, "utf-8");
     } catch (error) {
       throw new Error(
-        `Failed to save enhanced task content: ${error instanceof Error ? error.message : "Unknown error"}`,
+        `Failed to save enhanced task content: ${
+          error instanceof Error ? error.message : "Unknown error"
+        }`
       );
     }
     return contentFileName;
@@ -519,17 +501,19 @@ export class LocalStorage {
     this.validateTaskId(taskId);
 
     if (!this.taskOMatic) {
-      throw new Error("LocalStorage not initialized");
+      throw new Error("FileSystemStorage not initialized");
     }
     const contentFileName = `tasks/${taskId}.md`;
     const contentFilePath = join(this.taskOMatic, contentFileName);
 
-    if (!existsSync(contentFilePath)) {
+    try {
+      await stat(contentFilePath);
+    } catch {
       return null;
     }
 
     try {
-      return readFileSync(contentFilePath, "utf-8");
+      return await readFile(contentFilePath, "utf-8");
     } catch (error) {
       console.error(`Failed to read task content for ${taskId}:`, error);
       return null;
@@ -540,89 +524,94 @@ export class LocalStorage {
     this.validateTaskId(taskId);
 
     if (!this.taskOMatic) {
-      throw new Error("LocalStorage not initialized");
+      throw new Error("FileSystemStorage not initialized");
     }
     const contentFileName = `tasks/${taskId}.md`;
     const contentFilePath = join(this.taskOMatic, contentFileName);
 
-    if (existsSync(contentFilePath)) {
-      try {
-        unlinkSync(contentFilePath);
-      } catch (error) {
-        console.error(`Failed to delete task content for ${taskId}:`, error);
-      }
+    try {
+      await stat(contentFilePath);
+      await unlink(contentFilePath);
+    } catch (error) {
+      // Ignore if file doesn't exist
     }
   }
 
   async saveContext7Documentation(
     library: string,
     query: string,
-    content: string,
+    content: string
   ): Promise<string> {
-    this.ensureDirectories(); // Ensure .task-o-matic/docs exists
+    await this.ensureDirectories();
     if (!this.taskOMatic) {
-      throw new Error("LocalStorage not initialized");
+      throw new Error("FileSystemStorage not initialized");
     }
 
     const sanitizedLibrary = this.sanitizeForFilename(library);
     const sanitizedQuery = this.sanitizeForFilename(query);
 
     const libraryDir = join(this.taskOMatic, "docs", sanitizedLibrary);
-    if (!existsSync(libraryDir)) {
-      mkdirSync(libraryDir, { recursive: true });
+    try {
+      await mkdir(libraryDir, { recursive: true });
+    } catch (error: any) {
+      if (error.code !== "EEXIST") throw error;
     }
 
     const filePath = join(libraryDir, `${sanitizedQuery}.md`);
-    writeFileSync(filePath, content, "utf-8");
+    await writeFile(filePath, content, "utf-8");
 
-    // Return the relative path for storage
     return `docs/${sanitizedLibrary}/${sanitizedQuery}.md`;
   }
 
   async getDocumentationFile(fileName: string): Promise<string | null> {
     if (!this.taskOMatic) {
-      throw new Error("LocalStorage not initialized");
+      throw new Error("FileSystemStorage not initialized");
     }
     const filePath = join(this.taskOMatic, "docs", fileName);
 
-    if (!existsSync(filePath)) {
+    try {
+      await stat(filePath);
+    } catch {
       return null;
     }
 
     try {
-      return readFileSync(filePath, "utf-8");
+      return await readFile(filePath, "utf-8");
     } catch (error) {
       console.error(`Failed to read documentation file ${fileName}:`, error);
       return null;
     }
   }
 
-  // List all available documentation files
   async listDocumentationFiles(): Promise<string[]> {
     this.ensureInitialized();
     try {
       const docsDir = join(this.taskOMatic!, "docs");
 
-      if (!existsSync(docsDir)) {
+      try {
+        await stat(docsDir);
+      } catch {
         return [];
       }
 
       const files: string[] = [];
-      const scanDirectory = (dir: string, basePath: string = "") => {
-        const items = readdirSync(dir);
+
+      const scanDirectory = async (dir: string, basePath: string = "") => {
+        const items = await readdir(dir);
         for (const item of items) {
           const fullPath = join(dir, item);
           const relativePath = basePath ? join(basePath, item) : item;
 
-          if (statSync(fullPath).isDirectory() && item !== "_cache") {
-            scanDirectory(fullPath, relativePath);
+          const stats = await stat(fullPath);
+          if (stats.isDirectory() && item !== "_cache") {
+            await scanDirectory(fullPath, relativePath);
           } else if (item.endsWith(".md") || item.endsWith(".txt")) {
             files.push(relativePath);
           }
         }
       };
 
-      scanDirectory(docsDir);
+      await scanDirectory(docsDir);
       return files;
     } catch (error) {
       console.error("Failed to list documentation files:", error);
@@ -630,78 +619,72 @@ export class LocalStorage {
     }
   }
 
-  // Migration: Separate existing task content into MD files
   async migrateTaskContent(): Promise<number> {
-    const data = this.loadTasksData();
+    const data = await this.loadTasksData();
     let migratedCount = 0;
 
-    const migrateTask = (task: Task): Task => {
+    const migrateTask = async (task: Task): Promise<Task> => {
       let updatedTask = { ...task };
 
-      // Check if task has old content property and no contentFile
-      if ("content" in task && task.content && !task.contentFile) {
-        const oldContent = task.content;
+      if ("content" in task && (task as any).content && !task.contentFile) {
+        const oldContent = (task as any).content;
 
         if (oldContent.length > 200) {
-          // Move long content to MD file
           if (!this.taskOMatic) {
-            throw new Error("LocalStorage not initialized");
+            throw new Error("FileSystemStorage not initialized");
           }
           const contentFile = `tasks/${task.id}.md`;
           const contentFilePath = join(this.taskOMatic, contentFile);
-          writeFileSync(contentFilePath, oldContent, "utf-8");
+          await writeFile(contentFilePath, oldContent, "utf-8");
 
           updatedTask.contentFile = contentFile;
           updatedTask.description =
             task.description || oldContent.substring(0, 200) + "...";
         } else {
-          // Keep short content as description
           updatedTask.description = task.description || oldContent;
         }
 
-        // Remove old content property
-        const { content: _, ...taskWithoutContent } = updatedTask;
+        const { content: _, ...taskWithoutContent } = updatedTask as any;
         updatedTask = taskWithoutContent;
         migratedCount++;
       }
 
-      // Migrate subtasks
       if (task.subtasks) {
-        updatedTask.subtasks = task.subtasks.map(migrateTask);
+        updatedTask.subtasks = await Promise.all(
+          task.subtasks.map(migrateTask)
+        );
       }
 
       return updatedTask;
     };
 
-    // Process all tasks
-    data.tasks = data.tasks.map(migrateTask);
+    data.tasks = await Promise.all(data.tasks.map(migrateTask));
 
     if (migratedCount > 0) {
-      this.saveTasksData(data);
+      await this.saveTasksData(data);
     }
 
     return migratedCount;
   }
 
-  // Cleanup utilities
   async cleanupOrphanedContent(): Promise<number> {
-    const data = this.loadTasksData();
+    const data = await this.loadTasksData();
     const allTasks = this.flattenTasks(data.tasks);
     const validContentFiles = new Set(
       allTasks
         .filter((task) => task.contentFile)
-        .map((task) => task.contentFile!),
+        .map((task) => task.contentFile!)
     );
 
     if (!this.taskOMatic) {
-      throw new Error("LocalStorage not initialized");
+      throw new Error("FileSystemStorage not initialized");
     }
 
     const tasksDir = join(this.taskOMatic, "tasks");
     let cleanedCount = 0;
 
     try {
-      const files = readdirSync(tasksDir);
+      const files = await readdir(tasksDir);
 
       for (const file of files) {
         if (file.endsWith(".md")) {
@@ -709,7 +692,7 @@ export class LocalStorage {
           if (!validContentFiles.has(contentFile)) {
             const filePath = join(tasksDir, file);
             try {
-              unlinkSync(filePath);
+              await unlink(filePath);
               cleanedCount++;
               console.log(`Cleaned up orphaned content file: ${file}`);
             } catch (error) {
@@ -732,11 +715,9 @@ export class LocalStorage {
     const issues: string[] = [];
 
     try {
-      // Check if directories exist
-      this.ensureDirectories();
+      await this.ensureDirectories();
 
-      // Validate tasks data structure
-      const data = this.loadTasksData();
+      const data = await this.loadTasksData();
       if (!Array.isArray(data.tasks)) {
         issues.push("Tasks data is not an array");
       }
@@ -745,17 +726,15 @@ export class LocalStorage {
         issues.push("Invalid nextId in tasks data");
       }
 
-      // Check for duplicate task IDs
       const allTasks = this.flattenTasks(data.tasks);
       const taskIds = allTasks.map((task) => task.id);
       const duplicateIds = taskIds.filter(
-        (id, index) => taskIds.indexOf(id) !== index,
+        (id, index) => taskIds.indexOf(id) !== index
       );
       if (duplicateIds.length > 0) {
         issues.push(`Duplicate task IDs found: ${duplicateIds.join(", ")}`);
       }
 
-      // Check for invalid dependencies
       for (const task of allTasks) {
         if (task.dependencies) {
           for (const depId of task.dependencies) {
@@ -767,7 +746,9 @@ export class LocalStorage {
       }
     } catch (error) {
       issues.push(
-        `Storage validation error: ${error instanceof Error ? error.message : "Unknown error"}`,
+        `Storage validation error: ${
+          error instanceof Error ? error.message : "Unknown error"
+        }`
       );
     }
 
@@ -777,16 +758,15 @@ export class LocalStorage {
     };
   }
 
-  // Plan storage methods
   async savePlan(taskId: string, plan: string): Promise<void> {
     this.validateTaskId(taskId);
     this.ensureInitialized();
 
     if (!this.taskOMatic) {
-      throw new Error("LocalStorage not initialized");
+      throw new Error("FileSystemStorage not initialized");
     }
 
-    const planFile = join(this.taskOMatic, "plans", `${taskId}.md`);
+    const planFile = join(this.taskOMatic, "plans", `${taskId}.json`);
 
     try {
       const planData = {
@@ -796,36 +776,42 @@ export class LocalStorage {
         updatedAt: Date.now(),
       };
 
-      writeFileSync(planFile, JSON.stringify(planData, null, 2));
+      await writeFile(planFile, JSON.stringify(planData, null, 2));
     } catch (error) {
       throw new Error(
-        `Failed to save plan for task ${taskId}: ${error instanceof Error ? error.message : "Unknown error"}`,
+        `Failed to save plan for task ${taskId}: ${
+          error instanceof Error ? error.message : "Unknown error"
+        }`
       );
     }
   }
 
   async getPlan(
-    taskId: string,
+    taskId: string
   ): Promise<{ plan: string; createdAt: number; updatedAt: number } | null> {
     this.validateTaskId(taskId);
     this.ensureInitialized();
 
     if (!this.taskOMatic) {
-      throw new Error("LocalStorage not initialized");
+      throw new Error("FileSystemStorage not initialized");
     }
 
     const planFile = join(this.taskOMatic, "plans", `${taskId}.json`);
 
-    if (!existsSync(planFile)) {
+    try {
+      await stat(planFile);
+    } catch {
       return null;
     }
 
     try {
-      const content = readFileSync(planFile, "utf-8");
+      const content = await readFile(planFile, "utf-8");
       return JSON.parse(content);
     } catch (error) {
       throw new Error(
-        `Failed to read plan for task ${taskId}: ${error instanceof Error ? error.message : "Unknown error"}`,
+        `Failed to read plan for task ${taskId}: ${
+          error instanceof Error ? error.message : "Unknown error"
+        }`
       );
     }
   }
@@ -841,12 +827,14 @@ export class LocalStorage {
     this.ensureInitialized();
 
     if (!this.taskOMatic) {
-      throw new Error("LocalStorage not initialized");
+      throw new Error("FileSystemStorage not initialized");
     }
 
     const plansDir = join(this.taskOMatic, "plans");
 
-    if (!existsSync(plansDir)) {
+    try {
+      await stat(plansDir);
+    } catch {
       return [];
     }
 
@@ -858,7 +846,7 @@ export class LocalStorage {
         updatedAt: number;
       }> = [];
 
-      const files = readdirSync(plansDir);
+      const files = await readdir(plansDir);
 
       for (const file of files) {
         if (file.endsWith(".json")) {
@@ -875,10 +863,12 @@ export class LocalStorage {
         }
       }
 
-      return plans.sort((a, b) => b.updatedAt - a.updatedAt); // Most recent first
+      return plans.sort((a, b) => b.updatedAt - a.updatedAt);
     } catch (error) {
       throw new Error(
-        `Failed to list plans: ${error instanceof Error ? error.message : "Unknown error"}`,
+        `Failed to list plans: ${
+          error instanceof Error ? error.message : "Unknown error"
+        }`
       );
     }
   }
@@ -888,47 +878,44 @@ export class LocalStorage {
     this.ensureInitialized();
 
     if (!this.taskOMatic) {
-      throw new Error("LocalStorage not initialized");
+      throw new Error("FileSystemStorage not initialized");
     }
 
     const planFile = join(this.taskOMatic, "plans", `${taskId}.json`);
 
-    if (!existsSync(planFile)) {
-      return false;
-    }
-
     try {
-      unlinkSync(planFile);
+      await stat(planFile);
+      await unlink(planFile);
       return true;
     } catch (error) {
-      throw new Error(
-        `Failed to delete plan for task ${taskId}: ${error instanceof Error ? error.message : "Unknown error"}`,
-      );
+      return false;
     }
   }
 
   async saveTaskDocumentation(
     taskId: string,
-    documentation: string,
+    documentation: string
   ): Promise<string> {
     this.validateTaskId(taskId);
     if (typeof documentation !== "string") {
       throw new Error("Documentation must be a string");
     }
 
-    this.ensureDirectories(); // Ensure docs/tasks directory exists
+    await this.ensureDirectories();
     if (!this.taskOMatic) {
-      throw new Error("LocalStorage not initialized");
+      throw new Error("FileSystemStorage not initialized");
     }
 
     const documentationFileName = `docs/tasks/${taskId}.md`;
     const documentationFilePath = join(this.taskOMatic, documentationFileName);
 
     try {
-      writeFileSync(documentationFilePath, documentation, "utf-8");
+      await writeFile(documentationFilePath, documentation, "utf-8");
     } catch (error) {
       throw new Error(
-        `Failed to save task documentation: ${error instanceof Error ? error.message : "Unknown error"}`,
+        `Failed to save task documentation: ${
+          error instanceof Error ? error.message : "Unknown error"
+        }`
       );
     }
     return documentationFileName;
@@ -938,18 +925,20 @@ export class LocalStorage {
     this.validateTaskId(taskId);
 
     if (!this.taskOMatic) {
-      throw new Error("LocalStorage not initialized");
+      throw new Error("FileSystemStorage not initialized");
     }
 
     const documentationFileName = `docs/tasks/${taskId}.md`;
     const documentationFilePath = join(this.taskOMatic, documentationFileName);
 
-    if (!existsSync(documentationFilePath)) {
+    try {
+      await stat(documentationFilePath);
+    } catch {
       return null;
     }
 
     try {
-      return readFileSync(documentationFilePath, "utf-8");
+      return await readFile(documentationFilePath, "utf-8");
     } catch (error) {
       console.error(`Failed to read task documentation for ${taskId}:`, error);
       return null;

@@ -6,6 +6,7 @@ export type TaskEventType =
   | "task:updated"
   | "task:deleted"
   | "task:status-changed"
+  | "task:progress"
   | "execution:start"
   | "execution:end"
   | "execution:error";
@@ -16,6 +17,7 @@ export interface TaskEventPayloads {
   "task:updated": { task: Task; changes: Partial<Task> };
   "task:deleted": { taskId: string };
   "task:status-changed": { task: Task; oldStatus: string; newStatus: string };
+  "task:progress": { taskId?: string; message: string; type?: string };
   "execution:start": { taskId: string; tool: string };
   "execution:end": { taskId: string; success: boolean };
   "execution:error": { taskId: string; error: Error };

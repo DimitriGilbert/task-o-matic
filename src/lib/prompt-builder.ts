@@ -2,6 +2,7 @@ import { PromptRegistry, PromptMetadata } from "./prompt-registry";
 import { readFileSync, existsSync, readdirSync, statSync } from "fs";
 import { configManager } from "./config";
 import { ContextBuilder } from "./context-builder";
+import { getContextBuilder } from "../utils/ai-service-factory";
 import { join } from "path";
 
 export interface PromptBuilderOptions {
@@ -51,7 +52,9 @@ export class PromptBuilder {
     if (!validation.valid) {
       return {
         success: false,
-        error: `Missing required variables: ${validation.missingRequired.join(", ")}`,
+        error: `Missing required variables: ${validation.missingRequired.join(
+          ", "
+        )}`,
         missingVariables: validation.missingRequired,
       };
     }
@@ -59,7 +62,9 @@ export class PromptBuilder {
     // Log missing optional variables for user awareness
     if (validation.missingOptional.length > 0) {
       console.warn(
-        `Note: Missing optional variables: ${validation.missingOptional.join(", ")}`,
+        `Note: Missing optional variables: ${validation.missingOptional.join(
+          ", "
+        )}`
       );
     }
 
@@ -78,12 +83,14 @@ export class PromptBuilder {
       if (unreplacedVars && unreplacedVars.length > 0) {
         const varNames = unreplacedVars.map((v) => v.slice(1, -1));
         const optionalUnreplaced = varNames.filter((v) =>
-          metadata.optionalVariables.includes(v),
+          metadata.optionalVariables.includes(v)
         );
 
         if (optionalUnreplaced.length > 0) {
           console.warn(
-            `Note: Optional variables not replaced: ${optionalUnreplaced.join(", ")}`,
+            `Note: Optional variables not replaced: ${optionalUnreplaced.join(
+              ", "
+            )}`
           );
         }
       }
@@ -96,7 +103,9 @@ export class PromptBuilder {
     } catch (error) {
       return {
         success: false,
-        error: `Error building prompt: ${error instanceof Error ? error.message : "Unknown error"}`,
+        error: `Error building prompt: ${
+          error instanceof Error ? error.message : "Unknown error"
+        }`,
       };
     }
   }
@@ -113,7 +122,7 @@ export class PromptBuilder {
    */
   static getPromptMetadata(
     name: string,
-    type?: "system" | "user",
+    type?: "system" | "user"
   ): PromptMetadata | null {
     const promptName = type === "system" ? `${name}-system` : name;
     return PromptRegistry.getPrompt(promptName) || null;
@@ -134,12 +143,12 @@ export class PromptBuilder {
    */
   static async autoDetectPRDContent(): Promise<string | undefined> {
     try {
-      const contextBuilder = new ContextBuilder();
+      const contextBuilder = getContextBuilder();
 
       // Build context for a dummy task to get PRD content
       const context = await contextBuilder.buildContextForNewTask(
         "Dummy Task",
-        "For PRD detection",
+        "For PRD detection"
       );
 
       return context.prdContent;
@@ -155,7 +164,7 @@ export class PromptBuilder {
   static async buildTaskContext(
     taskTitle: string,
     content?: string,
-    filePath?: string,
+    filePath?: string
   ): Promise<string> {
     let taskDescription = "";
 
@@ -171,10 +180,10 @@ export class PromptBuilder {
     // Use ContextBuilder to get rich context if we have a title
     if (taskTitle) {
       try {
-        const contextBuilder = new ContextBuilder();
+        const contextBuilder = getContextBuilder();
         const context = await contextBuilder.buildContextForNewTask(
           taskTitle,
-          taskDescription,
+          taskDescription
         );
 
         // Return formatted context instead of just description
@@ -182,7 +191,7 @@ export class PromptBuilder {
       } catch (error) {
         console.warn(
           "Could not build rich task context, using basic description:",
-          error,
+          error
         );
         return taskDescription;
       }
@@ -200,12 +209,12 @@ export class PromptBuilder {
       const workDir = projectPath || process.cwd();
       configManager.setWorkingDirectory(workDir);
 
-      const contextBuilder = new ContextBuilder();
+      const contextBuilder = getContextBuilder();
 
       // Build context for a dummy task to get stack info
       const context = await contextBuilder.buildContextForNewTask(
         "Dummy Task",
-        "For stack detection",
+        "For stack detection"
       );
 
       if (context.stack && context.stack._source === "file") {
@@ -251,10 +260,18 @@ export class PromptBuilder {
 
         contextParts.push(`\n**Dependencies:**`);
         if (deps.length > 0) {
-          contextParts.push(`- Production: ${deps.slice(0, 10).join(", ")}${deps.length > 10 ? ` (+${deps.length - 10} more)` : ""}`);
+          contextParts.push(
+            `- Production: ${deps.slice(0, 10).join(", ")}${
+              deps.length > 10 ? ` (+${deps.length - 10} more)` : ""
+            }`
+          );
         }
         if (devDeps.length > 0) {
-          contextParts.push(`- Development: ${devDeps.slice(0, 10).join(", ")}${devDeps.length > 10 ? ` (+${devDeps.length - 10} more)` : ""}`);
+          contextParts.push(
+            `- Development: ${devDeps.slice(0, 10).join(", ")}${
+              devDeps.length > 10 ? ` (+${devDeps.length - 10} more)` : ""
+            }`
+          );
         }
 
         if (packageJson.scripts) {
@@ -283,12 +300,20 @@ export class PromptBuilder {
       }
 
       // Detect configuration files
-      const configFiles = files.filter((f) =>
-        f.match(/\.(config|rc)\.(js|ts|json|yaml|yml)$/) ||
-        ["tsconfig.json", "next.config.js", "vite.config.ts", "tailwind.config.js"].includes(f)
+      const configFiles = files.filter(
+        (f) =>
+          f.match(/\.(config|rc)\.(js|ts|json|yaml|yml)$/) ||
+          [
+            "tsconfig.json",
+            "next.config.js",
+            "vite.config.ts",
+            "tailwind.config.js",
+          ].includes(f)
       );
       if (configFiles.length > 0) {
-        contextParts.push(`\n**Configuration Files:** ${configFiles.join(", ")}`);
+        contextParts.push(
+          `\n**Configuration Files:** ${configFiles.join(", ")}`
+        );
       }
     } catch (error) {
       console.warn("Could not read project structure:", error);
@@ -296,13 +321,22 @@ export class PromptBuilder {
 
     // Detect frameworks and tools
     const detectedTools: string[] = [];
-    if (existsSync(join(projectPath, "next.config.js")) || existsSync(join(projectPath, "next.config.ts"))) {
+    if (
+      existsSync(join(projectPath, "next.config.js")) ||
+      existsSync(join(projectPath, "next.config.ts"))
+    ) {
       detectedTools.push("Next.js");
     }
-    if (existsSync(join(projectPath, "vite.config.ts")) || existsSync(join(projectPath, "vite.config.js"))) {
+    if (
+      existsSync(join(projectPath, "vite.config.ts")) ||
+      existsSync(join(projectPath, "vite.config.js"))
+    ) {
       detectedTools.push("Vite");
     }
-    if (existsSync(join(projectPath, "tailwind.config.js")) || existsSync(join(projectPath, "tailwind.config.ts"))) {
+    if (
+      existsSync(join(projectPath, "tailwind.config.js")) ||
+      existsSync(join(projectPath, "tailwind.config.ts"))
+    ) {
       detectedTools.push("Tailwind CSS");
     }
     if (existsSync(join(projectPath, "convex"))) {
@@ -322,7 +356,10 @@ export class PromptBuilder {
   /**
    * Format prompt for specific executor
    */
-  static formatForExecutor(prompt: string, executor: "opencode" | "claude" | "gemini" | "codex"): string {
+  static formatForExecutor(
+    prompt: string,
+    executor: "opencode" | "claude" | "gemini" | "codex"
+  ): string {
     // Most executors work well with plain text prompts
     // This method exists for future customization if needed
 

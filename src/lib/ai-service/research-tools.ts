@@ -1,9 +1,10 @@
 import { tool, type Tool } from "ai";
 import { z } from "zod/v3";
-import { LocalStorage } from "../storage";
+import { TaskRepository } from "../storage/types";
+import { getStorage } from "../../utils/ai-service-factory";
 
 export class ResearchTools {
-  private storage = new LocalStorage();
+  private storage: TaskRepository = getStorage();
   //   /**
   //    * Creates a tool for getting cached Context7 content
   //    */

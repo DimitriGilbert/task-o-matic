@@ -1,5 +1,6 @@
 import { Command } from "commander";
 import { taskService } from "../../services/tasks";
+import { hooks } from "../../lib/hooks";
 import { createStreamingOptions } from "../../utils/streaming-options";
 import { displayProgress, displayError } from "../../cli/display/progress";
 import { displayEnhancementResult } from "../../cli/display/common";
@@ -28,28 +29,33 @@ export const createCommand = new Command("create")
         "Enhancement"
       );
 
-      const result = await taskService.createTask({
-        title: options.title,
-        content: options.content,
-        parentId: options.parentId,
-        effort: options.effort,
-        aiEnhance: options.aiEnhance,
-        aiOptions: {
-          aiProvider: options.aiProvider,
-          aiModel: options.aiModel,
-          aiKey: options.aiKey,
-          aiProviderUrl: options.aiProviderUrl,
-          aiReasoning: options.reasoning,
-        },
-        streamingOptions,
-        callbacks: {
-          onProgress: displayProgress,
-          onError: displayError,
-        },
-      });
+      const progressHandler = (payload: any) => {
+        displayProgress(payload);
+      };
+      hooks.on("task:progress", progressHandler);
 
-      displayEnhancementResult(options.aiEnhance && options.stream);
-      displayCreatedTask(result.task, result.aiMetadata);
+      try {
+        const result = await taskService.createTask({
+          title: options.title,
+          content: options.content,
+          parentId: options.parentId,
+          effort: options.effort,
+          aiEnhance: options.aiEnhance,
+          aiOptions: {
+            aiProvider: options.aiProvider,
+            aiModel: options.aiModel,
+            aiKey: options.aiKey,
+            aiProviderUrl: options.aiProviderUrl,
+            aiReasoning: options.reasoning,
+          },
+          streamingOptions,
+        });
+
+        displayEnhancementResult(options.aiEnhance && options.stream);
+        displayCreatedTask(result.task, result.aiMetadata);
+      } finally {
+        hooks.off("task:progress", progressHandler);
+      }
     } catch (error) {
       displayError(error);
       process.exit(1);

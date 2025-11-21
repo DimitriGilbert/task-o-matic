@@ -1,16 +1,16 @@
 import { readFileSync, existsSync, readdirSync, statSync } from "fs";
 import { join } from "path";
 import { Task, TaskContext, BTSConfig, TaskDocumentation } from "../types";
-import { LocalStorage } from "./storage";
+import { TaskRepository } from "./storage/types";
 import { configManager } from "./config";
 
 export class ContextBuilder {
-  private storage: LocalStorage | null = null;
+  private storage: TaskRepository;
   private taskOMatic: string | null = null;
   private initialized = false;
 
-  constructor() {
-    // Pure constructor - NO side effects
+  constructor(storage: TaskRepository) {
+    this.storage = storage;
   }
 
   private ensureInitialized(): void {
@@ -18,7 +18,6 @@ export class ContextBuilder {
       return;
     }
 
-    this.storage = new LocalStorage();
     this.taskOMatic = configManager.getTaskOMaticDir();
     this.initialized = true;
   }
@@ -28,9 +27,6 @@ export class ContextBuilder {
    */
   async buildContext(taskId: string): Promise<TaskContext> {
     this.ensureInitialized();
-    if (!this.storage) {
-      throw new Error("ContextBuilder not initialized");
-    }
 
     const task = await this.storage.getTask(taskId);
     if (!task) {
@@ -74,7 +70,7 @@ export class ContextBuilder {
   async buildContextForNewTask(
     title: string,
     description?: string,
-    prdFile?: string,
+    prdFile?: string
   ): Promise<TaskContext> {
     this.ensureInitialized();
 
@@ -138,7 +134,7 @@ export class ContextBuilder {
     } catch (error) {
       console.warn(
         "Failed to load stack configuration, using defaults:",
-        error,
+        error
       );
       fallbackConfig._source = "fallback"; // Track source
       return fallbackConfig;
@@ -168,7 +164,7 @@ export class ContextBuilder {
     } catch (error) {
       console.warn(
         `Failed to read task content file ${task.contentFile}:`,
-        error,
+        error
       );
     }
     return undefined;
@@ -189,7 +185,9 @@ export class ContextBuilder {
       }
       return `# Documentation File Not Found\n\nFile: ${filePath}\n\nThis documentation file could not be found on disk.`;
     } catch (error) {
-      return `# Error Reading Documentation\n\nFile: ${filePath}\n\nError: ${error instanceof Error ? error.message : "Unknown error"}`;
+      return `# Error Reading Documentation\n\nFile: ${filePath}\n\nError: ${
+        error instanceof Error ? error.message : "Unknown error"
+      }`;
     }
   }
 
@@ -238,7 +236,7 @@ export class ContextBuilder {
    */
   private getRelevantPRDContent(
     taskTitle?: string,
-    taskDescription?: string,
+    taskDescription?: string
   ): string | undefined {
     if (!this.taskOMatic) return undefined;
 
@@ -256,7 +254,7 @@ export class ContextBuilder {
         try {
           // Look for ANY text files in PRD directory
           const prdFiles = readdirSync(prdPath).filter(
-            (f) => f.endsWith(".md") || f.endsWith(".txt"),
+            (f) => f.endsWith(".md") || f.endsWith(".txt")
           );
           if (prdFiles.length > 0) {
             // Get the MOST RECENT PRD file by modification time

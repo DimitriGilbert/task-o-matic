@@ -1,6 +1,7 @@
 import { Command } from "commander";
 import chalk from "chalk";
 import { taskService } from "../../services/tasks";
+import { hooks } from "../../lib/hooks";
 import { createStreamingOptions } from "../../utils/streaming-options";
 import { displayProgress, displayError } from "../../cli/display/progress";
 import {
@@ -29,25 +30,30 @@ export const planCommand = new Command("plan")
         "Planning"
       );
 
-      const result = await taskService.planTask(
-        options.id,
-        {
-          aiProvider: options.aiProvider,
-          aiModel: options.aiModel,
-          aiKey: options.aiKey,
-          aiProviderUrl: options.aiProviderUrl,
-          aiReasoning: options.reasoning,
-        },
-        streamingOptions,
-        {
-          onProgress: displayProgress,
-          onError: displayError,
-        }
-      );
+      const progressHandler = (payload: any) => {
+        displayProgress(payload);
+      };
+      hooks.on("task:progress", progressHandler);
 
-      // Display the plan
-      displayPlanCreation(options.id, result.task.title);
-      console.log(chalk.cyan(result.plan));
+      try {
+        const result = await taskService.planTask(
+          options.id,
+          {
+            aiProvider: options.aiProvider,
+            aiModel: options.aiModel,
+            aiKey: options.aiKey,
+            aiProviderUrl: options.aiProviderUrl,
+            aiReasoning: options.reasoning,
+          },
+          streamingOptions
+        );
+
+        // Display the plan
+        displayPlanCreation(options.id, result.task.title);
+        console.log(chalk.cyan(result.plan));
+      } finally {
+        hooks.off("task:progress", progressHandler);
+      }
     } catch (error) {
       displayError(error);
       process.exit(1);

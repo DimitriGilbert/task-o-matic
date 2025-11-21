@@ -3,6 +3,7 @@ import { ExecuteTaskOptions, ExecutorTool } from "../types";
 import { ExecutorFactory } from "./executors/executor-factory";
 import { runValidations } from "./validation";
 import { ContextBuilder } from "./context-builder";
+import { getContextBuilder } from "../utils/ai-service-factory";
 import { hooks } from "./hooks";
 import chalk from "chalk";
 
@@ -24,7 +25,7 @@ async function executeSingleTask(
   );
 
   // Build comprehensive execution message with full context
-  const contextBuilder = new ContextBuilder();
+  const contextBuilder = getContextBuilder();
   const taskContext = await contextBuilder.buildContext(taskId);
 
   // Build execution message with ALL context
