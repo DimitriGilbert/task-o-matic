@@ -6,6 +6,8 @@ AI-powered task management for CLI, TUI, and web applications. Parse PRDs, enhan
 
 - 🤖 **AI-Powered**: Parse PRDs and enhance tasks using multiple AI providers
 - 🎭 **Interactive Workflow**: Guided setup from project init to task generation with AI assistance
+- ❓ **PRD Question/Refine**: AI generates clarifying questions and can answer them automatically
+- 🧠 **AI Reasoning Support**: Enable advanced reasoning for better PRD refinement
 - 📦 **Multi-Purpose Package**: Use as CLI tool, library, or MCP server
 - 📁 **Project-Local Storage**: All data stored locally in `.task-o-matic/` directory
 - 🎯 **Task Management**: Full CRUD operations with AI enhancement
@@ -56,14 +58,14 @@ task-o-matic/
 ├── dist/              # Compiled output (published)
 │   ├── lib/           # Library entry point + core exports
 │   ├── cli/           # CLI binary
-│   ├── services/      # Business logic layer
+│   ├── services/      # Business logic layer (WorkflowService, PRDService, TaskService)
 │   ├── commands/      # CLI commands
 │   ├── mcp/           # MCP server
 │   └── types/         # TypeScript definitions
 ├── src/
 │   ├── lib/           # Core library (Storage, Config, AI, etc.)
 │   │   └── index.ts   # Main library exports
-│   ├── services/      # TaskService, PRDService (framework-agnostic)
+│   ├── services/      # WorkflowService, PRDService, TaskService (framework-agnostic)
 │   ├── cli/           # CLI-specific logic
 │   │   └── bin.ts     # CLI binary entry point
 │   ├── commands/      # Commander.js command implementations
@@ -76,8 +78,8 @@ task-o-matic/
 
 ### Core Components
 
-- **Service Layer** (`TaskService`, `PRDService`): Framework-agnostic business logic
-- **AI Service**: Uses Vercel AI SDK for multi-provider support
+- **Service Layer** (`WorkflowService`, `PRDService`, `TaskService`): Framework-agnostic business logic
+- **AI Service**: Uses Vercel AI SDK for multi-provider support with reasoning capabilities
 - **Local Storage**: JSON-based file storage in `.task-o-matic/` directory
 - **Configuration**: Project-local config with AI provider settings
 - **Prompt Templates**: Structured AI prompts for consistent results
@@ -105,24 +107,24 @@ npm install task-o-matic
 
 ```typescript
 import {
+  WorkflowService,
   TaskService,
   PRDService,
   type Task,
   type AIConfig,
 } from "task-o-matic";
 
-// Initialize the service
-const taskService = new TaskService();
+// Use the workflow service for complete project setup
+const workflowService = new WorkflowService();
 
-// Create a task with AI enhancement
-const result = await taskService.createTask({
-  title: "Implement user authentication",
-  content: "Add login and signup functionality",
-  aiEnhance: true,
+const result = await workflowService.initializeProject({
+  projectName: "my-app",
+  initMethod: "quick",
+  bootstrap: true,
   aiOptions: {
-    provider: "anthropic",
-    model: "claude-3-5-sonnet",
-    apiKey: process.env.ANTHROPIC_API_KEY,
+    aiProvider: "anthropic",
+    aiModel: "claude-3-5-sonnet",
+    aiKey: process.env.ANTHROPIC_API_KEY,
   },
   callbacks: {
     onProgress: (event) => {
@@ -131,7 +133,28 @@ const result = await taskService.createTask({
   },
 });
 
-console.log("Task created:", result.task);
+console.log("Project initialized:", result.projectName);
+
+// Or use task service directly
+const taskService = new TaskService();
+
+const taskResult = await taskService.createTask({
+  title: "Implement user authentication",
+  content: "Add login and signup functionality",
+  aiEnhance: true,
+  aiOptions: {
+    aiProvider: "anthropic",
+    aiModel: "claude-3-5-sonnet",
+    aiKey: process.env.ANTHROPIC_API_KEY,
+  },
+  callbacks: {
+    onProgress: (event) => {
+      console.log(`Progress: ${event.message}`);
+    },
+  },
+});
+
+console.log("Task created:", taskResult.task);
 ```
 
 #### TUI Integration Example
@@ -168,20 +191,28 @@ const result = await taskService.createTask({
 });
 ```
 
-#### PRD Parsing Example
+#### PRD Question/Refine Example
 
 ```typescript
 import { PRDService } from "task-o-matic";
 
 const prdService = new PRDService();
 
-const result = await prdService.parsePRD({
+// Generate questions and refine PRD with AI answering
+const result = await prdService.refinePRDWithQuestions({
   file: "./requirements.md",
+  questionMode: "ai", // or "user" for interactive
+  questionAIOptions: {
+    // Optional: use a different AI for answering
+    aiProvider: "openrouter",
+    aiModel: "anthropic/claude-3-opus",
+    aiReasoning: "enabled", // Enable reasoning for better answers
+  },
   workingDirectory: process.cwd(),
   aiOptions: {
-    provider: "openrouter",
-    model: "anthropic/claude-3.5-sonnet",
-    apiKey: process.env.OPENROUTER_API_KEY,
+    aiProvider: "anthropic",
+    aiModel: "claude-3-5-sonnet",
+    aiKey: process.env.ANTHROPIC_API_KEY,
   },
   callbacks: {
     onProgress: (event) => {
@@ -190,9 +221,10 @@ const result = await prdService.parsePRD({
   },
 });
 
-console.log(`Created ${result.tasks.length} tasks from PRD`);
-result.tasks.forEach((task) => {
-  console.log(`- ${task.title}`);
+console.log(`Refined PRD with ${result.questions.length} questions`);
+result.questions.forEach((q, i) => {
+  console.log(`Q${i + 1}: ${q}`);
+  console.log(`A${i + 1}: ${result.answers[q]}`);
 });
 ```
 
@@ -228,6 +260,13 @@ import type {
   CreateTaskOptions,
   PRDParseResult,
   TaskAIMetadata,
+  // Workflow types
+  WorkflowService,
+  InitializeResult,
+  DefinePRDResult,
+  RefinePRDResult,
+  GenerateTasksResult,
+  SplitTasksResult,
 } from "task-o-matic";
 ```
 
@@ -317,9 +356,14 @@ task-o-matic workflow --stream
 
 1. **Project Initialization** - Choose quick start, custom, or AI-assisted configuration
 2. **PRD Definition** - Upload file, write manually, or use AI to generate from description
-3. **PRD Refinement** - Optional AI-assisted improvements
-4. **Task Generation** - Parse PRD into actionable tasks
-5. **Task Splitting** - Break down complex tasks into subtasks
+3. **PRD Question/Refine** (NEW) - AI generates clarifying questions and refines PRD
+   - User can answer questions interactively
+   - OR AI can answer with PRD + stack context
+   - Optional: Use different AI model for answering (e.g., smarter model)
+   - Optional: Enable reasoning for better answers
+4. **PRD Manual Refinement** - Optional additional AI-assisted improvements
+5. **Task Generation** - Parse PRD into actionable tasks
+6. **Task Splitting** - Break down complex tasks into subtasks
 
 **AI Assistance at Every Step:**
 

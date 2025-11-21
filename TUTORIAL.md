@@ -26,6 +26,8 @@ npx task-o-matic workflow --stream --ai-provider anthropic --ai-model claude-4.5
 # Watch in awe as the AI:
 # 🎨 Creates your project structure
 # 🧠 Breaks down your wildest ideas into actionable tasks
+# ❓ Generates clarifying questions and refines your PRD
+# 🤖 Can answer its own questions with reasoning enabled
 # 📚 Fetches bleeding-edge documentation
 # 🚀 Serves it all up with real-time streaming magic
 ```
@@ -240,17 +242,38 @@ export AI_PROVIDER="google"
 export AI_MODEL="gemini-3.0-flash"     # Fast prototyping, brainstorming
 ```
 
-### 🌪️ Workflow Magic Tricks
+### 🌊 Workflow Magic Tricks
 
 ```bash
 # The "I Have No Idea What I'm Doing" Workflow
 npx task-o-matic workflow --stream --ai-provider anthropic --ai-model claude-4.5-sonnet
+
+# The "AI Answers Everything" Workflow (NEW!)
+npx task-o-matic workflow \
+  --stream \
+  --prd-question-refine \
+  --prd-answer-mode ai \
+  --prd-answer-ai-reasoning \
+  --ai-provider anthropic \
+  --ai-model claude-4.5-sonnet
+
+# The "I Want Control" Workflow
+npx task-o-matic workflow \
+  --stream \
+  --prd-question-refine \
+  --prd-answer-mode user  # You answer the questions
 
 # The "Money Is No Object" Workflow
 npx task-o-matic workflow --stream --ai-provider openai --ai-model gpt-5-mini
 
 # The "Startup on Ramen Noodles" Workflow
 npx task-o-matic workflow --stream --ai-provider deepseek --ai-model deepseek-chat
+
+# The "Skip Everything" Workflow
+npx task-o-matic workflow \
+  --skip-prd-question-refine \
+  --skip-refine \
+  --auto-accept
 ```
 
 ### 🎨 The Enhancement Side-Show
@@ -357,11 +380,12 @@ npx task-o-matic tasks split --all --stream
 ### ✨ What Actually Works (The Golden Path)
 
 1. **`npx task-o-matic workflow`** - Your best friend for starting projects
-2. **`npx task-o-matic prd parse`** - Turns chaos into structured tasks
-3. **`npx task-o-matic tasks create --ai-enhance`** - AI-powered task creation
-4. **`npx task-o-matic tasks split`** - The essential task breakdown magic
-5. **`npx task-o-matic tasks tree`** - Visualize your beautiful task hierarchy
-6. **`npx task-o-matic tasks get-next`** - AI tells you what to work on
+2. **`npx task-o-matic workflow --prd-question-refine --prd-answer-mode ai`** - NEW! AI-powered PRD refinement
+3. **`npx task-o-matic prd parse`** - Turns chaos into structured tasks
+4. **`npx task-o-matic tasks create --ai-enhance`** - AI-powered task creation
+5. **`npx task-o-matic tasks split`** - The essential task breakdown magic
+6. **`npx task-o-matic tasks tree`** - Visualize your beautiful task hierarchy
+7. **`npx task-o-matic tasks get-next`** - AI tells you what to work on
 
 ### 🎪 The Side-Show Features (Use When Bored)
 
@@ -383,6 +407,7 @@ npx task-o-matic tasks split --all --stream
 ```bash
 # 🚀 The Essentials (Memorize These)
 npx task-o-matic workflow --stream                                    # Start anything
+npx task-o-matic workflow --prd-question-refine --prd-answer-mode ai  # NEW! AI Q&A
 npx task-o-matic init init --ai-provider anthropic --ai-model claude-4.5-sonnet  # Setup
 npx task-o-matic prd parse --file vision.md --stream                 # PRD to tasks
 npx task-o-matic tasks create --title "Task" --ai-enhance --stream   # Create task
