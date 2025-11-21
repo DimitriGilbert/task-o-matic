@@ -13,6 +13,7 @@ import { prdCommand } from "./commands/prd";
 import { initCommand } from "./commands/init";
 import { promptCommand } from "./commands/prompt";
 import { workflowCommand } from "./commands/workflow";
+import { benchmarkCommand } from "./commands/benchmark";
 import { configManager } from "./lib/config";
 
 const program = new Command();
@@ -30,6 +31,7 @@ program.addCommand(prdCommand);
 program.addCommand(promptCommand);
 program.addCommand(initCommand);
 program.addCommand(workflowCommand);
+program.addCommand(benchmarkCommand);
 
 // Default action - show help
 program.action(() => {
