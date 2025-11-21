@@ -344,6 +344,141 @@ export class PRDService {
 
     return outputPath;
   }
+
+  async refinePRDWithQuestions(input: {
+    file: string;
+    questionMode: "user" | "ai";
+    answers?: Record<string, string>; // Pre-provided answers (user mode)
+    questionAIOptions?: AIOptions; // Optional override for answering (defaults to main AI)
+    workingDirectory?: string;
+    enableFilesystemTools?: boolean;
+    aiOptions?: AIOptions; // Main AI config
+    streamingOptions?: StreamingOptions;
+    callbacks?: ProgressCallback;
+  }): Promise<{
+    questions: string[];
+    answers: Record<string, string>;
+    refinedPRDPath: string;
+  }> {
+    input.callbacks?.onProgress?.({
+      type: "started",
+      message: "Starting PRD question/refine process...",
+    });
+
+    // Step 1: Generate questions
+    input.callbacks?.onProgress?.({
+      type: "progress",
+      message: "Generating clarifying questions...",
+    });
+
+    const questions = await this.generateQuestions({
+      file: input.file,
+      workingDirectory: input.workingDirectory,
+      enableFilesystemTools: input.enableFilesystemTools,
+      aiOptions: input.aiOptions,
+      streamingOptions: input.streamingOptions,
+      callbacks: input.callbacks,
+    });
+
+    if (questions.length === 0) {
+      input.callbacks?.onProgress?.({
+        type: "completed",
+        message: "No questions generated - PRD appears complete",
+      });
+
+      return {
+        questions: [],
+        answers: {},
+        refinedPRDPath: input.file,
+      };
+    }
+
+    // Step 2: Get stack info for context
+    const workingDir = input.workingDirectory || process.cwd();
+    const PromptBuilder = (await import("../lib/prompt-builder")).PromptBuilder;
+    let stackInfo = "";
+    try {
+      stackInfo = await PromptBuilder.detectStackInfo(workingDir);
+      if (stackInfo === "Not detected") {
+        stackInfo = "";
+      }
+    } catch (error) {
+      // Stack info not available
+    }
+
+    // Step 3: Get answers
+    let answers: Record<string, string>;
+
+    if (input.questionMode === "user") {
+      // User mode: return questions for CLI to prompt user
+      // Answers should be provided in input.answers
+      if (!input.answers || Object.keys(input.answers).length === 0) {
+        throw new Error(
+          "User mode selected but no answers provided. CLI layer should collect answers."
+        );
+      }
+      answers = input.answers;
+    } else {
+      // AI mode: use AI to answer questions with context
+      input.callbacks?.onProgress?.({
+        type: "progress",
+        message: "AI is answering questions...",
+      });
+
+      const prdContent = readFileSync(input.file, "utf-8");
+
+      // Use questionAIOptions if provided, otherwise use main aiOptions
+      const answeringAIConfig = buildAIConfig(
+        input.questionAIOptions || input.aiOptions
+      );
+
+      answers = await getAIOperations().answerPRDQuestions(
+        prdContent,
+        questions,
+        answeringAIConfig,
+        {
+          stackInfo,
+        },
+        input.streamingOptions
+      );
+    }
+
+    // Step 4: Format questions + answers as structured feedback
+    let feedback =
+      "Please incorporate the following clarifications into the PRD:\n\n";
+    questions.forEach((q, i) => {
+      feedback += `Q${i + 1}: ${q}\nA: ${
+        answers[q] || "No answer provided"
+      }\n\n`;
+    });
+
+    // Step 5: Automatically call reworkPRD with formatted feedback
+    input.callbacks?.onProgress?.({
+      type: "progress",
+      message: "Refining PRD with answers...",
+    });
+
+    const refinedPRDPath = await this.reworkPRD({
+      file: input.file,
+      feedback,
+      workingDirectory: input.workingDirectory,
+      enableFilesystemTools: input.enableFilesystemTools,
+      aiOptions: input.aiOptions,
+      streamingOptions: input.streamingOptions,
+      callbacks: input.callbacks,
+    });
+
+    input.callbacks?.onProgress?.({
+      type: "completed",
+      message: `PRD refined with ${questions.length} questions answered`,
+    });
+
+    return {
+      questions,
+      answers,
+      refinedPRDPath,
+    };
+  }
 }
 
 // Export singleton instance

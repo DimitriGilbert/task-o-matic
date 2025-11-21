@@ -775,6 +775,100 @@ Use these tools to understand the current project structure, existing code patte
     );
   }
 
+  async answerPRDQuestions(
+    prdContent: string,
+    questions: string[],
+    config?: Partial<AIConfig>,
+    contextInfo?: {
+      stackInfo?: string;
+      projectDescription?: string;
+    },
+    streamingOptions?: StreamingOptions,
+    retryConfig?: Partial<RetryConfig>
+  ): Promise<Record<string, string>> {
+    return this.retryHandler.executeWithRetry(
+      async () => {
+        // Build prompt for answering questions
+        const questionsText = questions
+          .map((q, i) => `${i + 1}. ${q}`)
+          .join("\n");
+
+        const contextText = contextInfo
+          ? `\n\nProject Context:\n${
+              contextInfo.stackInfo
+                ? `Technology Stack: ${contextInfo.stackInfo}\n`
+                : ""
+            }${
+              contextInfo.projectDescription
+                ? `Project Description: ${contextInfo.projectDescription}\n`
+                : ""
+            }`
+          : "";
+
+        const prompt = `You are a product expert helping to clarify a PRD.
+
+PRD Content:
+${prdContent}${contextText}
+
+Please answer the following questions based on the PRD and context:
+
+${questionsText}
+
+Provide thoughtful, specific answers that will help refine the PRD.
+Format your response as JSON with the following structure:
+{
+  "answers": {
+    "1": "answer to question 1",
+    "2": "answer to question 2",
+    ...
+  }
+}`;
+
+        const systemPrompt = `You are a product expert analyzing PRDs and answering clarifying questions.
+Your answers should be:
+- Specific and actionable
+- Based on the PRD content and project context
+- Helpful for refining the PRD
+- Formatted as JSON`;
+
+        const response = await this.streamText(
+          "",
+          config,
+          systemPrompt,
+          prompt,
+          streamingOptions,
+          { maxAttempts: 1 }
+        );
+
+        // Parse JSON response
+        const parseResult = this.jsonParser.parseJSONFromResponse<{
+          answers: Record<string, string>;
+        }>(response);
+
+        if (!parseResult.success) {
+          throw new Error(
+            parseResult.error || "Failed to parse PRD answers response"
+          );
+        }
+
+        // Convert numbered keys to question text keys
+        const answers: Record<string, string> = {};
+        const numberedAnswers = parseResult.data?.answers || {};
+
+        questions.forEach((question, index) => {
+          const key = String(index + 1);
+          if (numberedAnswers[key]) {
+            answers[question] = numberedAnswers[key];
+          }
+        });
+
+        return answers;
+      },
+      retryConfig,
+      "PRD question answering"
+    );
+  }
+
   // Context7 Integration Methods
   async enhanceTaskWithDocumentation(
     taskId: string,

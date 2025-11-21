@@ -39,6 +39,16 @@ export interface WorkflowAutomationOptions extends StreamingAIOptions {
   refineMethod?: "manual" | "ai" | "skip"; // Refinement method
   refineFeedback?: string; // Feedback for AI refinement
 
+  // Step 2.5: PRD Question/Refine (NEW)
+  skipPrdQuestionRefine?: boolean; // Skip PRD question/refine step
+  prdQuestionRefine?: boolean; // Use question-based PRD refinement
+  prdAnswerMode?: "user" | "ai"; // Who answers questions: user or AI
+  prdAnswerAiProvider?: string; // AI provider for answering (optional override)
+  prdAnswerAiModel?: string; // AI model for answering (optional override)
+  prdAnswerAiKey?: string; // AI API key for answering (optional override)
+  prdAnswerAiProviderUrl?: string; // AI provider URL for answering (optional override)
+  prdAnswerAiReasoning?: boolean; // Enable reasoning for AI answering model
+
   // Step 4: Generate Tasks
   skipGenerate?: boolean; // Skip task generation
   generateMethod?: "standard" | "ai"; // Generation method

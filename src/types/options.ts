@@ -135,6 +135,7 @@ export interface ReworkPrdOptions extends StreamingAIOptions {
 export type WorkflowStep =
   | "initialize"
   | "define-prd"
+  | "question-refine-prd"
   | "refine-prd"
   | "generate-tasks"
   | "split-tasks"

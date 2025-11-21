@@ -33,6 +33,27 @@ export { TaskService } from "../services/tasks";
  */
 export { PRDService } from "../services/prd";
 
+/**
+ * WorkflowService - Complete workflow orchestration
+ * Handles project initialization, PRD management, task generation, and task splitting
+ */
+export { WorkflowService } from "../services/workflow";
+
+// ============================================================================
+// Result Types - Service Operation Results
+// ============================================================================
+
+/**
+ * Result types for workflow service operations
+ */
+export type {
+  InitializeResult,
+  DefinePRDResult,
+  RefinePRDResult,
+  GenerateTasksResult,
+  SplitTasksResult,
+} from "../types/workflow-results";
+
 // ============================================================================
 // Core Types - Type Definitions
 // ============================================================================
