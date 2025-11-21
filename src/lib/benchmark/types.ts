@@ -12,6 +12,16 @@ export interface BenchmarkConfig {
   delay: number; // ms
 }
 
+export interface BenchmarkProgressEvent {
+  type: "start" | "progress" | "complete" | "error";
+  modelId: string;
+  duration?: number;
+  error?: string;
+  currentSize?: number; // bytes
+  currentBps?: number;
+  chunk?: string;
+}
+
 import { StreamingOptions } from "../../types";
 
 export interface BenchmarkResult {

@@ -14,6 +14,7 @@ AI-powered task management for CLI, TUI, and web applications. Parse PRDs, enhan
 - 🔧 **Multi-Provider AI**: Support for OpenAI, Anthropic, OpenRouter, and custom providers
 - 📊 **Smart Breakdown**: AI-powered task decomposition into subtasks
 - 🌊 **Real-time Streaming**: Watch AI responses generate live with streaming output
+- 📊 **Model Benchmarking**: Compare performance and quality across different AI models
 - 🏠 **Single-Project Focus**: Self-contained within each project directory
 - 💻 **Framework-Agnostic**: Easily integrate into TUI, web apps, or any Node.js project
 
@@ -395,7 +396,25 @@ task-o-matic tasks create --title "Add payment system" --ai-enhance --stream
 task-o-matic tasks split --task-id <task-id>
 ```
 
-### Workflow 3: Project Bootstrapping
+### Workflow 3: Benchmarking Models
+
+Compare different AI models for performance, cost, and quality.
+
+```bash
+# 1. Run a benchmark for PRD parsing
+task-o-matic benchmark run prd-parse \
+  --file requirements.md \
+  --models "openai:gpt-4o,openrouter:anthropic/claude-3.5-sonnet" \
+  --concurrency 5
+
+# 2. Compare results
+task-o-matic benchmark compare <run-id>
+
+# 3. View detailed metrics (Tokens, BPS, Size)
+task-o-matic benchmark show <run-id>
+```
+
+### Workflow 4: Project Bootstrapping
 
 ```bash
 # Option 1: One-step setup (recommended)

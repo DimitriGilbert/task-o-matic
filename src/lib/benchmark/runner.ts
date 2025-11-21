@@ -1,4 +1,9 @@
-import { BenchmarkConfig, BenchmarkResult, BenchmarkRun } from "./types";
+import {
+  BenchmarkConfig,
+  BenchmarkResult,
+  BenchmarkRun,
+  BenchmarkProgressEvent,
+} from "./types";
 import { benchmarkRegistry } from "./registry";
 import { benchmarkStorage } from "./storage";
 import { AIConfig } from "../../types";
@@ -8,7 +13,8 @@ export class BenchmarkRunner {
   async run(
     operationId: string,
     input: any,
-    config: BenchmarkConfig
+    config: BenchmarkConfig,
+    onProgress?: (event: BenchmarkProgressEvent) => void
   ): Promise<BenchmarkRun> {
     const operation = benchmarkRegistry.get(operationId);
     if (!operation) {
@@ -42,6 +48,9 @@ export class BenchmarkRunner {
         | undefined;
       let responseSize = 0;
 
+      // Emit start event
+      onProgress?.({ type: "start", modelId });
+
       try {
         // Construct AI options for this specific run
         const aiOptions: any = {
@@ -65,6 +74,27 @@ export class BenchmarkRunner {
               responseSize = Buffer.byteLength(result.text, "utf8");
             }
           },
+          onChunk: (chunk: string) => {
+            if (chunk) {
+              const chunkSize = Buffer.byteLength(chunk, "utf8");
+              responseSize += chunkSize;
+
+              const currentDuration = Date.now() - startTime;
+              const currentBps =
+                currentDuration > 0
+                  ? Math.round(responseSize / (currentDuration / 1000))
+                  : 0;
+
+              onProgress?.({
+                type: "progress",
+                modelId,
+                currentSize: responseSize,
+                currentBps,
+                chunk: chunk,
+                duration: currentDuration,
+              });
+            }
+          },
         };
 
         // Execute operation
@@ -78,6 +108,7 @@ export class BenchmarkRunner {
         }
       } catch (e: any) {
         error = e.message || String(e);
+        onProgress?.({ type: "error", modelId, error });
       }
 
       const duration = Date.now() - startTime;
@@ -96,6 +127,9 @@ export class BenchmarkRunner {
         responseSize,
         bps,
       });
+
+      // Emit complete event
+      onProgress?.({ type: "complete", modelId, duration });
     };
 
     // Process queue with concurrency limit

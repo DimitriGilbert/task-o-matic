@@ -1,14 +1,19 @@
 import { benchmarkRunner } from "../lib/benchmark/runner";
 import { benchmarkStorage } from "../lib/benchmark/storage";
-import { BenchmarkConfig, BenchmarkRun } from "../lib/benchmark/types";
+import {
+  BenchmarkConfig,
+  BenchmarkRun,
+  BenchmarkProgressEvent,
+} from "../lib/benchmark/types";
 
 export class BenchmarkService {
   async runBenchmark(
     operationId: string,
     input: any,
-    config: BenchmarkConfig
+    config: BenchmarkConfig,
+    onProgress?: (event: BenchmarkProgressEvent) => void
   ): Promise<BenchmarkRun> {
-    return await benchmarkRunner.run(operationId, input, config);
+    return await benchmarkRunner.run(operationId, input, config, onProgress);
   }
 
   getRun(id: string): BenchmarkRun | null {

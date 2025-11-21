@@ -81,7 +81,37 @@ benchmarkCommand
         workingDirectory: process.cwd(), // Always pass current working directory
       };
 
-      const run = await benchmarkService.runBenchmark(operation, input, config);
+      const lastUpdate: Record<string, number> = {};
+
+      const run = await benchmarkService.runBenchmark(
+        operation,
+        input,
+        config,
+        (event) => {
+          if (event.type === "start") {
+            console.log(chalk.gray(`→ Starting ${event.modelId}...`));
+          } else if (event.type === "complete") {
+            console.log(
+              chalk.green(`✓ Completed ${event.modelId} (${event.duration}ms)`)
+            );
+          } else if (event.type === "error") {
+            console.log(chalk.red(`✗ Failed ${event.modelId}: ${event.error}`));
+          } else if (event.type === "progress") {
+            const now = Date.now();
+            if (
+              !lastUpdate[event.modelId] ||
+              now - lastUpdate[event.modelId] > 1000
+            ) {
+              lastUpdate[event.modelId] = now;
+              const bps = event.currentBps
+                ? `${event.currentBps} B/s`
+                : "0 B/s";
+              const size = event.currentSize ? `${event.currentSize} B` : "0 B";
+              console.log(chalk.dim(`  ↳ [${event.modelId}] ${size} (${bps})`));
+            }
+          }
+        }
+      );
 
       console.log(chalk.green(`\n✓ Benchmark completed! Run ID: ${run.id}`));
 
