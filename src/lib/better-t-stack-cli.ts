@@ -58,7 +58,9 @@ export class BetterTStackService {
       return {
         success: false,
         projectPath: "",
-        message: `Better-T-Stack initialization failed: ${error instanceof Error ? error.message : "Unknown error"}`,
+        message: `Better-T-Stack initialization failed: ${
+          error instanceof Error ? error.message : "Unknown error"
+        }`,
       };
     }
   }
@@ -80,7 +82,10 @@ export class BetterTStackService {
       git: config.git,
       install: config.install,
       addons: config.addons,
-      examples: config.examples,
+      examples:
+        config.examples && config.examples.length > 0
+          ? config.examples
+          : undefined,
       disableAnalytics: true,
     };
   }
@@ -132,7 +137,7 @@ export interface InitOptions {
 export async function runBetterTStackCLI(
   options: InitOptions,
   workingDirectory?: string
-): Promise<{ success: boolean; message: string }> {
+): Promise<{ success: boolean; message: string; projectPath?: string }> {
   const btsService = new BetterTStackService();
   const backend = options.backend;
   const isConvex = backend === "convex";
@@ -165,5 +170,9 @@ export async function runBetterTStackCLI(
     workingDirectory
   );
 
-  return { success: result.success, message: result.message };
+  return {
+    success: result.success,
+    message: result.message,
+    projectPath: result.projectPath,
+  };
 }

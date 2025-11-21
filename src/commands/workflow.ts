@@ -2,7 +2,13 @@
 
 import { Command } from "commander";
 import chalk from "chalk";
-import { existsSync, writeFileSync, mkdirSync, readFileSync } from "fs";
+import {
+  existsSync,
+  writeFileSync,
+  mkdirSync,
+  readFileSync,
+  appendFileSync,
+} from "fs";
 import { join, resolve } from "path";
 import { configManager } from "../lib/config";
 import { runBetterTStackCLI } from "../lib/better-t-stack-cli";
@@ -98,7 +104,7 @@ async function stepInitialize(
 ): Promise<void> {
   console.log(chalk.blue.bold("\n📦 Step 1: Project Initialization\n"));
 
-  // Check if already initialized
+  // Check if already initialized in current directory
   const taskOMaticDir = configManager.getTaskOMaticDir();
   const alreadyInitialized = existsSync(taskOMaticDir);
 
@@ -128,6 +134,11 @@ async function stepInitialize(
     return;
   }
 
+  const projectName = await textInputPrompt(
+    "What is the name of your project?",
+    "my-app"
+  );
+
   // Choose initialization method
   let initMethod = await selectPrompt(
     "How would you like to configure your project?",
@@ -153,6 +164,9 @@ async function stepInitialize(
       streamingOptions,
     });
 
+    // Override AI's project name with user's choice if they provided one (though we just asked for it, so we should use it)
+    config.projectName = projectName;
+
     console.log(chalk.green("\n✓ AI Recommendations:"));
     console.log(chalk.gray(`  Project: ${config.projectName}`));
     console.log(chalk.gray(`  AI Provider: ${config.aiProvider}`));
@@ -177,7 +191,7 @@ async function stepInitialize(
 
   if (initMethod === "quick") {
     config = {
-      projectName: "my-project",
+      projectName: projectName,
       aiProvider: "openrouter",
       aiModel: "anthropic/claude-3.5-sonnet",
       frontend: "next",
@@ -188,7 +202,7 @@ async function stepInitialize(
     };
   } else if (initMethod === "custom") {
     config = {
-      projectName: await textInputPrompt("Project name:", "my-project"),
+      projectName: projectName,
       aiProvider: await selectPrompt("AI Provider:", [
         "openrouter",
         "anthropic",
@@ -232,31 +246,10 @@ async function stepInitialize(
     }
   }
 
-  // Initialize project
-  console.log(chalk.cyan("\n  Initializing project...\n"));
+  // Bootstrap Logic
+  let projectDir = process.cwd();
+  let didBootstrap = false;
 
-  // Create .task-o-matic directory
-  if (!existsSync(taskOMaticDir)) {
-    mkdirSync(taskOMaticDir, { recursive: true });
-    ["tasks", "prd", "logs"].forEach((dir) => {
-      mkdirSync(join(taskOMaticDir, dir), { recursive: true });
-    });
-  }
-
-  // Save configuration
-  configManager.setConfig({
-    ai: {
-      provider: config!.aiProvider as any, // Cast to satisfy AIProvider type
-      model: config!.aiModel,
-      maxTokens: 32768,
-      temperature: 0.5,
-    },
-  });
-  configManager.save();
-
-  console.log(chalk.green("✓ Project initialized"));
-
-  // Bootstrap if configured
   if (config!.frontend || config!.backend) {
     const shouldBootstrap = await confirmPrompt("Bootstrap project now?", true);
 
@@ -278,11 +271,23 @@ async function stepInitialize(
             noInstall: false,
             noGit: false,
           },
-          state.projectDir
+          process.cwd()
         );
 
         if (result.success) {
           console.log(chalk.green(`\n✓ ${result.message}\n`));
+          didBootstrap = true;
+
+          // Update project directory if a new directory was created
+          if (result.projectPath) {
+            projectDir = resolve(process.cwd(), result.projectPath);
+            console.log(
+              chalk.cyan(`  📂 Switching to project directory: ${projectDir}\n`)
+            );
+            process.chdir(projectDir);
+            configManager.setWorkingDirectory(projectDir);
+            state.projectDir = projectDir;
+          }
         } else {
           console.log(chalk.red(`\n✗ Bootstrap failed: ${result.message}\n`));
           console.log(
@@ -296,6 +301,89 @@ async function stepInitialize(
       }
     }
   }
+
+  // Initialize task-o-matic in the correct directory (projectDir)
+  console.log(chalk.cyan("\n  Initializing task-o-matic...\n"));
+
+  // Re-check task-o-matic dir in the new location
+  const newTaskOMaticDir = join(projectDir, ".task-o-matic");
+
+  if (!existsSync(newTaskOMaticDir)) {
+    mkdirSync(newTaskOMaticDir, { recursive: true });
+    ["tasks", "prd", "logs"].forEach((dir) => {
+      mkdirSync(join(newTaskOMaticDir, dir), { recursive: true });
+    });
+  }
+
+  // Handle .env configuration
+  const envPath = join(projectDir, ".env");
+  let envContent = "";
+
+  if (existsSync(envPath)) {
+    envContent = readFileSync(envPath, "utf-8");
+  }
+
+  // Check if we need to ask for API key
+  const providerKeyName =
+    config!.aiProvider === "openai"
+      ? "OPENAI_API_KEY"
+      : config!.aiProvider === "anthropic"
+      ? "ANTHROPIC_API_KEY"
+      : config!.aiProvider === "openrouter"
+      ? "OPENROUTER_API_KEY"
+      : "AI_API_KEY";
+
+  // Check if key exists in current env OR in the target .env file
+  const hasKeyInEnv =
+    process.env[providerKeyName] || envContent.includes(providerKeyName);
+
+  if (!hasKeyInEnv) {
+    console.log(
+      chalk.yellow(`\n⚠️  No API key found for ${config!.aiProvider}`)
+    );
+
+    const apiKey = await textInputPrompt(
+      `Enter your ${config!.aiProvider} API Key:`
+    );
+
+    // Prepare .env content
+    let newEnvContent = envContent;
+    if (newEnvContent && !newEnvContent.endsWith("\n")) {
+      newEnvContent += "\n";
+    }
+
+    if (!newEnvContent.includes("AI_PROVIDER=")) {
+      newEnvContent += `AI_PROVIDER=${config!.aiProvider}\n`;
+    }
+    if (!newEnvContent.includes("AI_MODEL=")) {
+      newEnvContent += `AI_MODEL=${config!.aiModel}\n`;
+    }
+    if (!newEnvContent.includes(`${providerKeyName}=`)) {
+      newEnvContent += `${providerKeyName}=${apiKey}\n`;
+    }
+
+    writeFileSync(envPath, newEnvContent);
+    console.log(chalk.green(`✓ Saved configuration to ${envPath}`));
+
+    // Update process.env for immediate use in this session
+    process.env[providerKeyName] = apiKey;
+    process.env.AI_PROVIDER = config!.aiProvider;
+    process.env.AI_MODEL = config!.aiModel;
+  }
+
+  // Save configuration
+  configManager.setConfig({
+    ai: {
+      provider: config!.aiProvider as any, // Cast to satisfy AIProvider type
+      model: config!.aiModel,
+      maxTokens: 32768,
+      temperature: 0.5,
+      apiKey: process.env[providerKeyName], // Ensure key is in config if needed
+    },
+  });
+  configManager.save();
+
+  console.log(chalk.green("✓ Project initialized"));
 
   state.initialized = true;
   state.projectName = config!.projectName;
