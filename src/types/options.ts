@@ -166,6 +166,7 @@ export interface InitConfigChoice {
   projectName: string;
   aiProvider: string;
   aiModel: string;
+  aiProviderUrl?: string;
   frontend?: string;
   backend?: string;
   database?: string;

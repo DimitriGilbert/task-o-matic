@@ -139,9 +139,126 @@ async function stepInitialize(
     "my-app"
   );
 
+  // IMMEDIATE DIRECTORY CREATION AND SWITCH
+  const projectDir = resolve(process.cwd(), projectName);
+  if (!existsSync(projectDir)) {
+    mkdirSync(projectDir, { recursive: true });
+    console.log(chalk.green(`\n✓ Created directory: ${projectName}`));
+  } else {
+    console.log(chalk.yellow(`\n⚠ Directory ${projectName} already exists`));
+  }
+
+  console.log(
+    chalk.cyan(`  📂 Switching to project directory: ${projectDir}\n`)
+  );
+  process.chdir(projectDir);
+  configManager.setWorkingDirectory(projectDir);
+  state.projectDir = projectDir;
+
+  // Initialize task-o-matic in the NEW directory
+  console.log(chalk.cyan("  Initializing task-o-matic...\n"));
+  const newTaskOMaticDir = join(projectDir, ".task-o-matic");
+
+  if (!existsSync(newTaskOMaticDir)) {
+    mkdirSync(newTaskOMaticDir, { recursive: true });
+    ["tasks", "prd", "logs"].forEach((dir) => {
+      mkdirSync(join(newTaskOMaticDir, dir), { recursive: true });
+    });
+  }
+
+  // AI Configuration Step - ALWAYS ask for this first
+  console.log(chalk.blue.bold("\n🤖 Step 1.1: AI Configuration\n"));
+
+  const aiProvider = await selectPrompt("Select AI Provider:", [
+    { name: "OpenRouter", value: "openrouter" },
+    { name: "Anthropic", value: "anthropic" },
+    { name: "OpenAI", value: "openai" },
+    { name: "Custom (e.g. local LLM)", value: "custom" },
+  ]);
+
+  let aiProviderUrl: string | undefined;
+  if (aiProvider === "custom") {
+    aiProviderUrl = await textInputPrompt(
+      "Enter Custom Provider URL:",
+      "http://localhost:11434/v1"
+    );
+  }
+
+  const defaultModel =
+    aiProvider === "openrouter"
+      ? "anthropic/claude-3.5-sonnet"
+      : aiProvider === "anthropic"
+      ? "claude-3-5-sonnet-20240620"
+      : aiProvider === "openai"
+      ? "gpt-4o"
+      : "llama3";
+
+  const aiModel = await textInputPrompt("Enter AI Model:", defaultModel);
+
+  // Check/Ask for API Key
+  const providerKeyName =
+    aiProvider === "openai"
+      ? "OPENAI_API_KEY"
+      : aiProvider === "anthropic"
+      ? "ANTHROPIC_API_KEY"
+      : aiProvider === "openrouter"
+      ? "OPENROUTER_API_KEY"
+      : "AI_API_KEY";
+
+  // Check if key exists in current env
+  let apiKey = process.env[providerKeyName];
+
+  if (!apiKey) {
+    console.log(chalk.yellow(`\n⚠️  No API key found for ${aiProvider}`));
+    apiKey = await textInputPrompt(`Enter your ${aiProvider} API Key:`);
+  }
+
+  // Save AI Config to .env immediately in the new project dir
+  const envPath = join(projectDir, ".env");
+  let envContent = "";
+  if (existsSync(envPath)) {
+    envContent = readFileSync(envPath, "utf-8");
+  }
+
+  if (!envContent.includes("AI_PROVIDER=")) {
+    envContent += `AI_PROVIDER=${aiProvider}\n`;
+  }
+  if (!envContent.includes("AI_MODEL=")) {
+    envContent += `AI_MODEL=${aiModel}\n`;
+  }
+  if (aiProviderUrl && !envContent.includes("AI_PROVIDER_URL=")) {
+    envContent += `AI_PROVIDER_URL=${aiProviderUrl}\n`;
+  }
+  if (!envContent.includes(`${providerKeyName}=`)) {
+    envContent += `${providerKeyName}=${apiKey}\n`;
+  }
+
+  writeFileSync(envPath, envContent);
+
+  // Update process.env for immediate use
+  process.env.AI_PROVIDER = aiProvider;
+  process.env.AI_MODEL = aiModel;
+  process.env[providerKeyName] = apiKey;
+  if (aiProviderUrl) {
+    process.env.AI_PROVIDER_URL = aiProviderUrl;
+  }
+
+  // Update ConfigManager
+  configManager.setAIConfig({
+    provider: aiProvider as any,
+    model: aiModel,
+    apiKey: apiKey,
+    baseURL: aiProviderUrl,
+  });
+
+  console.log(chalk.green("✓ AI Configuration saved"));
+
+  // Stack Configuration Step
+  console.log(chalk.blue.bold("\n📦 Step 1.2: Stack Configuration\n"));
+
   // Choose initialization method
   let initMethod = await selectPrompt(
-    "How would you like to configure your project?",
+    "How would you like to configure your project stack?",
     [
       { name: "Quick start (recommended defaults)", value: "quick" },
       { name: "Custom configuration", value: "custom" },
@@ -152,7 +269,7 @@ async function stepInitialize(
   let config: InitConfigChoice;
 
   if (initMethod === "ai") {
-    console.log(chalk.cyan("\n🤖 AI-Assisted Configuration\n"));
+    console.log(chalk.cyan("\n🤖 AI-Assisted Stack Configuration\n"));
     const description = await textInputPrompt(
       "Describe your project (e.g., 'A SaaS app for team collaboration with real-time features'):"
     );
@@ -160,16 +277,23 @@ async function stepInitialize(
     console.log(chalk.gray("\n  Analyzing your requirements...\n"));
     config = await workflowAIAssistant.assistInitConfig({
       userDescription: description,
-      aiOptions,
+      aiOptions: {
+        aiProvider,
+        aiModel,
+        aiKey: apiKey,
+        aiProviderUrl,
+      },
       streamingOptions,
     });
 
-    // Override AI's project name with user's choice if they provided one (though we just asked for it, so we should use it)
+    // Override AI's project name with user's choice
     config.projectName = projectName;
+    // Override AI config with what we just set
+    config.aiProvider = aiProvider;
+    config.aiModel = aiModel;
 
     console.log(chalk.green("\n✓ AI Recommendations:"));
     console.log(chalk.gray(`  Project: ${config.projectName}`));
-    console.log(chalk.gray(`  AI Provider: ${config.aiProvider}`));
     console.log(chalk.gray(`  Frontend: ${config.frontend || "none"}`));
     console.log(chalk.gray(`  Backend: ${config.backend || "none"}`));
     console.log(chalk.gray(`  Database: ${config.database || "none"}`));
@@ -192,8 +316,8 @@ async function stepInitialize(
   if (initMethod === "quick") {
     config = {
       projectName: projectName,
-      aiProvider: "openrouter",
-      aiModel: "anthropic/claude-3.5-sonnet",
+      aiProvider: aiProvider,
+      aiModel: aiModel,
       frontend: "next",
       backend: "hono",
       database: "sqlite",
@@ -203,16 +327,8 @@ async function stepInitialize(
   } else if (initMethod === "custom") {
     config = {
       projectName: projectName,
-      aiProvider: await selectPrompt("AI Provider:", [
-        "openrouter",
-        "anthropic",
-        "openai",
-        "custom",
-      ]),
-      aiModel: await textInputPrompt(
-        "AI Model:",
-        "anthropic/claude-3.5-sonnet"
-      ),
+      aiProvider: aiProvider,
+      aiModel: aiModel,
     };
 
     const shouldBootstrap = await confirmPrompt(
@@ -247,9 +363,6 @@ async function stepInitialize(
   }
 
   // Bootstrap Logic
-  let projectDir = process.cwd();
-  let didBootstrap = false;
-
   if (config!.frontend || config!.backend) {
     const shouldBootstrap = await confirmPrompt("Bootstrap project now?", true);
 
@@ -257,9 +370,11 @@ async function stepInitialize(
       console.log(chalk.cyan("\n  Bootstrapping with Better-T-Stack...\n"));
 
       try {
+        // We are already in the project directory.
+        // We pass "." as the project name so Better-T-Stack scaffolds in the current directory.
         const result = await runBetterTStackCLI(
           {
-            projectName: config!.projectName,
+            projectName: ".", // Force scaffolding in current dir
             frontend: config!.frontend || "next",
             backend: config!.backend || "hono",
             database: config!.database || "sqlite",
@@ -276,17 +391,29 @@ async function stepInitialize(
 
         if (result.success) {
           console.log(chalk.green(`\n✓ ${result.message}\n`));
-          didBootstrap = true;
 
-          // Update project directory if a new directory was created
-          if (result.projectPath) {
-            projectDir = resolve(process.cwd(), result.projectPath);
-            console.log(
-              chalk.cyan(`  📂 Switching to project directory: ${projectDir}\n`)
+          // Fix up the configuration files
+          // Because we passed ".", the config file is named ".-bts-config.json" and contains projectName: "."
+          const dotConfigPath = join(newTaskOMaticDir, ".-bts-config.json");
+          const realConfigPath = join(
+            newTaskOMaticDir,
+            `${projectName}-bts-config.json`
+          );
+          const stackConfigPath = join(newTaskOMaticDir, "stack.json");
+
+          if (existsSync(dotConfigPath)) {
+            const configContent = JSON.parse(
+              readFileSync(dotConfigPath, "utf-8")
             );
-            process.chdir(projectDir);
-            configManager.setWorkingDirectory(projectDir);
-            state.projectDir = projectDir;
+            configContent.projectName = projectName; // Fix the project name
+
+            const newContent = JSON.stringify(configContent, null, 2);
+            writeFileSync(realConfigPath, newContent);
+            writeFileSync(stackConfigPath, newContent);
+
+            // Remove the temporary dot config
+            const { unlinkSync } = require("fs");
+            unlinkSync(dotConfigPath);
           }
         } else {
           console.log(chalk.red(`\n✗ Bootstrap failed: ${result.message}\n`));
@@ -302,85 +429,7 @@ async function stepInitialize(
     }
   }
 
-  // Initialize task-o-matic in the correct directory (projectDir)
-  console.log(chalk.cyan("\n  Initializing task-o-matic...\n"));
-
-  // Re-check task-o-matic dir in the new location
-  const newTaskOMaticDir = join(projectDir, ".task-o-matic");
-
-  if (!existsSync(newTaskOMaticDir)) {
-    mkdirSync(newTaskOMaticDir, { recursive: true });
-    ["tasks", "prd", "logs"].forEach((dir) => {
-      mkdirSync(join(newTaskOMaticDir, dir), { recursive: true });
-    });
-  }
-
-  // Handle .env configuration
-  const envPath = join(projectDir, ".env");
-  let envContent = "";
-
-  if (existsSync(envPath)) {
-    envContent = readFileSync(envPath, "utf-8");
-  }
-
-  // Check if we need to ask for API key
-  const providerKeyName =
-    config!.aiProvider === "openai"
-      ? "OPENAI_API_KEY"
-      : config!.aiProvider === "anthropic"
-      ? "ANTHROPIC_API_KEY"
-      : config!.aiProvider === "openrouter"
-      ? "OPENROUTER_API_KEY"
-      : "AI_API_KEY";
-
-  // Check if key exists in current env OR in the target .env file
-  const hasKeyInEnv =
-    process.env[providerKeyName] || envContent.includes(providerKeyName);
-
-  if (!hasKeyInEnv) {
-    console.log(
-      chalk.yellow(`\n⚠️  No API key found for ${config!.aiProvider}`)
-    );
-
-    const apiKey = await textInputPrompt(
-      `Enter your ${config!.aiProvider} API Key:`
-    );
-
-    // Prepare .env content
-    let newEnvContent = envContent;
-    if (newEnvContent && !newEnvContent.endsWith("\n")) {
-      newEnvContent += "\n";
-    }
-
-    if (!newEnvContent.includes("AI_PROVIDER=")) {
-      newEnvContent += `AI_PROVIDER=${config!.aiProvider}\n`;
-    }
-    if (!newEnvContent.includes("AI_MODEL=")) {
-      newEnvContent += `AI_MODEL=${config!.aiModel}\n`;
-    }
-    if (!newEnvContent.includes(`${providerKeyName}=`)) {
-      newEnvContent += `${providerKeyName}=${apiKey}\n`;
-    }
-
-    writeFileSync(envPath, newEnvContent);
-    console.log(chalk.green(`✓ Saved configuration to ${envPath}`));
-
-    // Update process.env for immediate use in this session
-    process.env[providerKeyName] = apiKey;
-    process.env.AI_PROVIDER = config!.aiProvider;
-    process.env.AI_MODEL = config!.aiModel;
-  }
-
   // Save configuration
-  configManager.setConfig({
-    ai: {
-      provider: config!.aiProvider as any, // Cast to satisfy AIProvider type
-      model: config!.aiModel,
-      maxTokens: 32768,
-      temperature: 0.5,
-      apiKey: process.env[providerKeyName], // Ensure key is in config if needed
-    },
-  });
   configManager.save();
 
   console.log(chalk.green("✓ Project initialized"));
@@ -388,8 +437,9 @@ async function stepInitialize(
   state.initialized = true;
   state.projectName = config!.projectName;
   state.aiConfig = {
-    provider: config!.aiProvider,
-    model: config!.aiModel,
+    provider: aiProvider,
+    model: aiModel,
+    key: apiKey,
   };
   state.currentStep = "define-prd";
 }
@@ -670,24 +720,48 @@ async function stepSplitTasks(
     return;
   }
 
+  let globalSplitMethod: "interactive" | "standard" | "custom" = "interactive";
+  let globalCustomInstructions: string | undefined;
+
+  if (tasksToSplit.length > 1) {
+    globalSplitMethod = await selectPrompt(
+      "How would you like to split these tasks?",
+      [
+        { name: "Interactive (ask for each task)", value: "interactive" },
+        { name: "Standard AI split for ALL", value: "standard" },
+        { name: "Same custom instructions for ALL", value: "custom" },
+      ]
+    );
+
+    if (globalSplitMethod === "custom") {
+      globalCustomInstructions = await textInputPrompt(
+        "Custom instructions for ALL tasks (e.g., 'Break into 2-4 hour chunks'):",
+        ""
+      );
+    }
+  }
+
   for (const taskId of tasksToSplit) {
     const task = state.tasks.find((t) => t.id === taskId);
     if (!task) continue;
 
     console.log(chalk.cyan(`\n  Splitting: ${task.title}\n`));
 
-    const splitMethod = await selectPrompt("Split method:", [
-      { name: "Standard AI split", value: "standard" },
-      { name: "Custom instructions", value: "custom" },
-    ]);
+    let splitMethod = globalSplitMethod;
+    let customInstructions = globalCustomInstructions;
 
-    let customInstructions: string | undefined;
+    if (globalSplitMethod === "interactive") {
+      splitMethod = await selectPrompt("Split method:", [
+        { name: "Standard AI split", value: "standard" },
+        { name: "Custom instructions", value: "custom" },
+      ]);
 
-    if (splitMethod === "custom") {
-      customInstructions = await textInputPrompt(
-        "Custom instructions (e.g., 'Break into 2-4 hour chunks'):",
-        ""
-      );
+      if (splitMethod === "custom") {
+        customInstructions = await textInputPrompt(
+          "Custom instructions (e.g., 'Break into 2-4 hour chunks'):",
+          ""
+        );
+      }
     }
 
     try {
