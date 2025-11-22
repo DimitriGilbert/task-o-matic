@@ -52,17 +52,26 @@ describe("HookRegistry", () => {
   it("should not fail if a listener throws", async () => {
     const task = { id: "1", title: "Test Task" } as Task;
 
-    hooks.on("task:created", () => {
-      throw new Error("Oops");
-    });
+    // Suppress console.error for this test
+    const originalConsoleError = console.error;
+    console.error = () => {};
 
-    let secondCalled = false;
-    hooks.on("task:created", () => {
-      secondCalled = true;
-    });
+    try {
+      hooks.on("task:created", () => {
+        throw new Error("Oops");
+      });
 
-    // Should not throw
-    await hooks.emit("task:created", { task });
-    assert.strictEqual(secondCalled, true);
+      let secondCalled = false;
+      hooks.on("task:created", () => {
+        secondCalled = true;
+      });
+
+      // Should not throw
+      await hooks.emit("task:created", { task });
+      assert.strictEqual(secondCalled, true);
+    } finally {
+      // Restore console.error
+      console.error = originalConsoleError;
+    }
   });
 });
