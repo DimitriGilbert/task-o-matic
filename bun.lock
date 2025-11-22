@@ -1,5 +1,6 @@
 {
   "lockfileVersion": 1,
+  "configVersion": 0,
   "workspaces": {
     "": {
       "name": "@projpoc/task-o-matic",
@@ -7,11 +8,11 @@
         "@ai-sdk/anthropic": "^2.0.44",
         "@ai-sdk/google": "^2.0.31",
         "@ai-sdk/mcp": "^0.0.8",
-        "@ai-sdk/openai": "^2.0.67",
+        "@ai-sdk/openai": "^2.0.65",
         "@ai-sdk/openai-compatible": "^1.0.27",
         "@modelcontextprotocol/sdk": "^1.19.1",
         "@openrouter/ai-sdk-provider": "^1.2.0",
-        "ai": "^5.0.93",
+        "ai": "^5.0.92",
         "axios": "^1.7.9",
         "chalk": "^5.4.1",
         "commander": "^14.0.2",

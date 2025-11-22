@@ -19,6 +19,7 @@ import {
   getDocumentationCommand,
   addDocumentationCommand,
   executeCommand,
+  executeLoopCommand,
   subtasksCommand,
   treeCommand,
   nextCommand,
@@ -45,6 +46,7 @@ tasksCommand.addCommand(documentCommand);
 tasksCommand.addCommand(getDocumentationCommand);
 tasksCommand.addCommand(addDocumentationCommand);
 tasksCommand.addCommand(executeCommand);
+tasksCommand.addCommand(executeLoopCommand);
 tasksCommand.addCommand(subtasksCommand);
 tasksCommand.addCommand(treeCommand);
 tasksCommand.addCommand(nextCommand);

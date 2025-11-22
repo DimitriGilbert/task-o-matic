@@ -10,6 +10,7 @@ export * from "./enhance";
 export * from "./split";
 export * from "./document";
 export * from "./execute";
+export * from "./execute-loop";
 export * from "./subtasks";
 export * from "./tree";
 export * from "./next";

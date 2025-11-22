@@ -313,6 +313,57 @@ export interface ExecutionResult {
   error?: string;
 }
 
+// Execute Loop Configuration
+export interface ExecuteLoopConfig {
+  maxRetries?: number; // Maximum retries per task (default: 3)
+  verificationCommands?: string[]; // Commands to run after each task
+  autoCommit?: boolean; // Auto-commit after successful task execution
+}
+
+// Execute Loop Options
+export interface ExecuteLoopOptions {
+  filters?: {
+    status?: string;
+    tag?: string;
+    taskIds?: string[]; // Specific task IDs to execute
+  };
+  tool?: ExecutorTool;
+  config?: ExecuteLoopConfig;
+  dry?: boolean;
+}
+
+// Task Execution Attempt
+export interface TaskExecutionAttempt {
+  attemptNumber: number;
+  success: boolean;
+  error?: string;
+  verificationResults?: Array<{
+    command: string;
+    success: boolean;
+    output?: string;
+    error?: string;
+  }>;
+  commitInfo?: {
+    message: string;
+    files: string[];
+  };
+  timestamp: number;
+}
+
+// Execute Loop Result
+export interface ExecuteLoopResult {
+  totalTasks: number;
+  completedTasks: number;
+  failedTasks: number;
+  taskResults: Array<{
+    taskId: string;
+    taskTitle: string;
+    attempts: TaskExecutionAttempt[];
+    finalStatus: 'completed' | 'failed';
+  }>;
+  duration: number;
+}
+
 // Re-export result types from results.ts
 export type {
   OperationResult,
