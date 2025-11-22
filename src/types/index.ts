@@ -313,11 +313,18 @@ export interface ExecutionResult {
   error?: string;
 }
 
+// Model/Executor Configuration for Retry Attempts
+export interface ModelAttemptConfig {
+  executor?: ExecutorTool; // Executor to use (if not specified, uses default)
+  model?: string; // Model name to use with the executor
+}
+
 // Execute Loop Configuration
 export interface ExecuteLoopConfig {
   maxRetries?: number; // Maximum retries per task (default: 3)
   verificationCommands?: string[]; // Commands to run after each task
   autoCommit?: boolean; // Auto-commit after successful task execution
+  tryModels?: ModelAttemptConfig[]; // Progressive model/executor configs for each attempt
 }
 
 // Execute Loop Options
@@ -337,6 +344,8 @@ export interface TaskExecutionAttempt {
   attemptNumber: number;
   success: boolean;
   error?: string;
+  executor?: ExecutorTool; // Executor used for this attempt
+  model?: string; // Model used for this attempt
   verificationResults?: Array<{
     command: string;
     success: boolean;

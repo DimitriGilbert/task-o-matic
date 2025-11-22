@@ -1,7 +1,51 @@
 import { Command } from "commander";
 import chalk from "chalk";
 import { executeTaskLoop } from "../../lib/task-loop-execution";
-import { ExecuteLoopOptions, ExecutorTool } from "../../types";
+import {
+  ExecuteLoopOptions,
+  ExecutorTool,
+  ModelAttemptConfig,
+} from "../../types";
+
+/**
+ * Parse --try-models option into ModelAttemptConfig array
+ * Supports formats:
+ * - "model1,model2,model3" - just models (uses default executor)
+ * - "opencode:gpt-4o,claude:sonnet-4" - executor:model format
+ * - Mixed: "gpt-4o,claude:sonnet-4,gemini:gemini-2.0"
+ */
+function parseTryModels(value: string): ModelAttemptConfig[] {
+  return value.split(",").map((item) => {
+    const trimmed = item.trim();
+
+    // Check if it includes executor specification (executor:model format)
+    if (trimmed.includes(":")) {
+      const [executor, model] = trimmed.split(":");
+      const validExecutors: ExecutorTool[] = [
+        "opencode",
+        "claude",
+        "gemini",
+        "codex",
+      ];
+
+      if (!validExecutors.includes(executor as ExecutorTool)) {
+        throw new Error(
+          `Invalid executor "${executor}" in --try-models. Must be one of: ${validExecutors.join(", ")}`
+        );
+      }
+
+      return {
+        executor: executor as ExecutorTool,
+        model: model.trim(),
+      };
+    }
+
+    // Just a model name - use default executor
+    return {
+      model: trimmed,
+    };
+  });
+}
 
 export const executeLoopCommand = new Command("execute-loop")
   .description(
@@ -27,6 +71,10 @@ export const executeLoopCommand = new Command("execute-loop")
     "Maximum number of retries per task",
     (value: string) => parseInt(value, 10),
     3
+  )
+  .option(
+    "--try-models <models>",
+    "Progressive model/executor configs for each retry (e.g., 'gpt-4o-mini,gpt-4o,claude:sonnet-4')"
   )
   .option(
     "--verify <command>",
@@ -57,6 +105,38 @@ export const executeLoopCommand = new Command("execute-loop")
         process.exit(1);
       }
 
+      // Parse tryModels if provided
+      let tryModels: ModelAttemptConfig[] | undefined;
+      if (options.tryModels) {
+        try {
+          tryModels = parseTryModels(options.tryModels);
+          console.log(
+            chalk.cyan(
+              `📊 Progressive model escalation configured with ${tryModels.length} model(s):`
+            )
+          );
+          tryModels.forEach((config, index) => {
+            const executorInfo = config.executor
+              ? `${config.executor}:`
+              : "default:";
+            const modelInfo = config.model || "default model";
+            console.log(
+              chalk.cyan(`   ${index + 1}. ${executorInfo}${modelInfo}`)
+            );
+          });
+          console.log();
+        } catch (error) {
+          console.error(
+            chalk.red(
+              `Failed to parse --try-models: ${
+                error instanceof Error ? error.message : "Unknown error"
+              }`
+            )
+          );
+          process.exit(1);
+        }
+      }
+
       // Build options
       const executeOptions: ExecuteLoopOptions = {
         filters: {
@@ -69,6 +149,7 @@ export const executeLoopCommand = new Command("execute-loop")
           maxRetries: options.maxRetries,
           verificationCommands: options.verify || [],
           autoCommit: options.autoCommit,
+          tryModels,
         },
         dry: options.dry,
       };

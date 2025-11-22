@@ -164,18 +164,49 @@ async function executeTaskWithRetry(
   tool: ExecutorTool,
   verificationCommands: string[],
   maxRetries: number,
-  dry: boolean
+  dry: boolean,
+  tryModels?: Array<{ executor?: ExecutorTool; model?: string }>
 ): Promise<TaskExecutionAttempt[]> {
   const attempts: TaskExecutionAttempt[] = [];
   let currentAttempt = 1;
   let lastError: string | undefined;
 
   while (currentAttempt <= maxRetries) {
+    // Determine which executor and model to use for this attempt
+    let currentExecutor = tool;
+    let currentModel: string | undefined;
+
+    if (tryModels && tryModels.length > 0) {
+      // Use the model config for this attempt (or last one if we've exceeded the list)
+      const modelConfigIndex = Math.min(currentAttempt - 1, tryModels.length - 1);
+      const modelConfig = tryModels[modelConfigIndex];
+
+      // Override executor if specified
+      if (modelConfig.executor) {
+        currentExecutor = modelConfig.executor;
+      }
+
+      // Store model name if specified
+      if (modelConfig.model) {
+        currentModel = modelConfig.model;
+      }
+    }
+
     console.log(
       chalk.blue(
         `\n🎯 Attempt ${currentAttempt}/${maxRetries} for task: ${task.title} (${task.id})`
       )
     );
+
+    if (currentModel) {
+      console.log(
+        chalk.cyan(
+          `   Using executor: ${currentExecutor} with model: ${currentModel}`
+        )
+      );
+    } else {
+      console.log(chalk.cyan(`   Using executor: ${currentExecutor}`));
+    }
 
     const attemptStartTime = Date.now();
 
@@ -189,9 +220,25 @@ async function executeTaskWithRetry(
       // Add retry context if this is a retry attempt
       if (currentAttempt > 1 && lastError) {
         messageParts.push(`# RETRY ATTEMPT ${currentAttempt}/${maxRetries}\n\n`);
+
+        // Add model escalation context
+        if (currentModel) {
+          messageParts.push(
+            `**Note**: You are ${currentExecutor} using the ${currentModel} model. This is a more capable model than the previous attempt.\n\n`
+          );
+        }
+
         messageParts.push(
           `## Previous Attempt Failed With Error:\n\n${lastError}\n\n`
         );
+        messageParts.push(
+          `Please analyze the error carefully and fix it. The error might be due to:\n`
+        );
+        messageParts.push(`- Syntax errors\n`);
+        messageParts.push(`- Logic errors\n`);
+        messageParts.push(`- Missing dependencies or imports\n`);
+        messageParts.push(`- Incorrect configuration\n`);
+        messageParts.push(`- Build or test failures\n\n`);
         messageParts.push(
           `Please fix the error above and complete the task successfully.\n\n`
         );
@@ -241,11 +288,23 @@ async function executeTaskWithRetry(
       }
 
       // Emit execution:start event
-      await hooks.emit("execution:start", { taskId: task.id, tool });
+      await hooks.emit("execution:start", {
+        taskId: task.id,
+        tool: currentExecutor,
+      });
 
       // Create executor and run
-      const executor = ExecutorFactory.create(tool);
-      await executor.execute(executionMessage, dry);
+      const executor = ExecutorFactory.create(currentExecutor);
+
+      // Add model info to execution message if specified
+      let finalExecutionMessage = executionMessage;
+      if (currentModel) {
+        finalExecutionMessage =
+          `**Model Configuration**: Using ${currentModel}\n\n` +
+          executionMessage;
+      }
+
+      await executor.execute(finalExecutionMessage, dry);
 
       // Run verification commands
       const verificationResults = await runVerificationCommands(
@@ -265,6 +324,8 @@ async function executeTaskWithRetry(
           attemptNumber: currentAttempt,
           success: false,
           error: lastError,
+          executor: currentExecutor,
+          model: currentModel,
           verificationResults,
           timestamp: Date.now() - attemptStartTime,
         });
@@ -307,6 +368,8 @@ async function executeTaskWithRetry(
       attempts.push({
         attemptNumber: currentAttempt,
         success: true,
+        executor: currentExecutor,
+        model: currentModel,
         verificationResults,
         commitInfo,
         timestamp: Date.now() - attemptStartTime,
@@ -324,6 +387,8 @@ async function executeTaskWithRetry(
         attemptNumber: currentAttempt,
         success: false,
         error: lastError,
+        executor: currentExecutor,
+        model: currentModel,
         timestamp: Date.now() - attemptStartTime,
       });
 
@@ -449,7 +514,8 @@ export async function executeTaskLoop(
       tool,
       verificationCommands,
       maxRetries,
-      dry
+      dry,
+      config.tryModels
     );
 
     // Check if task succeeded
