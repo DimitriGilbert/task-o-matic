@@ -208,6 +208,7 @@ export class PromptBuilder {
       // Default to current working directory if not provided
       const workDir = projectPath || process.cwd();
       configManager.setWorkingDirectory(workDir);
+      await configManager.load();
 
       const contextBuilder = getContextBuilder();
 

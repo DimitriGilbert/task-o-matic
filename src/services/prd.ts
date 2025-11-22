@@ -58,6 +58,8 @@ export class PRDService {
     // Set working directory from CLI layer (defaults to process.cwd() for backward compatibility)
     const workingDir = input.workingDirectory || process.cwd();
     configManager.setWorkingDirectory(workingDir);
+    // Reload config after changing working directory
+    await configManager.load();
 
     input.callbacks?.onProgress?.({
       type: "progress",
@@ -270,6 +272,7 @@ export class PRDService {
 
     const workingDir = input.workingDirectory || process.cwd();
     configManager.setWorkingDirectory(workingDir);
+    await configManager.load();
 
     input.callbacks?.onProgress?.({
       type: "progress",
@@ -336,6 +339,7 @@ export class PRDService {
     // Set working directory from CLI layer (defaults to process.cwd() for backward compatibility)
     const workingDir = input.workingDirectory || process.cwd();
     configManager.setWorkingDirectory(workingDir);
+    await configManager.load();
 
     input.callbacks?.onProgress?.({
       type: "progress",

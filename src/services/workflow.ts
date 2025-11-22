@@ -62,6 +62,7 @@ export class WorkflowService {
     // Switch to project directory
     process.chdir(projectDir);
     configManager.setWorkingDirectory(projectDir);
+    await configManager.load();
 
     // Initialize task-o-matic directory structure
     const taskOMaticDir = join(projectDir, ".task-o-matic");

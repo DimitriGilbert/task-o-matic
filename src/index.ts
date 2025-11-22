@@ -69,6 +69,9 @@ program.on("command:*", (operands) => {
  */
 export const runCLI = async () => {
   try {
+    // Ensure config is loaded before running any commands
+    await configManager.load();
+
     await program.parseAsync(process.argv);
   } catch (error) {
     console.error(

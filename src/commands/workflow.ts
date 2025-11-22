@@ -61,6 +61,18 @@ export const workflowCommand = new Command("workflow")
   .option("--prd-file <path>", "Path to existing PRD file")
   .option("--prd-description <desc>", "Product description for AI-assisted PRD")
   .option("--prd-content <content>", "Direct PRD content")
+  .option("--prd-multi-generation", "Generate multiple PRDs and compare")
+  .option("--skip-prd-multi-generation", "Skip PRD multi-generation")
+  .option(
+    "--prd-multi-generation-models <models>",
+    "Comma-separated list of models for multi-generation"
+  )
+  .option("--prd-combine", "Combine generated PRDs into a master PRD")
+  .option("--skip-prd-combine", "Skip PRD combination")
+  .option(
+    "--prd-combine-model <model>",
+    "Model to use for combining PRDs (provider:model)"
+  )
 
   // Step 2.5: PRD Question/Refine (NEW)
   .option("--skip-prd-question-refine", "Skip PRD question/refine step")
@@ -238,7 +250,7 @@ async function stepInitialize(
   }
 
   const shouldInitialize = await getOrPrompt(
-    options.skipInit === false ? true : undefined,
+    options.skipInit === false || options.initMethod ? true : undefined,
     () => confirmPrompt("Initialize a new task-o-matic project?", true)
   );
 
@@ -399,12 +411,16 @@ async function stepDefinePRD(
     );
 
     // Ask about multi-generation
-    useMultiGeneration = await getOrPrompt(options.prdMultiGeneration, () =>
-      confirmPrompt(
-        "Generate multiple PRDs with different AI models and compare?",
-        false
-      )
-    );
+    if (options.skipPrdMultiGeneration) {
+      useMultiGeneration = false;
+    } else {
+      useMultiGeneration = await getOrPrompt(options.prdMultiGeneration, () =>
+        confirmPrompt(
+          "Generate multiple PRDs with different AI models and compare?",
+          false
+        )
+      );
+    }
 
     if (useMultiGeneration) {
       // Get comma-separated list of models
@@ -999,7 +1015,9 @@ async function stepSplitTasks(
     return;
   }
 
-  let globalSplitMethod: "interactive" | "standard" | "custom" = "interactive";
+  let globalSplitMethod: "interactive" | "standard" | "custom" =
+    (options.splitMethod as "interactive" | "standard" | "custom") ||
+    "interactive";
   let globalCustomInstructions: string | undefined;
 
   if (tasksToSplit.length > 1) {

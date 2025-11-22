@@ -1,9 +1,10 @@
-import { readFile, writeFile, mkdir, unlink, stat, readdir } from "fs/promises";
-import { existsSync } from "fs"; // Keep sync for initialization checks if needed, or switch to async
-import { join, dirname } from "path";
 import { Task, CreateTaskRequest, TaskAIMetadata } from "../../types";
 import { configManager } from "../config";
 import { TaskRepository } from "./types";
+import {
+  StorageCallbacks,
+  createFileSystemCallbacks,
+} from "./storage-callbacks";
 
 interface TasksData {
   tasks: Task[];
@@ -11,12 +12,13 @@ interface TasksData {
 }
 
 export class FileSystemStorage implements TaskRepository {
-  private taskOMatic: string | null = null;
-  private tasksFile: string | null = null;
-  private initialized = false;
+  private callbacks: StorageCallbacks;
 
-  constructor() {
-    // Pure constructor - NO side effects
+  constructor(callbacks?: StorageCallbacks) {
+    // If no callbacks provided, use default file system callbacks
+    // We use configManager to get the base directory for the default implementation
+    this.callbacks =
+      callbacks || createFileSystemCallbacks(configManager.getTaskOMaticDir());
   }
 
   public sanitizeForFilename(name: string): string {
@@ -57,57 +59,12 @@ export class FileSystemStorage implements TaskRepository {
     }
   }
 
-  private ensureInitialized(): void {
-    if (this.initialized) {
-      return;
-    }
-
-    this.taskOMatic = configManager.getTaskOMaticDir();
-    this.tasksFile = join(this.taskOMatic, "tasks.json");
-    this.initialized = true;
-  }
-
-  private async ensureDirectories(): Promise<void> {
-    this.ensureInitialized();
-    if (!this.taskOMatic) {
-      throw new Error("FileSystemStorage not initialized");
-    }
-
-    const dirs = [
-      "prd",
-      "logs",
-      "tasks",
-      "tasks/enhanced",
-      "docs",
-      "docs/tasks",
-      "plans",
-    ];
-
-    for (const dir of dirs) {
-      const fullPath = join(this.taskOMatic!, dir);
-      try {
-        await mkdir(fullPath, { recursive: true });
-      } catch (error: any) {
-        if (error.code !== "EEXIST") throw error;
-      }
-    }
-  }
-
   private async loadTasksData(): Promise<TasksData> {
-    this.ensureInitialized();
-    if (!this.tasksFile) {
-      return { tasks: [], nextId: 1 };
-    }
-
     try {
-      // Check if file exists using access or stat, or just try reading
-      await stat(this.tasksFile);
-    } catch {
-      return { tasks: [], nextId: 1 };
-    }
-
-    try {
-      const content = await readFile(this.tasksFile, "utf-8");
+      const content = await this.callbacks.read("tasks.json");
+      if (!content) {
+        return { tasks: [], nextId: 1 };
+      }
       return JSON.parse(content);
     } catch (error) {
       console.error("Failed to read tasks file:", error);
@@ -116,12 +73,8 @@ export class FileSystemStorage implements TaskRepository {
   }
 
   private async saveTasksData(data: TasksData): Promise<void> {
-    this.ensureInitialized();
-    if (!this.tasksFile) {
-      throw new Error("FileSystemStorage not initialized");
-    }
     try {
-      await writeFile(this.tasksFile, JSON.stringify(data, null, 2));
+      await this.callbacks.write("tasks.json", JSON.stringify(data, null, 2));
     } catch (error) {
       throw new Error(
         `Failed to save tasks data: ${
@@ -186,7 +139,6 @@ export class FileSystemStorage implements TaskRepository {
     aiMetadata?: TaskAIMetadata
   ): Promise<Task> {
     this.validateTaskRequest(task);
-    await this.ensureDirectories();
     const data = await this.loadTasksData();
     let id: string;
 
@@ -388,24 +340,10 @@ export class FileSystemStorage implements TaskRepository {
     return false;
   }
 
-  private getAIMetadataFile(): string {
-    this.ensureInitialized();
-    if (!this.taskOMatic) {
-      throw new Error("FileSystemStorage not initialized");
-    }
-    return join(this.taskOMatic, "ai-metadata.json");
-  }
-
   private async loadAIMetadata(): Promise<TaskAIMetadata[]> {
-    const metadataFile = this.getAIMetadataFile();
     try {
-      await stat(metadataFile);
-    } catch {
-      return [];
-    }
-
-    try {
-      const content = await readFile(metadataFile, "utf-8");
+      const content = await this.callbacks.read("ai-metadata.json");
+      if (!content) return [];
       return JSON.parse(content);
     } catch (error) {
       console.error("Failed to read AI metadata file:", error);
@@ -414,8 +352,10 @@ export class FileSystemStorage implements TaskRepository {
   }
 
   private async saveAIMetadata(metadata: TaskAIMetadata[]): Promise<void> {
-    const metadataFile = this.getAIMetadataFile();
-    await writeFile(metadataFile, JSON.stringify(metadata, null, 2));
+    await this.callbacks.write(
+      "ai-metadata.json",
+      JSON.stringify(metadata, null, 2)
+    );
   }
 
   async getTaskAIMetadata(taskId: string): Promise<TaskAIMetadata | null> {
@@ -450,15 +390,10 @@ export class FileSystemStorage implements TaskRepository {
       throw new Error("Content must be a string");
     }
 
-    await this.ensureDirectories();
-    if (!this.taskOMatic) {
-      throw new Error("FileSystemStorage not initialized");
-    }
     const contentFileName = `tasks/${taskId}.md`;
-    const contentFilePath = join(this.taskOMatic, contentFileName);
 
     try {
-      await writeFile(contentFilePath, content, "utf-8");
+      await this.callbacks.write(contentFileName, content);
     } catch (error) {
       throw new Error(
         `Failed to save task content: ${
@@ -478,15 +413,10 @@ export class FileSystemStorage implements TaskRepository {
       throw new Error("Content must be a string");
     }
 
-    await this.ensureDirectories();
-    if (!this.taskOMatic) {
-      throw new Error("FileSystemStorage not initialized");
-    }
     const contentFileName = `tasks/enhanced/${taskId}.md`;
-    const contentFilePath = join(this.taskOMatic, contentFileName);
 
     try {
-      await writeFile(contentFilePath, content, "utf-8");
+      await this.callbacks.write(contentFileName, content);
     } catch (error) {
       throw new Error(
         `Failed to save enhanced task content: ${
@@ -500,20 +430,10 @@ export class FileSystemStorage implements TaskRepository {
   async getTaskContent(taskId: string): Promise<string | null> {
     this.validateTaskId(taskId);
 
-    if (!this.taskOMatic) {
-      throw new Error("FileSystemStorage not initialized");
-    }
     const contentFileName = `tasks/${taskId}.md`;
-    const contentFilePath = join(this.taskOMatic, contentFileName);
 
     try {
-      await stat(contentFilePath);
-    } catch {
-      return null;
-    }
-
-    try {
-      return await readFile(contentFilePath, "utf-8");
+      return await this.callbacks.read(contentFileName);
     } catch (error) {
       console.error(`Failed to read task content for ${taskId}:`, error);
       return null;
@@ -522,19 +442,8 @@ export class FileSystemStorage implements TaskRepository {
 
   async deleteTaskContent(taskId: string): Promise<void> {
     this.validateTaskId(taskId);
-
-    if (!this.taskOMatic) {
-      throw new Error("FileSystemStorage not initialized");
-    }
     const contentFileName = `tasks/${taskId}.md`;
-    const contentFilePath = join(this.taskOMatic, contentFileName);
-
-    try {
-      await stat(contentFilePath);
-      await unlink(contentFilePath);
-    } catch (error) {
-      // Ignore if file doesn't exist
-    }
+    await this.callbacks.delete(contentFileName);
   }
 
   async saveContext7Documentation(
@@ -542,41 +451,19 @@ export class FileSystemStorage implements TaskRepository {
     query: string,
     content: string
   ): Promise<string> {
-    await this.ensureDirectories();
-    if (!this.taskOMatic) {
-      throw new Error("FileSystemStorage not initialized");
-    }
-
     const sanitizedLibrary = this.sanitizeForFilename(library);
     const sanitizedQuery = this.sanitizeForFilename(query);
 
-    const libraryDir = join(this.taskOMatic, "docs", sanitizedLibrary);
-    try {
-      await mkdir(libraryDir, { recursive: true });
-    } catch (error: any) {
-      if (error.code !== "EEXIST") throw error;
-    }
+    const filePath = `docs/${sanitizedLibrary}/${sanitizedQuery}.md`;
+    await this.callbacks.write(filePath, content);
 
-    const filePath = join(libraryDir, `${sanitizedQuery}.md`);
-    await writeFile(filePath, content, "utf-8");
-
-    return `docs/${sanitizedLibrary}/${sanitizedQuery}.md`;
+    return filePath;
   }
 
   async getDocumentationFile(fileName: string): Promise<string | null> {
-    if (!this.taskOMatic) {
-      throw new Error("FileSystemStorage not initialized");
-    }
-    const filePath = join(this.taskOMatic, "docs", fileName);
-
+    const filePath = `docs/${fileName}`;
     try {
-      await stat(filePath);
-    } catch {
-      return null;
-    }
-
-    try {
-      return await readFile(filePath, "utf-8");
+      return await this.callbacks.read(filePath);
     } catch (error) {
       console.error(`Failed to read documentation file ${fileName}:`, error);
       return null;
@@ -584,35 +471,12 @@ export class FileSystemStorage implements TaskRepository {
   }
 
   async listDocumentationFiles(): Promise<string[]> {
-    this.ensureInitialized();
     try {
-      const docsDir = join(this.taskOMatic!, "docs");
-
-      try {
-        await stat(docsDir);
-      } catch {
-        return [];
-      }
-
-      const files: string[] = [];
-
-      const scanDirectory = async (dir: string, basePath: string = "") => {
-        const items = await readdir(dir);
-        for (const item of items) {
-          const fullPath = join(dir, item);
-          const relativePath = basePath ? join(basePath, item) : item;
-
-          const stats = await stat(fullPath);
-          if (stats.isDirectory() && item !== "_cache") {
-            await scanDirectory(fullPath, relativePath);
-          } else if (item.endsWith(".md") || item.endsWith(".txt")) {
-            files.push(relativePath);
-          }
-        }
-      };
-
-      await scanDirectory(docsDir);
-      return files;
+      const files = await this.callbacks.list("docs/");
+      // Filter for markdown/text files and remove "docs/" prefix for compatibility
+      return files
+        .filter((f) => f.endsWith(".md") || f.endsWith(".txt"))
+        .map((f) => (f.startsWith("docs/") ? f.substring(5) : f));
     } catch (error) {
       console.error("Failed to list documentation files:", error);
       return [];
@@ -630,12 +494,8 @@ export class FileSystemStorage implements TaskRepository {
         const oldContent = (task as any).content;
 
         if (oldContent.length > 200) {
-          if (!this.taskOMatic) {
-            throw new Error("FileSystemStorage not initialized");
-          }
           const contentFile = `tasks/${task.id}.md`;
-          const contentFilePath = join(this.taskOMatic, contentFile);
-          await writeFile(contentFilePath, oldContent, "utf-8");
+          await this.callbacks.write(contentFile, oldContent);
 
           updatedTask.contentFile = contentFile;
           updatedTask.description =
@@ -676,23 +536,20 @@ export class FileSystemStorage implements TaskRepository {
         .map((task) => task.contentFile!)
     );
 
-    if (!this.taskOMatic) {
-      throw new Error("FileSystemStorage not initialized");
-    }
-
-    const tasksDir = join(this.taskOMatic, "tasks");
     let cleanedCount = 0;
 
     try {
-      const files = await readdir(tasksDir);
+      const files = await this.callbacks.list("tasks/");
 
       for (const file of files) {
+        // file is a full key like "tasks/123.md"
+        // validContentFiles contains relative paths like "tasks/123.md"
+        // So we can check directly
+
         if (file.endsWith(".md")) {
-          const contentFile = `tasks/${file}`;
-          if (!validContentFiles.has(contentFile)) {
-            const filePath = join(tasksDir, file);
+          if (!validContentFiles.has(file)) {
             try {
-              await unlink(filePath);
+              await this.callbacks.delete(file);
               cleanedCount++;
               console.log(`Cleaned up orphaned content file: ${file}`);
             } catch (error) {
@@ -715,8 +572,6 @@ export class FileSystemStorage implements TaskRepository {
     const issues: string[] = [];
 
     try {
-      await this.ensureDirectories();
-
       const data = await this.loadTasksData();
       if (!Array.isArray(data.tasks)) {
         issues.push("Tasks data is not an array");
@@ -760,13 +615,8 @@ export class FileSystemStorage implements TaskRepository {
 
   async savePlan(taskId: string, plan: string): Promise<void> {
     this.validateTaskId(taskId);
-    this.ensureInitialized();
 
-    if (!this.taskOMatic) {
-      throw new Error("FileSystemStorage not initialized");
-    }
-
-    const planFile = join(this.taskOMatic, "plans", `${taskId}.json`);
+    const planFile = `plans/${taskId}.json`;
 
     try {
       const planData = {
@@ -776,7 +626,7 @@ export class FileSystemStorage implements TaskRepository {
         updatedAt: Date.now(),
       };
 
-      await writeFile(planFile, JSON.stringify(planData, null, 2));
+      await this.callbacks.write(planFile, JSON.stringify(planData, null, 2));
     } catch (error) {
       throw new Error(
         `Failed to save plan for task ${taskId}: ${
@@ -790,22 +640,12 @@ export class FileSystemStorage implements TaskRepository {
     taskId: string
   ): Promise<{ plan: string; createdAt: number; updatedAt: number } | null> {
     this.validateTaskId(taskId);
-    this.ensureInitialized();
 
-    if (!this.taskOMatic) {
-      throw new Error("FileSystemStorage not initialized");
-    }
-
-    const planFile = join(this.taskOMatic, "plans", `${taskId}.json`);
+    const planFile = `plans/${taskId}.json`;
 
     try {
-      await stat(planFile);
-    } catch {
-      return null;
-    }
-
-    try {
-      const content = await readFile(planFile, "utf-8");
+      const content = await this.callbacks.read(planFile);
+      if (!content) return null;
       return JSON.parse(content);
     } catch (error) {
       throw new Error(
@@ -824,20 +664,6 @@ export class FileSystemStorage implements TaskRepository {
       updatedAt: number;
     }>
   > {
-    this.ensureInitialized();
-
-    if (!this.taskOMatic) {
-      throw new Error("FileSystemStorage not initialized");
-    }
-
-    const plansDir = join(this.taskOMatic, "plans");
-
-    try {
-      await stat(plansDir);
-    } catch {
-      return [];
-    }
-
     try {
       const plans: Array<{
         taskId: string;
@@ -846,11 +672,12 @@ export class FileSystemStorage implements TaskRepository {
         updatedAt: number;
       }> = [];
 
-      const files = await readdir(plansDir);
+      const files = await this.callbacks.list("plans/");
 
       for (const file of files) {
         if (file.endsWith(".json")) {
-          const taskId = file.replace(".json", "");
+          // file is "plans/123.json"
+          const taskId = file.replace("plans/", "").replace(".json", "");
           const planData = await this.getPlan(taskId);
           if (planData) {
             plans.push({
@@ -875,17 +702,9 @@ export class FileSystemStorage implements TaskRepository {
 
   async deletePlan(taskId: string): Promise<boolean> {
     this.validateTaskId(taskId);
-    this.ensureInitialized();
-
-    if (!this.taskOMatic) {
-      throw new Error("FileSystemStorage not initialized");
-    }
-
-    const planFile = join(this.taskOMatic, "plans", `${taskId}.json`);
-
+    const planFile = `plans/${taskId}.json`;
     try {
-      await stat(planFile);
-      await unlink(planFile);
+      await this.callbacks.delete(planFile);
       return true;
     } catch (error) {
       return false;
@@ -901,16 +720,10 @@ export class FileSystemStorage implements TaskRepository {
       throw new Error("Documentation must be a string");
     }
 
-    await this.ensureDirectories();
-    if (!this.taskOMatic) {
-      throw new Error("FileSystemStorage not initialized");
-    }
-
     const documentationFileName = `docs/tasks/${taskId}.md`;
-    const documentationFilePath = join(this.taskOMatic, documentationFileName);
 
     try {
-      await writeFile(documentationFilePath, documentation, "utf-8");
+      await this.callbacks.write(documentationFileName, documentation);
     } catch (error) {
       throw new Error(
         `Failed to save task documentation: ${
@@ -924,21 +737,10 @@ export class FileSystemStorage implements TaskRepository {
   async getTaskDocumentation(taskId: string): Promise<string | null> {
     this.validateTaskId(taskId);
 
-    if (!this.taskOMatic) {
-      throw new Error("FileSystemStorage not initialized");
-    }
-
     const documentationFileName = `docs/tasks/${taskId}.md`;
-    const documentationFilePath = join(this.taskOMatic, documentationFileName);
 
     try {
-      await stat(documentationFilePath);
-    } catch {
-      return null;
-    }
-
-    try {
-      return await readFile(documentationFilePath, "utf-8");
+      return await this.callbacks.read(documentationFileName);
     } catch (error) {
       console.error(`Failed to read task documentation for ${taskId}:`, error);
       return null;

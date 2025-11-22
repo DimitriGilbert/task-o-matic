@@ -23,7 +23,11 @@ initCommand
   .option("--ai-model <model>", "AI model", "z-ai/glm-4.6")
   .option("--ai-key <key>", "AI API key")
   .option("--ai-provider-url <url>", "AI provider URL")
-  .option("--max-tokens <tokens>", "Max tokens for AI (min 32768 for 2025)", "32768")
+  .option(
+    "--max-tokens <tokens>",
+    "Max tokens for AI (min 32768 for 2025)",
+    "32768"
+  )
   .option("--temperature <temp>", "AI temperature", "0.5")
   .option("--no-bootstrap", "Skip bootstrap after initialization")
   .option("--project-name <name>", "Project name for bootstrap")
@@ -37,20 +41,23 @@ initCommand
     // Handle directory creation/setup first
     if (options.directory) {
       const targetDir = resolve(options.directory);
-      
+
       // Create directory if it doesn't exist
       if (!existsSync(targetDir)) {
         mkdirSync(targetDir, { recursive: true });
         console.log(chalk.green(`  ✓ Created directory: ${targetDir}`));
       }
-      
+
       // Set working directory in ConfigManager BEFORE any other operations
       configManager.setWorkingDirectory(targetDir);
+      await configManager.load();
       console.log(chalk.cyan(`  📁 Working directory: ${targetDir}`));
     }
 
     const taskOMaticDir = configManager.getTaskOMaticDir();
-    console.log(chalk.blue(`🔍 Checking for task-o-matic directory: ${taskOMaticDir}`));
+    console.log(
+      chalk.blue(`🔍 Checking for task-o-matic directory: ${taskOMaticDir}`)
+    );
 
     if (existsSync(taskOMaticDir)) {
       console.log(
@@ -238,7 +245,9 @@ initCommand.action(() => {
     "  task-o-matic init init --project-name my-app --ai-provider openrouter --ai-key your-key --frontend next --backend hono"
   );
   console.log("  task-o-matic init init --project-name my-app --no-bootstrap");
-  console.log("  task-o-matic init init --directory my-workspace --project-name my-app");
+  console.log(
+    "  task-o-matic init init --directory my-workspace --project-name my-app"
+  );
   console.log(
     "  task-o-matic init bootstrap my-app --frontend next --backend hono --database postgres"
   );
@@ -256,7 +265,9 @@ initCommand.action(() => {
     "  --no-bootstrap               Skip bootstrap after initialization"
   );
   console.log("  --project-name <name>        Project name for bootstrap");
-  console.log("  --directory <dir>            Working directory for the project");
+  console.log(
+    "  --directory <dir>            Working directory for the project"
+  );
 
   console.log("");
   console.log(chalk.cyan("Bootstrap Options:"));

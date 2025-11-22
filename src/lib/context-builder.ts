@@ -1,16 +1,60 @@
-import { readFileSync, existsSync, readdirSync, statSync } from "fs";
 import { join } from "path";
 import { Task, TaskContext, BTSConfig, TaskDocumentation } from "../types";
 import { TaskRepository } from "./storage/types";
 import { configManager } from "./config";
+import { readFileSync, existsSync, readdirSync, statSync } from "fs";
+
+export interface FileStats {
+  mtime: number;
+  isDirectory: boolean;
+}
+
+export interface ContextCallbacks {
+  readFile: (path: string) => Promise<string | null>;
+  fileExists: (path: string) => Promise<boolean>;
+  listFiles: (dir: string) => Promise<string[]>;
+  stat: (path: string) => Promise<FileStats | null>;
+}
+
+export function createDefaultContextCallbacks(): ContextCallbacks {
+  return {
+    readFile: async (path: string) => {
+      if (existsSync(path)) {
+        return readFileSync(path, "utf-8");
+      }
+      return null;
+    },
+    fileExists: async (path: string) => {
+      return existsSync(path);
+    },
+    listFiles: async (dir: string) => {
+      if (existsSync(dir) && statSync(dir).isDirectory()) {
+        return readdirSync(dir);
+      }
+      return [];
+    },
+    stat: async (path: string) => {
+      if (existsSync(path)) {
+        const stats = statSync(path);
+        return {
+          mtime: stats.mtime.getTime(),
+          isDirectory: stats.isDirectory(),
+        };
+      }
+      return null;
+    },
+  };
+}
 
 export class ContextBuilder {
   private storage: TaskRepository;
+  private callbacks: ContextCallbacks;
   private taskOMatic: string | null = null;
   private initialized = false;
 
-  constructor(storage: TaskRepository) {
+  constructor(storage: TaskRepository, callbacks?: ContextCallbacks) {
     this.storage = storage;
+    this.callbacks = callbacks || createDefaultContextCallbacks();
   }
 
   private ensureInitialized(): void {
@@ -33,11 +77,11 @@ export class ContextBuilder {
       throw new Error(`Task with ID ${taskId} not found`);
     }
 
-    const stack = this.getStackConfig();
+    const stack = await this.getStackConfig();
     const documentation = this.getTaskDocumentation(task);
-    const fullContent = this.getTaskFullContent(task);
+    const fullContent = await this.getTaskFullContent(task);
     const prdContent = task.prdFile
-      ? this.getPRDContent(task.prdFile)
+      ? await this.getPRDContent(task.prdFile)
       : undefined;
 
     return {
@@ -53,8 +97,7 @@ export class ContextBuilder {
             recap: documentation.recap,
             files: documentation.files.map((file) => ({
               path: file,
-              // WOW, this is MORONIC ! you do not give 1K lines doc like that you MORON !
-              // content: this.readDocumentationFile(file),
+              // Content loading is skipped as per original code comment
             })),
           }
         : undefined,
@@ -74,10 +117,10 @@ export class ContextBuilder {
   ): Promise<TaskContext> {
     this.ensureInitialized();
 
-    const stack = this.getStackConfig();
+    const stack = await this.getStackConfig();
     const prdContent = prdFile
-      ? this.getPRDContent(prdFile)
-      : this.getRelevantPRDContent(title, description);
+      ? await this.getPRDContent(prdFile)
+      : await this.getRelevantPRDContent(title, description);
 
     return {
       task: {
@@ -96,7 +139,7 @@ export class ContextBuilder {
   /**
    * Get stack configuration from project (set by bootstrap)
    */
-  private getStackConfig(): BTSConfig | undefined {
+  private async getStackConfig(): Promise<BTSConfig | undefined> {
     if (!this.taskOMatic) {
       return undefined;
     }
@@ -123,8 +166,9 @@ export class ContextBuilder {
     };
     try {
       const stackFile = join(this.taskOMatic, "stack.json");
-      if (existsSync(stackFile)) {
-        const content = readFileSync(stackFile, "utf-8");
+      const content = await this.callbacks.readFile(stackFile);
+
+      if (content) {
         const config = JSON.parse(content) as BTSConfig;
         config._source = "file"; // Track source
         return config;
@@ -151,16 +195,14 @@ export class ContextBuilder {
   /**
    * Get full task content from MD file
    */
-  private getTaskFullContent(task: Task): string | undefined {
+  private async getTaskFullContent(task: Task): Promise<string | undefined> {
     if (!task.contentFile || !this.taskOMatic) {
       return undefined;
     }
 
     try {
       const contentPath = join(this.taskOMatic, task.contentFile);
-      if (existsSync(contentPath)) {
-        return readFileSync(contentPath, "utf-8");
-      }
+      return (await this.callbacks.readFile(contentPath)) || undefined;
     } catch (error) {
       console.warn(
         `Failed to read task content file ${task.contentFile}:`,
@@ -173,15 +215,16 @@ export class ContextBuilder {
   /**
    * Read documentation file content
    */
-  private readDocumentationFile(filePath: string): string {
+  private async readDocumentationFile(filePath: string): Promise<string> {
     if (!this.taskOMatic) {
       return `# ContextBuilder Not Initialized\n\nFile: ${filePath}\n\nContextBuilder has not been properly initialized.`;
     }
 
     try {
       const fullPath = join(this.taskOMatic, filePath);
-      if (existsSync(fullPath)) {
-        return readFileSync(fullPath, "utf-8");
+      const content = await this.callbacks.readFile(fullPath);
+      if (content) {
+        return content;
       }
       return `# Documentation File Not Found\n\nFile: ${filePath}\n\nThis documentation file could not be found on disk.`;
     } catch (error) {
@@ -210,7 +253,7 @@ export class ContextBuilder {
   /**
    * Get PRD content from file path
    */
-  private getPRDContent(prdFile: string): string | undefined {
+  private async getPRDContent(prdFile: string): Promise<string | undefined> {
     if (!this.taskOMatic) {
       return undefined;
     }
@@ -221,10 +264,7 @@ export class ContextBuilder {
         ? prdFile
         : join(this.taskOMatic, prdFile);
 
-      if (existsSync(fullPath)) {
-        return readFileSync(fullPath, "utf-8");
-      }
-      return undefined;
+      return (await this.callbacks.readFile(fullPath)) || undefined;
     } catch (error) {
       console.warn(`Failed to read PRD file ${prdFile}:`, error);
       return undefined;
@@ -234,38 +274,49 @@ export class ContextBuilder {
   /**
    * Get relevant PRD content based on task title/description
    */
-  private getRelevantPRDContent(
+  private async getRelevantPRDContent(
     taskTitle?: string,
     taskDescription?: string
-  ): string | undefined {
+  ): Promise<string | undefined> {
     if (!this.taskOMatic) return undefined;
 
     // Look for PRD files in known locations
     const prdPaths = [
       join(this.taskOMatic, "prd"),
       join(this.taskOMatic, "..", "docs"),
-      join(process.cwd(), ".task-o-matic", "prd"),
-      join(process.cwd(), "prd"),
-      join(process.cwd(), "docs"),
+      join(configManager.getWorkingDirectory(), ".task-o-matic", "prd"),
+      join(configManager.getWorkingDirectory(), "prd"),
+      join(configManager.getWorkingDirectory(), "docs"),
     ];
 
     for (const prdPath of prdPaths) {
-      if (existsSync(prdPath)) {
+      if (await this.callbacks.fileExists(prdPath)) {
         try {
           // Look for ANY text files in PRD directory
-          const prdFiles = readdirSync(prdPath).filter(
+          const files = await this.callbacks.listFiles(prdPath);
+          const prdFiles = files.filter(
             (f) => f.endsWith(".md") || f.endsWith(".txt")
           );
+
           if (prdFiles.length > 0) {
             // Get the MOST RECENT PRD file by modification time
-            const prdFilesWithStats = prdFiles.map((file) => ({
-              file,
-              path: join(prdPath, file),
-              mtime: statSync(join(prdPath, file)).mtime.getTime(),
-            }));
+            const prdFilesWithStats = await Promise.all(
+              prdFiles.map(async (file) => {
+                const path = join(prdPath, file);
+                const stats = await this.callbacks.stat(path);
+                return {
+                  file,
+                  path,
+                  mtime: stats ? stats.mtime : 0,
+                };
+              })
+            );
+
             prdFilesWithStats.sort((a, b) => b.mtime - a.mtime); // Sort by newest first
             const mostRecentPrd = prdFilesWithStats[0];
-            return readFileSync(mostRecentPrd.path, "utf-8");
+            return (
+              (await this.callbacks.readFile(mostRecentPrd.path)) || undefined
+            );
           }
         } catch (error) {
           console.warn(`Failed to read PRD directory ${prdPath}:`, error);
