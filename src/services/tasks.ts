@@ -446,13 +446,44 @@ export class TaskService {
       type: "progress",
     });
 
+    // Capture metrics
+    let tokenUsage:
+      | { prompt: number; completion: number; total: number }
+      | undefined;
+    let timeToFirstToken: number | undefined;
+    const aiStartTime = Date.now();
+
+    // Wrap streaming options to capture metrics
+    const metricsStreamingOptions: StreamingOptions = {
+      ...streamingOptions,
+      onFinish: async (result: any) => {
+        if (result.usage) {
+          tokenUsage = {
+            prompt: result.usage.inputTokens || result.usage.promptTokens || 0,
+            completion:
+              result.usage.outputTokens || result.usage.completionTokens || 0,
+            total: result.usage.totalTokens || 0,
+          };
+        }
+        // Call original onFinish if provided
+        await streamingOptions?.onFinish?.(result);
+      },
+      onChunk: (chunk: string) => {
+        if (chunk && !timeToFirstToken) {
+          timeToFirstToken = Date.now() - aiStartTime;
+        }
+        // Call original onChunk if provided
+        streamingOptions?.onChunk?.(chunk);
+      },
+    };
+
     const enhancedContent =
       await getAIOperations().enhanceTaskWithDocumentation(
         task.id,
         task.title,
         task.description ?? "",
         stackInfo,
-        streamingOptions,
+        metricsStreamingOptions,
         undefined,
         enhancementAIConfig,
         context.existingResearch
@@ -509,6 +540,9 @@ export class TaskService {
         originalLength,
         enhancedLength: enhancedContent.length,
         duration,
+        tokenUsage,
+        timeToFirstToken,
+        cost: undefined, // Cost calculation can be added later
       },
       metadata: {
         aiProvider: aiConfig.provider,
@@ -565,13 +599,44 @@ export class TaskService {
       type: "progress",
     });
 
+    // Capture metrics
+    let tokenUsage:
+      | { prompt: number; completion: number; total: number }
+      | undefined;
+    let timeToFirstToken: number | undefined;
+    const aiStartTime = Date.now();
+
+    // Wrap streaming options to capture metrics
+    const metricsStreamingOptions: StreamingOptions = {
+      ...streamingOptions,
+      onFinish: async (result: any) => {
+        if (result.usage) {
+          tokenUsage = {
+            prompt: result.usage.inputTokens || result.usage.promptTokens || 0,
+            completion:
+              result.usage.outputTokens || result.usage.completionTokens || 0,
+            total: result.usage.totalTokens || 0,
+          };
+        }
+        // Call original onFinish if provided
+        await streamingOptions?.onFinish?.(result);
+      },
+      onChunk: (chunk: string) => {
+        if (chunk && !timeToFirstToken) {
+          timeToFirstToken = Date.now() - aiStartTime;
+        }
+        // Call original onChunk if provided
+        streamingOptions?.onChunk?.(chunk);
+      },
+    };
+
     // Use AI service to break down the task with enhanced context
     const subtaskData = await getAIOperations().breakdownTask(
       task,
       breakdownAIConfig,
       promptOverride,
       messageOverride,
-      streamingOptions,
+      metricsStreamingOptions,
       undefined,
       fullContent,
       stackInfo,
@@ -635,6 +700,9 @@ export class TaskService {
       stats: {
         subtasksCreated: createdSubtasks.length,
         duration,
+        tokenUsage,
+        timeToFirstToken,
+        cost: undefined, // Cost calculation can be added later
       },
       metadata: {
         aiProvider: aiConfig.provider,
@@ -852,13 +920,44 @@ export class TaskService {
       type: "progress",
     });
 
+    // Capture metrics
+    let tokenUsage:
+      | { prompt: number; completion: number; total: number }
+      | undefined;
+    let timeToFirstToken: number | undefined;
+    const aiStartTime = Date.now();
+
+    // Wrap streaming options to capture metrics
+    const metricsStreamingOptions: StreamingOptions = {
+      ...streamingOptions,
+      onFinish: async (result: any) => {
+        if (result.usage) {
+          tokenUsage = {
+            prompt: result.usage.inputTokens || result.usage.promptTokens || 0,
+            completion:
+              result.usage.outputTokens || result.usage.completionTokens || 0,
+            total: result.usage.totalTokens || 0,
+          };
+        }
+        // Call original onFinish if provided
+        await streamingOptions?.onFinish?.(result);
+      },
+      onChunk: (chunk: string) => {
+        if (chunk && !timeToFirstToken) {
+          timeToFirstToken = Date.now() - aiStartTime;
+        }
+        // Call original onChunk if provided
+        streamingOptions?.onChunk?.(chunk);
+      },
+    };
+
     const plan = await aiService.planTask(
       taskContext,
       taskDetails,
       planAIConfig,
       undefined,
       undefined,
-      streamingOptions
+      metricsStreamingOptions
     );
 
     hooks.emit("task:progress", {
@@ -884,6 +983,9 @@ export class TaskService {
       plan,
       stats: {
         duration,
+        tokenUsage,
+        timeToFirstToken,
+        cost: undefined, // Cost calculation can be added later
       },
       metadata: {
         aiProvider: aiConfig.provider,

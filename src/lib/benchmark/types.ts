@@ -23,6 +23,8 @@ export interface BenchmarkProgressEvent {
 }
 
 import { StreamingOptions } from "../../types";
+import { WorkflowAutomationOptions } from "../../types/workflow-options";
+import { Task } from "../../types";
 
 export interface BenchmarkResult {
   modelId: string; // provider:model[:reasoning]
@@ -42,6 +44,28 @@ export interface BenchmarkResult {
   cost?: number; // estimated cost in USD
 }
 
+export interface WorkflowBenchmarkResult extends BenchmarkResult {
+  output: {
+    projectDir?: string;
+    prdFile?: string;
+    prdContent?: string;
+    tasks: Task[];
+    stats: {
+      initDuration?: number;
+      prdGenerationDuration?: number;
+      prdRefinementDuration?: number;
+      taskGenerationDuration?: number;
+      taskSplittingDuration?: number;
+      totalTasks: number;
+      tasksWithSubtasks: number;
+      avgTaskComplexity?: number;
+      prdSize?: number; // characters
+      totalSteps: number;
+      successfulSteps: number;
+    };
+  };
+}
+
 export interface BenchmarkRun {
   id: string;
   timestamp: number;
@@ -49,6 +73,39 @@ export interface BenchmarkRun {
   input: any;
   config: BenchmarkConfig;
   results: BenchmarkResult[];
+}
+
+export interface WorkflowBenchmarkInput {
+  // Collected user responses for consistent execution across models
+  collectedResponses: {
+    projectName: string;
+    initMethod: "quick" | "custom" | "ai";
+    projectDescription?: string;
+    stackConfig?: {
+      frontend?: string;
+      backend?: string;
+      database?: string;
+      auth?: boolean;
+    };
+    prdMethod: "upload" | "manual" | "ai" | "skip";
+    prdContent?: string;
+    prdDescription?: string;
+    prdFile?: string;
+    refinePrd?: boolean;
+    refineFeedback?: string;
+    generateTasks?: boolean;
+    customInstructions?: string;
+    splitTasks?: boolean;
+    tasksToSplit?: string[];
+    splitInstructions?: string;
+  };
+  
+  // Original workflow automation options
+  workflowOptions: WorkflowAutomationOptions;
+  
+  // Benchmark-specific settings
+  projectDir?: string;
+  tempDirBase?: string; // Base directory for temporary project directories
 }
 
 export interface BenchmarkableOperation {

@@ -415,6 +415,20 @@ async function stepDefinePRD(
       chalk.gray("\n" + result.prdContent.substring(0, 500) + "...\n")
     );
 
+    // Display metrics if available
+    if (result.stats) {
+      console.log(chalk.cyan(`  Duration: ${result.stats.duration}ms`));
+      if (result.stats.tokenUsage) {
+        console.log(chalk.cyan(`  Tokens: ${result.stats.tokenUsage.total} (Prompt: ${result.stats.tokenUsage.prompt}, Completion: ${result.stats.tokenUsage.completion})`));
+      }
+      if (result.stats.timeToFirstToken) {
+        console.log(chalk.cyan(`  Time to First Token: ${result.stats.timeToFirstToken}ms`));
+      }
+      if (result.stats.cost) {
+        console.log(chalk.cyan(`  Estimated Cost: $${result.stats.cost.toFixed(6)}`));
+      }
+    }
+
     const acceptPRD = await getOrPrompt(
       options.autoAccept ? true : undefined,
       () => confirmPrompt("Accept this PRD?", true)
@@ -692,6 +706,20 @@ async function stepRefinePRD(
       chalk.gray("\n" + result.prdContent.substring(0, 500) + "...\n")
     );
 
+    // Display metrics if available
+    if (result.stats) {
+      console.log(chalk.cyan(`  Duration: ${result.stats.duration}ms`));
+      if (result.stats.tokenUsage) {
+        console.log(chalk.cyan(`  Tokens: ${result.stats.tokenUsage.total} (Prompt: ${result.stats.tokenUsage.prompt}, Completion: ${result.stats.tokenUsage.completion})`));
+      }
+      if (result.stats.timeToFirstToken) {
+        console.log(chalk.cyan(`  Time to First Token: ${result.stats.timeToFirstToken}ms`));
+      }
+      if (result.stats.cost) {
+        console.log(chalk.cyan(`  Estimated Cost: $${result.stats.cost.toFixed(6)}`));
+      }
+    }
+
     const acceptRefinement = await getOrPrompt(
       options.autoAccept ? true : undefined,
       () => confirmPrompt("Accept refinements?", true)
@@ -777,6 +805,20 @@ async function stepGenerateTasks(
   });
 
   console.log(chalk.green(`\n✓ Generated ${result.tasks.length} tasks`));
+
+  // Display metrics if available
+  if (result.stats) {
+    console.log(chalk.cyan(`  Duration: ${result.stats.duration}ms`));
+    if (result.stats.tokenUsage) {
+      console.log(chalk.cyan(`  Tokens: ${result.stats.tokenUsage.total} (Prompt: ${result.stats.tokenUsage.prompt}, Completion: ${result.stats.tokenUsage.completion})`));
+    }
+    if (result.stats.timeToFirstToken) {
+      console.log(chalk.cyan(`  Time to First Token: ${result.stats.timeToFirstToken}ms`));
+    }
+    if (result.stats.cost) {
+      console.log(chalk.cyan(`  Estimated Cost: $${result.stats.cost.toFixed(6)}`));
+    }
+  }
 
   // Display tasks
   console.log(chalk.blue("\n  Created Tasks:\n"));

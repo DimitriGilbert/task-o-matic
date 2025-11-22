@@ -22,6 +22,13 @@ export interface EnhanceTaskResult {
     originalLength: number;
     enhancedLength: number;
     duration: number;
+    tokenUsage?: {
+      prompt: number;
+      completion: number;
+      total: number;
+    };
+    timeToFirstToken?: number; // ms
+    cost?: number; // USD
   };
   metadata: {
     aiProvider: string;
@@ -37,6 +44,13 @@ export interface SplitTaskResult {
   stats: {
     subtasksCreated: number;
     duration: number;
+    tokenUsage?: {
+      prompt: number;
+      completion: number;
+      total: number;
+    };
+    timeToFirstToken?: number; // ms
+    cost?: number; // USD
   };
   metadata: {
     aiProvider: string;
@@ -51,6 +65,13 @@ export interface PlanTaskResult {
   plan: string;
   stats: {
     duration: number;
+    tokenUsage?: {
+      prompt: number;
+      completion: number;
+      total: number;
+    };
+    timeToFirstToken?: number; // ms
+    cost?: number; // USD
   };
   metadata: {
     aiProvider: string;
@@ -87,10 +108,17 @@ export interface PRDParseResult {
     duration: number;
     aiProvider: string;
     aiModel: string;
+    tokenUsage?: {
+      prompt: number;
+      completion: number;
+      total: number;
+    };
+    timeToFirstToken?: number; // ms
+    cost?: number; // USD
   };
   steps: {
     step: string;
-    status: 'completed' | 'failed';
+    status: "completed" | "failed";
     duration: number;
     details?: any;
   }[];

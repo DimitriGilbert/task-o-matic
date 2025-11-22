@@ -110,12 +110,43 @@ export class PRDService {
     });
 
     const stepStart2 = Date.now();
+
+    // Capture metrics
+    let tokenUsage:
+      | { prompt: number; completion: number; total: number }
+      | undefined;
+    let timeToFirstToken: number | undefined;
+
+    // Wrap streaming options to capture metrics
+    const metricsStreamingOptions: StreamingOptions = {
+      ...input.streamingOptions,
+      onFinish: async (result: any) => {
+        if (result.usage) {
+          tokenUsage = {
+            prompt: result.usage.inputTokens || result.usage.promptTokens || 0,
+            completion:
+              result.usage.outputTokens || result.usage.completionTokens || 0,
+            total: result.usage.totalTokens || 0,
+          };
+        }
+        // Call original onFinish if provided
+        await input.streamingOptions?.onFinish?.(result);
+      },
+      onChunk: (chunk: string) => {
+        if (chunk && !timeToFirstToken) {
+          timeToFirstToken = Date.now() - stepStart2;
+        }
+        // Call original onChunk if provided
+        input.streamingOptions?.onChunk?.(chunk);
+      },
+    };
+
     const result = await getAIOperations().parsePRD(
       prdContent,
       aiConfig,
       input.promptOverride,
       input.messageOverride,
-      input.streamingOptions,
+      metricsStreamingOptions,
       undefined, // retryConfig
       workingDir, // Pass working directory to AI operations
       input.enableFilesystemTools
@@ -189,6 +220,14 @@ export class PRDService {
 
     const duration = Date.now() - startTime;
 
+    // Calculate cost if token usage is available
+    let cost: number | undefined;
+    if (tokenUsage) {
+      // Cost calculation would depend on the model
+      // For now, we'll leave it undefined and can add pricing later
+      // This matches the benchmark pattern where cost calculation is done elsewhere
+    }
+
     return {
       success: true,
       prd: {
@@ -202,6 +241,9 @@ export class PRDService {
         duration,
         aiProvider: input.aiOptions?.aiProvider || "default",
         aiModel: input.aiOptions?.aiModel || "default",
+        tokenUsage,
+        timeToFirstToken,
+        cost,
       },
       steps,
     };

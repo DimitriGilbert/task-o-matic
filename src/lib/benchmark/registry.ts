@@ -1,6 +1,7 @@
-import { BenchmarkableOperation } from "./types";
+import { BenchmarkableOperation, WorkflowBenchmarkInput } from "./types";
 import { prdService } from "../../services/prd";
 import { TaskService } from "../../services/tasks"; // We'll need to instantiate this or use a singleton if available
+import { workflowBenchmarkService } from "../../services/workflow-benchmark";
 import { AIOptions } from "../../utils/ai-config-builder";
 import { StreamingOptions } from "../../types";
 
@@ -98,6 +99,25 @@ export class BenchmarkRegistry {
           input.message,
           streamingOptions, // streaming options
           input.tools
+        );
+      },
+    });
+
+    // Workflow Full Execution
+    this.register({
+      id: "workflow-full",
+      name: "Complete Workflow",
+      description: "Execute the complete workflow: initialization, PRD creation, task generation, and splitting",
+      validateInput: (input: any) => workflowBenchmarkService.validateInput(input),
+      execute: async (
+        input: WorkflowBenchmarkInput,
+        aiOptions: AIOptions,
+        streamingOptions?: StreamingOptions
+      ) => {
+        return await workflowBenchmarkService.executeWorkflow(
+          input,
+          aiOptions,
+          streamingOptions
         );
       },
     });

@@ -264,6 +264,11 @@ export class WorkflowService {
     streamingOptions?: StreamingOptions;
     callbacks?: ProgressCallback;
   }): Promise<DefinePRDResult> {
+    const startTime = Date.now();
+    let tokenUsage: { prompt: number; completion: number; total: number } | undefined;
+    let timeToFirstToken: number | undefined;
+    let cost: number | undefined;
+
     input.callbacks?.onProgress?.({
       type: "started",
       message: "Defining PRD...",
@@ -282,6 +287,9 @@ export class WorkflowService {
         prdFile: "",
         prdContent: "",
         method: "skip",
+        stats: {
+          duration: Date.now() - startTime,
+        },
       };
     }
 
@@ -302,10 +310,38 @@ export class WorkflowService {
         message: "Generating PRD with AI...",
       });
 
+      // Capture metrics for AI operations
+      const streamingOptions = {
+        ...input.streamingOptions,
+        onFinish: async (result: any) => {
+          if (result.usage) {
+            tokenUsage = {
+              prompt: result.usage.inputTokens || result.usage.promptTokens || 0,
+              completion: result.usage.outputTokens || result.usage.completionTokens || 0,
+              total: result.usage.totalTokens || 0,
+            };
+            
+            // Calculate cost (simplified - would need proper pricing lookup)
+            if (tokenUsage.total > 0) {
+              cost = tokenUsage.total * 0.000001; // Placeholder cost calculation
+            }
+          }
+          // Call original onFinish if provided
+          input.streamingOptions?.onFinish?.(result);
+        },
+        onChunk: (chunk: string) => {
+          if (chunk && !timeToFirstToken) {
+            timeToFirstToken = Date.now() - startTime;
+          }
+          // Call original onChunk if provided
+          input.streamingOptions?.onChunk?.(chunk);
+        },
+      };
+
       prdContent = await workflowAIAssistant.assistPRDCreation({
         userDescription: input.prdDescription,
         aiOptions: input.aiOptions,
-        streamingOptions: input.streamingOptions,
+        streamingOptions,
       });
     }
 
@@ -318,11 +354,19 @@ export class WorkflowService {
       message: `PRD saved to ${prdPath}`,
     });
 
+    const stats = {
+      duration: Date.now() - startTime,
+      ...(tokenUsage && { tokenUsage }),
+      ...(timeToFirstToken && { timeToFirstToken }),
+      ...(cost && { cost }),
+    };
+
     return {
       success: true,
       prdFile: prdPath,
       prdContent,
       method: input.method,
+      stats,
     };
   }
 
@@ -340,6 +384,11 @@ export class WorkflowService {
     streamingOptions?: StreamingOptions;
     callbacks?: ProgressCallback;
   }): Promise<RefinePRDResult> {
+    const startTime = Date.now();
+    let tokenUsage: { prompt: number; completion: number; total: number } | undefined;
+    let timeToFirstToken: number | undefined;
+    let cost: number | undefined;
+
     input.callbacks?.onProgress?.({
       type: "started",
       message: "Refining PRD...",
@@ -350,6 +399,9 @@ export class WorkflowService {
         success: true,
         prdFile: input.prdFile,
         prdContent: input.prdContent || readFileSync(input.prdFile, "utf-8"),
+        stats: {
+          duration: Date.now() - startTime,
+        },
       };
     }
 
@@ -364,11 +416,39 @@ export class WorkflowService {
         message: "Refining PRD with AI...",
       });
 
+      // Capture metrics for AI operations
+      const streamingOptions = {
+        ...input.streamingOptions,
+        onFinish: async (result: any) => {
+          if (result.usage) {
+            tokenUsage = {
+              prompt: result.usage.inputTokens || result.usage.promptTokens || 0,
+              completion: result.usage.outputTokens || result.usage.completionTokens || 0,
+              total: result.usage.totalTokens || 0,
+            };
+            
+            // Calculate cost (simplified - would need proper pricing lookup)
+            if (tokenUsage.total > 0) {
+              cost = tokenUsage.total * 0.000001; // Placeholder cost calculation
+            }
+          }
+          // Call original onFinish if provided
+          input.streamingOptions?.onFinish?.(result);
+        },
+        onChunk: (chunk: string) => {
+          if (chunk && !timeToFirstToken) {
+            timeToFirstToken = Date.now() - startTime;
+          }
+          // Call original onChunk if provided
+          input.streamingOptions?.onChunk?.(chunk);
+        },
+      };
+
       refinedContent = await workflowAIAssistant.assistPRDRefinement({
         currentPRD: refinedContent,
         userFeedback: input.feedback,
         aiOptions: input.aiOptions,
-        streamingOptions: input.streamingOptions,
+        streamingOptions,
       });
     }
 
@@ -380,10 +460,18 @@ export class WorkflowService {
       message: "PRD refined successfully",
     });
 
+    const stats = {
+      duration: Date.now() - startTime,
+      ...(tokenUsage && { tokenUsage }),
+      ...(timeToFirstToken && { timeToFirstToken }),
+      ...(cost && { cost }),
+    };
+
     return {
       success: true,
       prdFile: input.prdFile,
       prdContent: refinedContent,
+      stats,
     };
   }
 
@@ -401,28 +489,64 @@ export class WorkflowService {
     callbacks?: ProgressCallback;
   }): Promise<GenerateTasksResult> {
     const startTime = Date.now();
+    let tokenUsage: { prompt: number; completion: number; total: number } | undefined;
+    let timeToFirstToken: number | undefined;
+    let cost: number | undefined;
 
     input.callbacks?.onProgress?.({
       type: "started",
       message: "Generating tasks from PRD...",
     });
 
+    // Capture metrics for AI operations
+    const streamingOptions = {
+      ...input.streamingOptions,
+      onFinish: async (result: any) => {
+        if (result.usage) {
+          tokenUsage = {
+            prompt: result.usage.inputTokens || result.usage.promptTokens || 0,
+            completion: result.usage.outputTokens || result.usage.completionTokens || 0,
+            total: result.usage.totalTokens || 0,
+          };
+          
+          // Calculate cost (simplified - would need proper pricing lookup)
+          if (tokenUsage.total > 0) {
+            cost = tokenUsage.total * 0.000001; // Placeholder cost calculation
+          }
+        }
+        // Call original onFinish if provided
+        input.streamingOptions?.onFinish?.(result);
+      },
+      onChunk: (chunk: string) => {
+        if (chunk && !timeToFirstToken) {
+          timeToFirstToken = Date.now() - startTime;
+        }
+        // Call original onChunk if provided
+        input.streamingOptions?.onChunk?.(chunk);
+      },
+    };
+
     const result = await prdService.parsePRD({
       file: input.prdFile,
       workingDirectory: input.projectDir,
       aiOptions: input.aiOptions,
       messageOverride: input.customInstructions,
-      streamingOptions: input.streamingOptions,
+      streamingOptions,
       callbacks: input.callbacks,
     });
+
+    const stats = {
+      tasksCreated: result.tasks.length,
+      duration: Date.now() - startTime,
+      ...(tokenUsage && { tokenUsage }),
+      ...(timeToFirstToken && { timeToFirstToken }),
+      ...(cost && { cost }),
+    };
 
     return {
       success: true,
       tasks: result.tasks,
-      stats: {
-        tasksCreated: result.tasks.length,
-        duration: Date.now() - startTime,
-      },
+      stats,
     };
   }
 

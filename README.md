@@ -17,6 +17,7 @@ AI-powered task management for CLI, TUI, and web applications. Parse PRDs, enhan
 - 📊 **Smart Breakdown**: AI-powered task decomposition into subtasks
 - 🌊 **Real-time Streaming**: Watch AI responses generate live with streaming output
 - 📊 **Model Benchmarking**: Compare performance and quality across different AI models
+- 🏁 **Workflow Benchmarking**: Test complete workflows across multiple models and compare results
 - 🏠 **Single-Project Focus**: Self-contained within each project directory
 - 💻 **Framework-Agnostic**: Easily integrate into TUI, web apps, or any Node.js project
 
@@ -267,6 +268,11 @@ import type {
   RefinePRDResult,
   GenerateTasksResult,
   SplitTasksResult,
+  // Benchmark types
+  WorkflowBenchmarkInput,
+  WorkflowBenchmarkResult,
+  BenchmarkConfig,
+  BenchmarkResult,
 } from "task-o-matic";
 ```
 
@@ -350,6 +356,9 @@ task-o-matic workflow
 
 # With streaming AI output
 task-o-matic workflow --stream
+
+# Want to test multiple AI models? Try workflow benchmarking:
+task-o-matic benchmark workflow --models "openai:gpt-4o,anthropic:claude-3-5-sonnet"
 ```
 
 **The workflow will guide you through:**
@@ -389,6 +398,7 @@ task-o-matic workflow --stream
 - [AI Integration](docs/ai-integration.md) - AI providers and prompt engineering
 - [Project Initialization](docs/projects.md) - Project setup and bootstrapping
 - [Streaming Output](docs/streaming.md) - Real-time AI streaming capabilities
+- [Model Benchmarking](docs/benchmarking.md) - Compare AI models and workflow performance
 
 ## 🎯 Common Workflows
 
@@ -458,6 +468,55 @@ task-o-matic benchmark compare <run-id>
 task-o-matic benchmark show <run-id>
 ```
 
+### Workflow 3b: Complete Workflow Benchmarking
+
+Test entire workflows across multiple AI models and automatically set up your project with the best results.
+
+```bash
+# 1. Basic workflow benchmark with interactive setup
+task-o-matic benchmark workflow \
+  --models "openai:gpt-4o,anthropic:claude-3-5-sonnet,openrouter:qwen/qwen-2.5-72b-instruct" \
+  --concurrency 2 \
+  --delay 1000
+
+# 2. Automated workflow benchmark
+task-o-matic benchmark workflow \
+  --models "openai:gpt-4o,anthropic:claude-3-5-sonnet" \
+  --project-name "my-saas-app" \
+  --project-description "Team collaboration platform with real-time chat" \
+  --init-method ai \
+  --prd-method ai \
+  --auto-accept \
+  --skip-all
+
+# 3. Benchmark with specific workflow options
+task-o-matic benchmark workflow \
+  --models "openai:gpt-4o,anthropic:claude-3-5-sonnet" \
+  --project-name "e-commerce-app" \
+  --init-method custom \
+  --frontend next \
+  --backend hono \
+  --database postgres \
+  --prd-method ai \
+  --prd-description "Modern e-commerce platform with AI recommendations" \
+  --refine-feedback "Focus on scalability and security" \
+  --split-all
+
+# Results include:
+# - Comprehensive comparison table (duration, tasks, PRD size, costs)
+# - Detailed per-model breakdowns with timing and token metrics
+# - Interactive selection to choose the best model
+# - Automatic project setup with selected model's results
+```
+
+**Workflow Benchmark Features:**
+
+- **Two-Phase Execution**: Interactive question collection, then parallel execution
+- **Complete Workflow**: Project init → PRD creation → task generation → task splitting
+- **Comprehensive Metrics**: Performance, cost, quality, and output comparison
+- **Model Selection**: Choose the best performer and auto-setup your project
+- **Identical Conditions**: All models receive the same inputs for fair comparison
+
 ### Workflow 4: Project Bootstrapping
 
 ```bash
@@ -475,6 +534,130 @@ task-o-matic init bootstrap my-app
 
 # Start managing tasks
 task-o-matic tasks create --title "Set up development environment" --ai-enhance --stream
+```
+
+## 📊 Benchmarking Commands
+
+### Basic Model Benchmarking
+
+Compare different AI models on specific operations:
+
+```bash
+# Benchmark PRD parsing across multiple models
+task-o-matic benchmark run prd-parse \
+  --file requirements.md \
+  --models "openai:gpt-4o,anthropic:claude-3-5-sonnet,openrouter:qwen/qwen-2.5-72b-instruct" \
+  --concurrency 3 \
+  --delay 1000
+
+# Benchmark task splitting
+task-o-matic benchmark run task-breakdown \
+  --task-id <task-id> \
+  --models "openai:gpt-4o,anthropic:claude-3-5-sonnet" \
+  --concurrency 2
+
+# View benchmark results
+task-o-matic benchmark list
+task-o-matic benchmark show <run-id>
+task-o-matic benchmark compare <run-id>
+```
+
+### Complete Workflow Benchmarking
+
+Test entire project workflows across multiple AI models:
+
+```bash
+# Interactive workflow benchmark (recommended)
+task-o-matic benchmark workflow \
+  --models "openai:gpt-4o,anthropic:claude-3-5-sonnet,openrouter:qwen/qwen-2.5-72b-instruct"
+```
+
+**What happens:**
+1. **Phase 1**: You answer workflow questions once (project setup, PRD creation, etc.)
+2. **Phase 2**: All models execute the identical workflow in parallel
+3. **Results**: Comprehensive comparison table with metrics and model selection
+
+**Full automation example:**
+
+```bash
+task-o-matic benchmark workflow \
+  --models "openai:gpt-4o,anthropic:claude-3-5-sonnet" \
+  --project-name "my-saas-platform" \
+  --project-description "Team collaboration platform with real-time messaging" \
+  --init-method ai \
+  --prd-method ai \
+  --auto-accept \
+  --refine-feedback "Add more technical details and security considerations" \
+  --generate-instructions "Focus on MVP features and break into small tasks" \
+  --split-all \
+  --concurrency 2 \
+  --delay 2000
+```
+
+**Output includes:**
+
+```
+📊 Workflow Benchmark Results
+
+Model                                    | Duration   | Tasks | PRD Size   | Steps | Cost      
+---------------------------------------- | ---------- | ----- | ---------- | ----- | ----------
+openai:gpt-4o                           | 45234ms    | 12    | 2843 chars | 5/5   | $0.023400
+anthropic:claude-3-5-sonnet             | 42156ms    | 15    | 3021 chars | 5/5   | $0.019800
+
+🔍 Detailed Comparison
+
+[1] openai:gpt-4o
+Duration: 45234ms
+Steps Completed: 5/5
+  Init: 2341ms
+  PRD Generation: 12456ms
+  Task Generation: 8234ms
+  Task Splitting: 3421ms
+Tasks Created: 12
+PRD Size: 2843 characters
+Tokens: 4521 (Prompt: 2341, Completion: 2180)
+Cost: $0.023400
+
+🎯 Model Selection
+Would you like to select a model and set up your project with its results? (y/N)
+```
+
+### Benchmark Options
+
+All benchmark commands support:
+
+- `--models <list>`: Comma-separated model list (required)
+- `--concurrency <number>`: Max parallel requests (default: 3)
+- `--delay <ms>`: Delay between requests (default: 1000ms)
+
+**Model format:** `provider:model[:reasoning=<tokens>]`
+
+**Examples:**
+- `openai:gpt-4o`
+- `anthropic:claude-3-5-sonnet`
+- `openrouter:anthropic/claude-3.5-sonnet`
+- `openrouter:openai/o1-preview:reasoning=50000`
+
+### Workflow Benchmark Inheritance
+
+The `benchmark workflow` command supports ALL workflow command options:
+
+```bash
+# All these workflow options work in benchmarks:
+--project-name, --init-method, --project-description
+--frontend, --backend, --database, --auth/--no-auth
+--prd-method, --prd-file, --prd-description, --prd-content
+--refine-feedback, --generate-instructions
+--split-tasks, --split-all, --split-instructions
+--skip-init, --skip-prd, --skip-refine, --skip-generate, --skip-split
+--stream, --auto-accept, --config-file
+```
+
+This allows you to:
+- **Pre-configure workflow steps** via command-line options
+- **Skip interactive questions** for automated benchmarking
+- **Compare identical workflows** across different models
+- **Test specific scenarios** (e.g., only AI vs only custom stack)
 ```
 
 ## 🔧 Environment Variables
@@ -508,6 +691,23 @@ AI_TEMPERATURE=0.7
 - **PRD Parsing**: `claude-3.5-sonnet` or `gpt-4`
 - **Task Enhancement**: `claude-3-haiku` or `gpt-3.5-turbo`
 - **Task Breakdown**: `claude-3.5-sonnet` for complex tasks
+- **Workflow Benchmarking**: Test 2-3 models to find optimal performance for your use case
+
+### Choosing the Right Model
+
+Not sure which model to use? Try workflow benchmarking:
+
+```bash
+# Test your specific workflow across multiple models
+task-o-matic benchmark workflow \
+  --models "openai:gpt-4o,anthropic:claude-3-5-sonnet,openrouter:qwen/qwen-2.5-72b-instruct" \
+  --project-description "Your project description here"
+
+# The benchmark will show you:
+# - Performance (speed, tokens, cost)
+# - Quality (tasks created, PRD completeness)  
+# - Best model for your specific needs
+```
 
 ## 📁 Storage Structure
 

@@ -31,6 +31,16 @@ export interface DefinePRDResult {
   prdFile: string;
   prdContent: string;
   method: "upload" | "manual" | "ai" | "skip";
+  stats?: {
+    duration: number;
+    tokenUsage?: {
+      prompt: number;
+      completion: number;
+      total: number;
+    };
+    timeToFirstToken?: number; // ms
+    cost?: number; // USD
+  };
 }
 
 export interface RefinePRDResult {
@@ -39,6 +49,16 @@ export interface RefinePRDResult {
   prdContent: string;
   questions?: string[];
   answers?: Record<string, string>;
+  stats?: {
+    duration: number;
+    tokenUsage?: {
+      prompt: number;
+      completion: number;
+      total: number;
+    };
+    timeToFirstToken?: number; // ms
+    cost?: number; // USD
+  };
 }
 
 export interface GenerateTasksResult {
@@ -47,6 +67,13 @@ export interface GenerateTasksResult {
   stats: {
     tasksCreated: number;
     duration: number;
+    tokenUsage?: {
+      prompt: number;
+      completion: number;
+      total: number;
+    };
+    timeToFirstToken?: number; // ms
+    cost?: number; // USD
   };
 }
 
