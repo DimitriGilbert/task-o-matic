@@ -33,6 +33,10 @@ export interface WorkflowAutomationOptions extends StreamingAIOptions {
   prdFile?: string; // Path to existing PRD file
   prdDescription?: string; // For AI-assisted PRD creation
   prdContent?: string; // Direct PRD content (for automation)
+  prdMultiGeneration?: boolean; // Use multi-generation for PRD creation
+  prdMultiGenerationModels?: string; // Comma-separated list of provider:model
+  prdCombine?: boolean; // Combine multiple PRDs into master
+  prdCombineModel?: string; // Model to use for combining (provider:model)
 
   // Step 3: Refine PRD
   skipRefine?: boolean; // Skip PRD refinement

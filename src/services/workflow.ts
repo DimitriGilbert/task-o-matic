@@ -263,6 +263,10 @@ export class WorkflowService {
     aiOptions?: AIOptions;
     streamingOptions?: StreamingOptions;
     callbacks?: ProgressCallback;
+    // Multi-generation options
+    multiGeneration?: boolean;
+    multiGenerationModels?: Array<{ provider: string; model: string }>;
+    combineAI?: { provider: string; model: string };
   }): Promise<DefinePRDResult> {
     const startTime = Date.now();
     let tokenUsage:
@@ -307,19 +311,144 @@ export class WorkflowService {
     } else if (input.method === "manual" && input.prdContent) {
       prdContent = input.prdContent;
     } else if (input.method === "ai" && input.prdDescription) {
-      const result = await prdService.generatePRD({
-        description: input.prdDescription,
-        outputDir: prdDir,
-        filename: prdFilename,
-        aiOptions: input.aiOptions,
-        streamingOptions: input.streamingOptions,
-        callbacks: input.callbacks,
-      });
+      // Check if multi-generation is requested
+      if (
+        input.multiGeneration &&
+        input.multiGenerationModels &&
+        input.multiGenerationModels.length > 1
+      ) {
+        // Multi-generation mode
+        const results: Array<{
+          path: string;
+          content: string;
+          stats: any;
+          modelId: string;
+        }> = [];
 
-      prdContent = result.content;
-      tokenUsage = result.stats.tokenUsage;
-      timeToFirstToken = result.stats.timeToFirstToken;
-      cost = result.stats.cost;
+        input.callbacks?.onProgress?.({
+          type: "progress",
+          message: `Generating ${input.multiGenerationModels.length} PRDs concurrently...`,
+        });
+
+        // Generate PRDs concurrently
+        const promises = input.multiGenerationModels.map(
+          async (modelConfig, index) => {
+            const modelId = `${modelConfig.provider}:${modelConfig.model}`;
+            const result = await prdService.generatePRD({
+              description: input.prdDescription!,
+              outputDir: prdDir,
+              filename: `prd-${
+                modelConfig.provider
+              }-${modelConfig.model.replace(/\//g, "-")}.md`,
+              aiOptions: {
+                aiProvider: modelConfig.provider,
+                aiModel: modelConfig.model,
+              },
+              callbacks: {
+                onProgress: (event) => {
+                  // Only modify events that have a message property
+                  if (event.type !== "stream-chunk") {
+                    input.callbacks?.onProgress?.({
+                      ...event,
+                      message: `[${modelId}] ${event.message}`,
+                    });
+                  } else {
+                    input.callbacks?.onProgress?.(event);
+                  }
+                },
+              },
+            });
+
+            results.push({
+              path: result.path,
+              content: result.content,
+              stats: result.stats,
+              modelId,
+            });
+
+            return result;
+          }
+        );
+
+        await Promise.all(promises);
+
+        // Aggregate metrics
+        tokenUsage = {
+          prompt: results.reduce(
+            (sum, r) => sum + (r.stats.tokenUsage?.prompt || 0),
+            0
+          ),
+          completion: results.reduce(
+            (sum, r) => sum + (r.stats.tokenUsage?.completion || 0),
+            0
+          ),
+          total: results.reduce(
+            (sum, r) => sum + (r.stats.tokenUsage?.total || 0),
+            0
+          ),
+        };
+        timeToFirstToken = Math.min(
+          ...results
+            .map((r) => r.stats.timeToFirstToken || Infinity)
+            .filter((t) => t !== Infinity)
+        );
+        cost = results.reduce((sum, r) => sum + (r.stats.cost || 0), 0);
+
+        // Combine if requested
+        if (input.combineAI) {
+          input.callbacks?.onProgress?.({
+            type: "progress",
+            message: "Combining PRDs into master PRD...",
+          });
+
+          const prdContents = results.map((r) => r.content);
+          const masterResult = await prdService.combinePRDs({
+            prds: prdContents,
+            originalDescription: input.prdDescription!,
+            outputDir: prdDir,
+            filename: "prd-master.md",
+            aiOptions: {
+              aiProvider: input.combineAI.provider,
+              aiModel: input.combineAI.model,
+            },
+            callbacks: input.callbacks,
+          });
+
+          prdContent = masterResult.content;
+          prdFilename = "prd-master.md";
+
+          // Add combination metrics
+          if (masterResult.stats.tokenUsage) {
+            tokenUsage.prompt += masterResult.stats.tokenUsage.prompt;
+            tokenUsage.completion += masterResult.stats.tokenUsage.completion;
+            tokenUsage.total += masterResult.stats.tokenUsage.total;
+          }
+          if (masterResult.stats.cost) {
+            cost = (cost || 0) + masterResult.stats.cost;
+          }
+        } else {
+          // Use the first generated PRD as the main one
+          prdContent = results[0].content;
+          prdFilename = `prd-${results[0].modelId
+            .replace(/:/g, "-")
+            .replace(/\//g, "-")}.md`;
+        }
+      } else {
+        // Single generation mode
+        const result = await prdService.generatePRD({
+          description: input.prdDescription,
+          outputDir: prdDir,
+          filename: prdFilename,
+          aiOptions: input.aiOptions,
+          streamingOptions: input.streamingOptions,
+          callbacks: input.callbacks,
+        });
+
+        prdContent = result.content;
+        tokenUsage = result.stats.tokenUsage;
+        timeToFirstToken = result.stats.timeToFirstToken;
+        cost = result.stats.cost;
+      }
     }
 
     // Save PRD if not already saved by AI service

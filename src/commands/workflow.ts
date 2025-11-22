@@ -377,6 +377,11 @@ async function stepDefinePRD(
   let prdFile: string | undefined;
   let prdDescription: string | undefined;
   let prdContent: string | undefined;
+  let useMultiGeneration: boolean | undefined;
+  let multiGenerationModels:
+    | Array<{ provider: string; model: string }>
+    | undefined;
+  let combineAI: { provider: string; model: string } | undefined;
 
   if (prdMethod === "upload") {
     prdFile = await getOrPrompt(options.prdFile, () =>
@@ -392,6 +397,70 @@ async function stepDefinePRD(
     prdDescription = await getOrPrompt(options.prdDescription, () =>
       textInputPrompt("Describe your product in detail:")
     );
+
+    // Ask about multi-generation
+    useMultiGeneration = await getOrPrompt(options.prdMultiGeneration, () =>
+      confirmPrompt(
+        "Generate multiple PRDs with different AI models and compare?",
+        false
+      )
+    );
+
+    if (useMultiGeneration) {
+      // Get comma-separated list of models
+      const modelsInput = await getOrPrompt(
+        options.prdMultiGenerationModels,
+        () =>
+          textInputPrompt(
+            "Enter comma-separated list of models (provider:model):",
+            "openrouter:anthropic/claude-3.5-sonnet,openrouter:google/gemini-2.0-flash-exp,openrouter:openai/gpt-4o"
+          )
+      );
+
+      // Parse models
+      multiGenerationModels = modelsInput.split(",").map((m: string) => {
+        const parts = m.trim().split(":");
+        if (parts.length < 2) {
+          throw new Error(
+            `Invalid model format: ${m}. Expected provider:model`
+          );
+        }
+        return { provider: parts[0], model: parts[1] };
+      });
+
+      // Ask about combining
+      const useCombine = await getOrPrompt(
+        options.prdCombine !== undefined ? options.prdCombine : undefined,
+        () => confirmPrompt("Combine all PRDs into a master PRD?", true)
+      );
+
+      if (useCombine) {
+        const combineModelInput = await getOrPrompt(
+          options.prdCombineModel,
+          () =>
+            textInputPrompt(
+              "Which model should combine the PRDs? (provider:model, leave empty to use current AI config):",
+              ""
+            )
+        );
+
+        if (combineModelInput && combineModelInput.trim()) {
+          const parts = combineModelInput.trim().split(":");
+          if (parts.length < 2) {
+            throw new Error(
+              `Invalid model format: ${combineModelInput}. Expected provider:model`
+            );
+          }
+          combineAI = { provider: parts[0], model: parts[1] };
+        } else {
+          // Use current AI config
+          combineAI = {
+            provider: options.aiProvider || "openrouter",
+            model: options.aiModel || "anthropic/claude-3.5-sonnet",
+          };
+        }
+      }
+    }
   }
 
   // Call service
@@ -407,6 +476,9 @@ async function stepDefinePRD(
       onProgress: displayProgress,
       onError: displayError,
     },
+    multiGeneration: useMultiGeneration,
+    multiGenerationModels,
+    combineAI,
   });
 
   if (prdMethod === "ai") {
@@ -419,13 +491,23 @@ async function stepDefinePRD(
     if (result.stats) {
       console.log(chalk.cyan(`  Duration: ${result.stats.duration}ms`));
       if (result.stats.tokenUsage) {
-        console.log(chalk.cyan(`  Tokens: ${result.stats.tokenUsage.total} (Prompt: ${result.stats.tokenUsage.prompt}, Completion: ${result.stats.tokenUsage.completion})`));
+        console.log(
+          chalk.cyan(
+            `  Tokens: ${result.stats.tokenUsage.total} (Prompt: ${result.stats.tokenUsage.prompt}, Completion: ${result.stats.tokenUsage.completion})`
+          )
+        );
       }
       if (result.stats.timeToFirstToken) {
-        console.log(chalk.cyan(`  Time to First Token: ${result.stats.timeToFirstToken}ms`));
+        console.log(
+          chalk.cyan(
+            `  Time to First Token: ${result.stats.timeToFirstToken}ms`
+          )
+        );
       }
       if (result.stats.cost) {
-        console.log(chalk.cyan(`  Estimated Cost: $${result.stats.cost.toFixed(6)}`));
+        console.log(
+          chalk.cyan(`  Estimated Cost: $${result.stats.cost.toFixed(6)}`)
+        );
       }
     }
 
@@ -710,13 +792,23 @@ async function stepRefinePRD(
     if (result.stats) {
       console.log(chalk.cyan(`  Duration: ${result.stats.duration}ms`));
       if (result.stats.tokenUsage) {
-        console.log(chalk.cyan(`  Tokens: ${result.stats.tokenUsage.total} (Prompt: ${result.stats.tokenUsage.prompt}, Completion: ${result.stats.tokenUsage.completion})`));
+        console.log(
+          chalk.cyan(
+            `  Tokens: ${result.stats.tokenUsage.total} (Prompt: ${result.stats.tokenUsage.prompt}, Completion: ${result.stats.tokenUsage.completion})`
+          )
+        );
       }
       if (result.stats.timeToFirstToken) {
-        console.log(chalk.cyan(`  Time to First Token: ${result.stats.timeToFirstToken}ms`));
+        console.log(
+          chalk.cyan(
+            `  Time to First Token: ${result.stats.timeToFirstToken}ms`
+          )
+        );
       }
       if (result.stats.cost) {
-        console.log(chalk.cyan(`  Estimated Cost: $${result.stats.cost.toFixed(6)}`));
+        console.log(
+          chalk.cyan(`  Estimated Cost: $${result.stats.cost.toFixed(6)}`)
+        );
       }
     }
 
@@ -810,13 +902,21 @@ async function stepGenerateTasks(
   if (result.stats) {
     console.log(chalk.cyan(`  Duration: ${result.stats.duration}ms`));
     if (result.stats.tokenUsage) {
-      console.log(chalk.cyan(`  Tokens: ${result.stats.tokenUsage.total} (Prompt: ${result.stats.tokenUsage.prompt}, Completion: ${result.stats.tokenUsage.completion})`));
+      console.log(
+        chalk.cyan(
+          `  Tokens: ${result.stats.tokenUsage.total} (Prompt: ${result.stats.tokenUsage.prompt}, Completion: ${result.stats.tokenUsage.completion})`
+        )
+      );
     }
     if (result.stats.timeToFirstToken) {
-      console.log(chalk.cyan(`  Time to First Token: ${result.stats.timeToFirstToken}ms`));
+      console.log(
+        chalk.cyan(`  Time to First Token: ${result.stats.timeToFirstToken}ms`)
+      );
     }
     if (result.stats.cost) {
-      console.log(chalk.cyan(`  Estimated Cost: $${result.stats.cost.toFixed(6)}`));
+      console.log(
+        chalk.cyan(`  Estimated Cost: $${result.stats.cost.toFixed(6)}`)
+      );
     }
   }
 
