@@ -21,55 +21,116 @@ const execAsync = promisify(exec);
  * Extract commit message and file list from AI conversation/output
  * This function analyzes the executor's work and generates appropriate commit info
  */
-async function extractCommitInfo(
+/**
+ * Extract commit message and file list from git state
+ * This function analyzes the actual git state to generate appropriate commit info
+ */
+export async function extractCommitInfo(
   taskId: string,
   taskTitle: string,
-  executionMessage: string
+  executionMessage: string,
+  gitState: {
+    beforeHead: string;
+    afterHead: string;
+    hasUncommittedChanges: boolean;
+  },
+  execFn: (
+    command: string
+  ) => Promise<{ stdout: string; stderr: string }> = execAsync,
+  aiOps: any = getAIOperations()
 ): Promise<{ message: string; files: string[] }> {
   try {
-    // Use AI to generate commit message based on the task
-    const aiOps = getAIOperations();
+    // Case 1: Executor created a commit
+    if (gitState.beforeHead !== gitState.afterHead) {
+      console.log(
+        chalk.blue("📝 Executor created a commit, extracting info...")
+      );
+      const { stdout } = await execFn(
+        `git show --stat --format="%s%n%b" ${gitState.afterHead}`
+      );
 
-    const prompt = `Based on the following task that was just completed, generate a concise git commit message and list the likely files that were changed.
+      const lines = stdout.trim().split("\n");
+      const message = lines[0].trim();
+      // Parse files from stat output (e.g. " src/file.ts | 10 +")
+      const files = lines
+        .slice(1)
+        .filter((line) => line.includes("|"))
+        .map((line) => line.split("|")[0].trim());
 
+      return {
+        message,
+        files,
+      };
+    }
+
+    // Case 2: Executor left uncommitted changes
+    if (gitState.hasUncommittedChanges) {
+      console.log(
+        chalk.blue(
+          "📝 Uncommitted changes detected, generating commit message..."
+        )
+      );
+
+      // Get the diff to send to AI
+      const { stdout: diff } = await execFn("git diff HEAD");
+
+      // Get list of changed files
+      const { stdout: status } = await execFn("git status --porcelain");
+      const files = status
+        .split("\n")
+        .filter((line) => line.length > 0)
+        .map((line) => line.substring(3).trim())
+        .filter((file) => file.length > 0);
+
+      // Use AI to generate commit message based on the diff
+      // const aiOps = getAIOperations(); // Injected
+
+      const prompt = `Based on the following git diff, generate a concise git commit message.
+      
 Task: ${taskTitle}
 
-Task Details:
-${executionMessage}
+Git Diff:
+${diff.substring(0, 10000)} // Limit diff size
 
 Please respond in JSON format:
 {
-  "message": "concise commit message following conventional commits format",
-  "files": ["list", "of", "likely", "changed", "files"]
+  "message": "concise commit message following conventional commits format"
 }
 
 The commit message should:
 - Follow conventional commits format (feat:, fix:, refactor:, etc.)
 - Be concise and descriptive
-- Focus on what changed, not how
+- Focus on what changed
+`;
 
-For the files list:
-- List the most likely files that were modified
-- If you're unsure, you can return an empty array []
-- Use relative paths from the project root`;
+      const response = await aiOps.streamText(
+        prompt,
+        undefined,
+        "You are a helpful assistant that generates git commit messages."
+      );
 
-    const response = await aiOps.streamText(
-      prompt,
-      undefined,
-      "You are a helpful assistant that generates git commit messages and identifies changed files."
-    );
+      // Try to parse JSON from response
+      const jsonMatch = response.match(/\{[\s\S]*\}/);
+      let message = `feat: complete task ${taskTitle}`;
 
-    // Try to parse JSON from response
-    const jsonMatch = response.match(/\{[\s\S]*\}/);
-    if (jsonMatch) {
-      const parsed = JSON.parse(jsonMatch[0]);
+      if (jsonMatch) {
+        try {
+          const parsed = JSON.parse(jsonMatch[0]);
+          if (parsed.message) {
+            message = parsed.message;
+          }
+        } catch (e) {
+          // Ignore parse error
+        }
+      }
+
       return {
-        message: parsed.message || `feat: complete task ${taskTitle}`,
-        files: parsed.files || [],
+        message,
+        files,
       };
     }
 
-    // Fallback if AI doesn't return proper JSON
+    // Case 3: No changes detected
     return {
       message: `feat: complete task ${taskTitle}`,
       files: [],
@@ -77,7 +138,7 @@ For the files list:
   } catch (error) {
     console.warn(
       chalk.yellow(
-        `⚠️  Failed to extract commit info from AI: ${
+        `⚠️  Failed to extract commit info: ${
           error instanceof Error ? error.message : "Unknown error"
         }`
       )
@@ -178,7 +239,10 @@ async function executeTaskWithRetry(
 
     if (tryModels && tryModels.length > 0) {
       // Use the model config for this attempt (or last one if we've exceeded the list)
-      const modelConfigIndex = Math.min(currentAttempt - 1, tryModels.length - 1);
+      const modelConfigIndex = Math.min(
+        currentAttempt - 1,
+        tryModels.length - 1
+      );
       const modelConfig = tryModels[modelConfigIndex];
 
       // Override executor if specified
@@ -210,6 +274,15 @@ async function executeTaskWithRetry(
 
     const attemptStartTime = Date.now();
 
+    // Capture git state before execution
+    let beforeHead = "";
+    try {
+      const { stdout } = await execAsync("git rev-parse HEAD");
+      beforeHead = stdout.trim();
+    } catch (e) {
+      // Git might not be initialized or no commits yet
+    }
+
     try {
       // Build execution message with context
       const contextBuilder = getContextBuilder();
@@ -219,7 +292,9 @@ async function executeTaskWithRetry(
 
       // Add retry context if this is a retry attempt
       if (currentAttempt > 1 && lastError) {
-        messageParts.push(`# RETRY ATTEMPT ${currentAttempt}/${maxRetries}\n\n`);
+        messageParts.push(
+          `# RETRY ATTEMPT ${currentAttempt}/${maxRetries}\n\n`
+        );
 
         // Add model escalation context
         if (currentModel) {
@@ -313,7 +388,9 @@ async function executeTaskWithRetry(
       );
 
       // Check if all verifications passed
-      const allVerificationsPassed = verificationResults.every((r) => r.success);
+      const allVerificationsPassed = verificationResults.every(
+        (r) => r.success
+      );
 
       if (!allVerificationsPassed) {
         // Verification failed - prepare error message for retry
@@ -345,10 +422,32 @@ async function executeTaskWithRetry(
 
       if (!dry) {
         console.log(chalk.blue("📝 Extracting commit information..."));
+
+        // Capture git state after execution
+        let afterHead = "";
+        let hasUncommittedChanges = false;
+
+        try {
+          const { stdout: headStdout } = await execAsync("git rev-parse HEAD");
+          afterHead = headStdout.trim();
+
+          const { stdout: statusStdout } = await execAsync(
+            "git status --porcelain"
+          );
+          hasUncommittedChanges = statusStdout.trim().length > 0;
+        } catch (e) {
+          // Git issues
+        }
+
         commitInfo = await extractCommitInfo(
           task.id,
           task.title,
-          executionMessage
+          executionMessage,
+          {
+            beforeHead,
+            afterHead,
+            hasUncommittedChanges,
+          }
         );
         console.log(chalk.green(`✅ Commit message: ${commitInfo.message}`));
         if (commitInfo.files.length > 0) {
@@ -380,8 +479,7 @@ async function executeTaskWithRetry(
 
       return attempts; // Success - exit retry loop
     } catch (error) {
-      lastError =
-        error instanceof Error ? error.message : String(error);
+      lastError = error instanceof Error ? error.message : String(error);
 
       attempts.push({
         attemptNumber: currentAttempt,
@@ -432,12 +530,7 @@ export async function executeTaskLoop(
   options: ExecuteLoopOptions
 ): Promise<ExecuteLoopResult> {
   const startTime = Date.now();
-  const {
-    filters = {},
-    tool = "opencode",
-    config = {},
-    dry = false,
-  } = options;
+  const { filters = {}, tool = "opencode", config = {}, dry = false } = options;
 
   const {
     maxRetries = 3,
@@ -450,7 +543,11 @@ export async function executeTaskLoop(
   console.log(chalk.cyan(`Max Retries per Task: ${maxRetries}`));
   console.log(
     chalk.cyan(
-      `Verification Commands: ${verificationCommands.length > 0 ? verificationCommands.join(", ") : "None"}`
+      `Verification Commands: ${
+        verificationCommands.length > 0
+          ? verificationCommands.join(", ")
+          : "None"
+      }`
     )
   );
   console.log(chalk.cyan(`Auto Commit: ${autoCommit ? "Yes" : "No"}`));
@@ -583,7 +680,9 @@ export async function executeTaskLoop(
 
   // Print summary
   console.log(
-    chalk.blue.bold(`\n${"=".repeat(60)}\n📊 Execution Summary\n${"=".repeat(60)}`)
+    chalk.blue.bold(
+      `\n${"=".repeat(60)}\n📊 Execution Summary\n${"=".repeat(60)}`
+    )
   );
   console.log(chalk.cyan(`Total Tasks: ${tasksToExecute.length}`));
   console.log(chalk.green(`✅ Completed: ${completedTasks}`));
