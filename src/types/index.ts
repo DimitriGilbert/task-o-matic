@@ -294,17 +294,31 @@ export type TaskListResponse = Task[];
 // External Executor Types
 export type ExecutorTool = "opencode" | "claude" | "gemini" | "codex";
 
+// Executor Configuration
+export interface ExecutorConfig {
+  model?: string; // Model to use
+  sessionId?: string; // Specific session ID to resume
+  continueLastSession?: boolean; // Continue the most recent session
+}
+
 export interface ExecuteTaskOptions {
   taskId: string;
   tool?: ExecutorTool;
   message?: string;
   dry?: boolean;
   validate?: string[];
+  model?: string; // Model to use
+  continueSession?: boolean; // Continue last session
 }
 
 export interface ExternalExecutor {
   name: string;
-  execute(message: string, dry?: boolean): Promise<void>;
+  execute(
+    message: string,
+    dry?: boolean,
+    config?: ExecutorConfig
+  ): Promise<void>;
+  supportsSessionResumption(): boolean; // Indicates if executor supports session resumption
 }
 
 export interface ExecutionResult {
@@ -368,7 +382,7 @@ export interface ExecuteLoopResult {
     taskId: string;
     taskTitle: string;
     attempts: TaskExecutionAttempt[];
-    finalStatus: 'completed' | 'failed';
+    finalStatus: "completed" | "failed";
   }>;
   duration: number;
 }

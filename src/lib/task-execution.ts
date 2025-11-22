@@ -1,5 +1,5 @@
 import { taskService } from "../services/tasks";
-import { ExecuteTaskOptions, ExecutorTool } from "../types";
+import { ExecuteTaskOptions, ExecutorTool, ExecutorConfig } from "../types";
 import { ExecutorFactory } from "./executors/executor-factory";
 import { runValidations } from "./validation";
 import { ContextBuilder } from "./context-builder";
@@ -10,7 +10,8 @@ import chalk from "chalk";
 async function executeSingleTask(
   taskId: string,
   tool: ExecutorTool,
-  dry: boolean
+  dry: boolean,
+  executorConfig?: ExecutorConfig
 ): Promise<void> {
   // Load task
   const task = await taskService.getTask(taskId);
@@ -96,9 +97,9 @@ async function executeSingleTask(
 
   try {
     // Create executor and run
-    const executor = ExecutorFactory.create(tool);
+    const executor = ExecutorFactory.create(tool, executorConfig);
 
-    await executor.execute(executionMessage, dry);
+    await executor.execute(executionMessage, dry, executorConfig);
 
     if (!dry) {
       // Update task status to completed
@@ -127,7 +128,8 @@ async function executeSingleTask(
 async function executeTaskWithSubtasks(
   taskId: string,
   tool: ExecutorTool,
-  dry: boolean
+  dry: boolean,
+  executorConfig?: ExecutorConfig
 ): Promise<void> {
   const task = await taskService.getTask(taskId);
   if (!task) {
@@ -161,7 +163,7 @@ async function executeTaskWithSubtasks(
     );
 
     try {
-      await executeTaskWithSubtasks(subtask.id, tool, dry);
+      await executeTaskWithSubtasks(subtask.id, tool, dry, executorConfig);
     } catch (error) {
       console.error(
         chalk.red(
@@ -194,9 +196,20 @@ export async function executeTask(options: ExecuteTaskOptions): Promise<void> {
     taskId,
     tool = "opencode",
     message,
+    model,
+    continueSession,
     dry = false,
     validate = [],
   } = options;
+
+  // Build executor config from options
+  const executorConfig: ExecutorConfig | undefined =
+    model || continueSession
+      ? {
+          model,
+          continueLastSession: continueSession,
+        }
+      : undefined;
 
   // If custom message is provided, execute just this task (ignore subtasks)
   if (message) {
@@ -222,9 +235,9 @@ export async function executeTask(options: ExecuteTaskOptions): Promise<void> {
     await hooks.emit("execution:start", { taskId, tool });
 
     try {
-      const executor = ExecutorFactory.create(tool);
+      const executor = ExecutorFactory.create(tool, executorConfig);
 
-      await executor.execute(message, dry);
+      await executor.execute(message, dry, executorConfig);
 
       if (!dry) {
         await taskService.setTaskStatus(taskId, "completed");
@@ -254,7 +267,7 @@ export async function executeTask(options: ExecuteTaskOptions): Promise<void> {
   }
 
   // No custom message - execute recursively with subtasks
-  await executeTaskWithSubtasks(taskId, tool, dry);
+  await executeTaskWithSubtasks(taskId, tool, dry, executorConfig);
 
   // Run validations after all subtasks complete
   await runValidations(validate, dry);

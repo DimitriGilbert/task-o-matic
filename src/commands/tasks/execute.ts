@@ -14,6 +14,12 @@ export const executeCommand = new Command("execute")
     "--message <message>",
     "Custom message to send to the tool (uses task plan if not provided)"
   )
+  .option("-m, --model <model>", "Model to use with the executor")
+  .option(
+    "--continue-session",
+    "Continue the last session (for error feedback)",
+    false
+  )
   .option("--dry", "Show what would be executed without running it")
   .option(
     "--validate <command>",
@@ -28,6 +34,8 @@ export const executeCommand = new Command("execute")
         taskId: options.id,
         tool: options.tool,
         message: options.message,
+        model: options.model,
+        continueSession: options.continueSession,
         dry: options.dry,
         validate: options.validate || [],
       });

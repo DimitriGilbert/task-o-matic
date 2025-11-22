@@ -5,6 +5,7 @@ import {
   TaskExecutionAttempt,
   ExecutorTool,
   Task,
+  ExecutorConfig,
 } from "../types";
 import { ExecutorFactory } from "./executors/executor-factory";
 import { runValidations } from "./validation";
@@ -369,7 +370,22 @@ async function executeTaskWithRetry(
       });
 
       // Create executor and run
-      const executor = ExecutorFactory.create(currentExecutor);
+      // Build executor config
+      const executorConfig: ExecutorConfig = {
+        model: currentModel,
+        continueLastSession: currentAttempt > 1, // Resume session on retries
+      };
+
+      // Log session resumption
+      if (currentAttempt > 1) {
+        console.log(
+          chalk.cyan(
+            "🔄 Resuming previous session to provide error feedback to AI"
+          )
+        );
+      }
+
+      const executor = ExecutorFactory.create(currentExecutor, executorConfig);
 
       // Add model info to execution message if specified
       let finalExecutionMessage = executionMessage;
@@ -379,7 +395,7 @@ async function executeTaskWithRetry(
           executionMessage;
       }
 
-      await executor.execute(finalExecutionMessage, dry);
+      await executor.execute(finalExecutionMessage, dry, executorConfig);
 
       // Run verification commands
       const verificationResults = await runVerificationCommands(
