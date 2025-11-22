@@ -84,7 +84,7 @@ export class WorkflowService {
       (aiProvider === "openrouter"
         ? "anthropic/claude-3.5-sonnet"
         : aiProvider === "anthropic"
-        ? "claude-3-5-sonnet-20240620"
+        ? "claude-sonnet-4.5"
         : "gpt-4o");
     const apiKey = input.aiOptions?.aiKey || process.env.AI_API_KEY || "";
 
@@ -265,7 +265,9 @@ export class WorkflowService {
     callbacks?: ProgressCallback;
   }): Promise<DefinePRDResult> {
     const startTime = Date.now();
-    let tokenUsage: { prompt: number; completion: number; total: number } | undefined;
+    let tokenUsage:
+      | { prompt: number; completion: number; total: number }
+      | undefined;
     let timeToFirstToken: number | undefined;
     let cost: number | undefined;
 
@@ -305,54 +307,31 @@ export class WorkflowService {
     } else if (input.method === "manual" && input.prdContent) {
       prdContent = input.prdContent;
     } else if (input.method === "ai" && input.prdDescription) {
-      input.callbacks?.onProgress?.({
-        type: "progress",
-        message: "Generating PRD with AI...",
-      });
-
-      // Capture metrics for AI operations
-      const streamingOptions = {
-        ...input.streamingOptions,
-        onFinish: async (result: any) => {
-          if (result.usage) {
-            tokenUsage = {
-              prompt: result.usage.inputTokens || result.usage.promptTokens || 0,
-              completion: result.usage.outputTokens || result.usage.completionTokens || 0,
-              total: result.usage.totalTokens || 0,
-            };
-            
-            // Calculate cost (simplified - would need proper pricing lookup)
-            if (tokenUsage.total > 0) {
-              cost = tokenUsage.total * 0.000001; // Placeholder cost calculation
-            }
-          }
-          // Call original onFinish if provided
-          input.streamingOptions?.onFinish?.(result);
-        },
-        onChunk: (chunk: string) => {
-          if (chunk && !timeToFirstToken) {
-            timeToFirstToken = Date.now() - startTime;
-          }
-          // Call original onChunk if provided
-          input.streamingOptions?.onChunk?.(chunk);
-        },
-      };
-
-      prdContent = await workflowAIAssistant.assistPRDCreation({
-        userDescription: input.prdDescription,
+      const result = await prdService.generatePRD({
+        description: input.prdDescription,
+        outputDir: prdDir,
+        filename: prdFilename,
         aiOptions: input.aiOptions,
-        streamingOptions,
+        streamingOptions: input.streamingOptions,
+        callbacks: input.callbacks,
       });
+
+      prdContent = result.content;
+      tokenUsage = result.stats.tokenUsage;
+      timeToFirstToken = result.stats.timeToFirstToken;
+      cost = result.stats.cost;
     }
 
-    // Save PRD
+    // Save PRD if not already saved by AI service
     const prdPath = join(prdDir, prdFilename);
-    writeFileSync(prdPath, prdContent);
+    if (input.method !== "ai") {
+      writeFileSync(prdPath, prdContent);
 
-    input.callbacks?.onProgress?.({
-      type: "completed",
-      message: `PRD saved to ${prdPath}`,
-    });
+      input.callbacks?.onProgress?.({
+        type: "completed",
+        message: `PRD saved to ${prdPath}`,
+      });
+    }
 
     const stats = {
       duration: Date.now() - startTime,
@@ -385,7 +364,9 @@ export class WorkflowService {
     callbacks?: ProgressCallback;
   }): Promise<RefinePRDResult> {
     const startTime = Date.now();
-    let tokenUsage: { prompt: number; completion: number; total: number } | undefined;
+    let tokenUsage:
+      | { prompt: number; completion: number; total: number }
+      | undefined;
     let timeToFirstToken: number | undefined;
     let cost: number | undefined;
 
@@ -422,11 +403,13 @@ export class WorkflowService {
         onFinish: async (result: any) => {
           if (result.usage) {
             tokenUsage = {
-              prompt: result.usage.inputTokens || result.usage.promptTokens || 0,
-              completion: result.usage.outputTokens || result.usage.completionTokens || 0,
+              prompt:
+                result.usage.inputTokens || result.usage.promptTokens || 0,
+              completion:
+                result.usage.outputTokens || result.usage.completionTokens || 0,
               total: result.usage.totalTokens || 0,
             };
-            
+
             // Calculate cost (simplified - would need proper pricing lookup)
             if (tokenUsage.total > 0) {
               cost = tokenUsage.total * 0.000001; // Placeholder cost calculation
@@ -489,7 +472,9 @@ export class WorkflowService {
     callbacks?: ProgressCallback;
   }): Promise<GenerateTasksResult> {
     const startTime = Date.now();
-    let tokenUsage: { prompt: number; completion: number; total: number } | undefined;
+    let tokenUsage:
+      | { prompt: number; completion: number; total: number }
+      | undefined;
     let timeToFirstToken: number | undefined;
     let cost: number | undefined;
 
@@ -505,10 +490,11 @@ export class WorkflowService {
         if (result.usage) {
           tokenUsage = {
             prompt: result.usage.inputTokens || result.usage.promptTokens || 0,
-            completion: result.usage.outputTokens || result.usage.completionTokens || 0,
+            completion:
+              result.usage.outputTokens || result.usage.completionTokens || 0,
             total: result.usage.totalTokens || 0,
           };
-          
+
           // Calculate cost (simplified - would need proper pricing lookup)
           if (tokenUsage.total > 0) {
             cost = tokenUsage.total * 0.000001; // Placeholder cost calculation

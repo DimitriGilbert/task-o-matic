@@ -5,3 +5,5 @@ export * from "./prd-rework";
 export * from "./documentation-detection";
 export * from "./task-planning";
 export * from "./prd-question";
+export * from "./prd-generation";
+export * from "./prd-combination";

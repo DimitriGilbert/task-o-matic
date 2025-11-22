@@ -97,52 +97,13 @@ Respond in JSON format:
   }): Promise<string> {
     const aiConfig = buildAIConfig(input.aiOptions);
 
-    const prompt = `You are a product manager helping to create a Product Requirements Document (PRD).
-
-User's Product Description:
-"${input.userDescription}"
-
-Create a comprehensive PRD with the following sections:
-
-# Product Requirements Document
-
-## Overview
-[Brief overview of the product]
-
-## Objectives
-[Key objectives and goals]
-
-## Target Audience
-[Who will use this product]
-
-## Features
-
-### Core Features
-[Essential features for MVP]
-
-### Future Features
-[Nice-to-have features for later]
-
-## Technical Requirements
-[Technical constraints and requirements]
-
-## Success Metrics
-[How to measure success]
-
-## Timeline
-[Rough timeline and milestones]
-
-Generate a detailed, actionable PRD based on the user's description.`;
-
-    const result = await getAIOperations().streamText(
-      prompt,
+    return getAIOperations().generatePRD(
+      input.userDescription,
       aiConfig,
-      undefined, // system prompt
-      undefined, // user message (prompt is used)
+      undefined,
+      undefined,
       input.streamingOptions
     );
-
-    return result;
   }
 
   /**

@@ -22,6 +22,8 @@ import {
   TASK_ENHANCEMENT_SYSTEM_PROMPT,
   PRD_REWORK_SYSTEM_PROMPT,
   TASK_PLANNING_SYSTEM_PROMPT,
+  PRD_GENERATION_SYSTEM_PROMPT,
+  PRD_COMBINATION_SYSTEM_PROMPT,
 } from "../../prompts";
 import { getStorage, getContextBuilder } from "../../utils/ai-service-factory";
 import { JSONParser } from "./json-parser";
@@ -866,6 +868,73 @@ Your answers should be:
       },
       retryConfig,
       "PRD question answering"
+    );
+  }
+
+  async generatePRD(
+    description: string,
+    config?: Partial<AIConfig>,
+    promptOverride?: string,
+    userMessage?: string,
+    streamingOptions?: StreamingOptions,
+    retryConfig?: Partial<RetryConfig>
+  ): Promise<string> {
+    return this.retryHandler.executeWithRetry(
+      async () => {
+        // Use PromptBuilder if no prompt override provided
+        // For now, we'll use the system prompt directly as we haven't defined a PromptBuilder template for this yet
+        // TODO: Add PromptBuilder template for prd-generation
+
+        const systemPrompt = PRD_GENERATION_SYSTEM_PROMPT;
+        const userContent =
+          userMessage || `Product Description:\n${description}`;
+
+        return this.streamText(
+          "", // empty prompt since we use messages
+          config,
+          systemPrompt,
+          userContent,
+          streamingOptions,
+          { maxAttempts: 1 }
+        );
+      },
+      retryConfig,
+      "PRD generation"
+    );
+  }
+
+  async combinePRDs(
+    prds: string[],
+    originalDescription: string,
+    config?: Partial<AIConfig>,
+    promptOverride?: string,
+    userMessage?: string,
+    streamingOptions?: StreamingOptions,
+    retryConfig?: Partial<RetryConfig>
+  ): Promise<string> {
+    return this.retryHandler.executeWithRetry(
+      async () => {
+        const systemPrompt = PRD_COMBINATION_SYSTEM_PROMPT;
+
+        let userContent = userMessage;
+        if (!userContent) {
+          userContent = `Original Description:\n${originalDescription}\n\n`;
+          prds.forEach((prd, index) => {
+            userContent += `--- PRD ${index + 1} ---\n${prd}\n\n`;
+          });
+        }
+
+        return this.streamText(
+          "",
+          config,
+          systemPrompt,
+          userContent,
+          streamingOptions,
+          { maxAttempts: 1 }
+        );
+      },
+      retryConfig,
+      "PRD combination"
     );
   }
 
