@@ -44,7 +44,7 @@ benchmarkCommand
   .description("Run a benchmark operation")
   .argument(
     "<operation>",
-    "Operation to benchmark (e.g., prd-parse, task-breakdown)"
+    "Operation to benchmark (e.g., prd-parse, task-breakdown, task-create, prd-create)"
   )
   .requiredOption(
     "--models <list>",
@@ -57,7 +57,27 @@ benchmarkCommand
   .option("--prompt <prompt>", "Override prompt")
   .option("--message <message>", "User message")
   .option("--tools", "Enable filesystem tools")
-  .option("--feedback <feedback>", "Feedback (for rework)")
+  .option("--feedback <feedback>", "Feedback (for prd-rework)")
+
+  // Task creation options
+  .option("--title <title>", "Task title (for task-create)")
+  .option("--content <content>", "Task content (for task-create)")
+  .option("--parent-id <id>", "Parent task ID (for task-create)")
+  .option("--effort <effort>", "Effort estimate: small, medium, large (for task-create)")
+  .option("--force", "Force operation (for task-document)")
+
+  // PRD creation options
+  .option("--description <desc>", "Project/PRD description (for prd-create, prd-combine)")
+  .option("--output-dir <dir>", "Output directory (for prd-create, prd-combine)")
+  .option("--filename <name>", "Output filename (for prd-create, prd-combine)")
+
+  // PRD combine options
+  .option("--prds <list>", "Comma-separated list of PRD file paths (for prd-combine)")
+
+  // PRD refine options
+  .option("--question-mode <mode>", "Question mode: user or ai (for prd-refine)")
+  .option("--answers <json>", "JSON string of answers (for prd-refine user mode)")
+
   .action(async (operation, options) => {
     try {
       const modelStrings = options.models.split(",");
@@ -79,7 +99,8 @@ benchmarkCommand
       );
 
       // Construct input object with all potential options
-      const input = {
+      const input: any = {
+        // Common options
         file: options.file,
         taskId: options.taskId,
         prompt: options.prompt,
@@ -87,6 +108,23 @@ benchmarkCommand
         tools: options.tools,
         feedback: options.feedback,
         workingDirectory: process.cwd(), // Always pass current working directory
+
+        // Task creation options
+        title: options.title,
+        content: options.content,
+        parentId: options.parentId,
+        effort: options.effort,
+        force: options.force,
+
+        // PRD creation/combine options
+        description: options.description,
+        outputDir: options.outputDir,
+        filename: options.filename,
+        prds: options.prds ? options.prds.split(",").map((p: string) => p.trim()) : undefined,
+
+        // PRD refine options
+        questionMode: options.questionMode,
+        answers: options.answers ? JSON.parse(options.answers) : undefined,
       };
 
       // Prepare dashboard
@@ -203,6 +241,51 @@ benchmarkCommand
       const date = new Date(run.timestamp).toLocaleString();
       console.log(`- ${chalk.cyan(run.id)} (${date}) - ${run.command}`);
     });
+  });
+
+benchmarkCommand
+  .command("operations")
+  .description("List all available benchmark operations")
+  .action(() => {
+    const { benchmarkRegistry } = require("../lib/benchmark/registry");
+    const operations = benchmarkRegistry.list();
+
+    console.log(chalk.bold("\n📊 Available Benchmark Operations\n"));
+    console.log(chalk.dim("Use these operation IDs with 'benchmark run <operation>'\n"));
+
+    // Group by category
+    const taskOps = operations.filter((op: any) => op.id.startsWith("task-"));
+    const prdOps = operations.filter((op: any) => op.id.startsWith("prd-"));
+    const workflowOps = operations.filter((op: any) => op.id.startsWith("workflow-"));
+
+    if (taskOps.length > 0) {
+      console.log(chalk.cyan.bold("Task Operations:"));
+      taskOps.forEach((op: any) => {
+        console.log(`  ${chalk.green(op.id.padEnd(20))} - ${op.description}`);
+      });
+      console.log();
+    }
+
+    if (prdOps.length > 0) {
+      console.log(chalk.cyan.bold("PRD Operations:"));
+      prdOps.forEach((op: any) => {
+        console.log(`  ${chalk.green(op.id.padEnd(20))} - ${op.description}`);
+      });
+      console.log();
+    }
+
+    if (workflowOps.length > 0) {
+      console.log(chalk.cyan.bold("Workflow Operations:"));
+      workflowOps.forEach((op: any) => {
+        console.log(`  ${chalk.green(op.id.padEnd(20))} - ${op.description}`);
+      });
+      console.log();
+    }
+
+    console.log(chalk.dim("\nTotal operations: " + operations.length));
+    console.log(chalk.dim("\nExample usage:"));
+    console.log(chalk.gray("  task-o-matic benchmark run task-create --models anthropic:claude-3.5-sonnet --title \"Example task\""));
+    console.log(chalk.gray("  task-o-matic benchmark run prd-parse --models openai:gpt-4 --file ./prd.md"));
   });
 
 benchmarkCommand
