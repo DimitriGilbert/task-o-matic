@@ -39,7 +39,8 @@
   "files": [
     "dist",
     "README.md",
-    "LICENSE"
+    "LICENSE",
+    "docs/agents/cli.md"
   ],
   "scripts": {
     "clean": "rm -rf dist tsconfig.tsbuildinfo",

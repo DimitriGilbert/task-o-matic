@@ -42,6 +42,22 @@ export class BetterTStackService {
         // Save configuration
         await this.saveBTSConfig(name, config);
 
+        // Post-bootstrap enhancements
+        try {
+          const projectDir = result.projectDirectory;
+
+          // 1. Add check-types script to packages
+          await this.addCheckTypesScript(projectDir);
+
+          // 2. Copy documentation if requested
+          if (config.includeDocs) {
+            await this.copyDocumentation(projectDir);
+          }
+        } catch (error) {
+          console.error("⚠ Post-bootstrap enhancements failed:", error);
+          // Don't fail the whole process, just log warning
+        }
+
         return {
           success: true,
           projectPath: result.relativePath,
@@ -111,6 +127,87 @@ export class BetterTStackService {
     const stackConfigPath = join(taskOMaticDir, "stack.json");
     writeFileSync(stackConfigPath, configData);
   }
+
+  private async addCheckTypesScript(projectDir: string): Promise<void> {
+    const { glob } = await import("glob");
+    const { readFileSync, writeFileSync } = await import("fs");
+
+    console.log("🔍 Adding check-types scripts to packages...");
+
+    // Find all package.json files in apps and backend directories
+    const packageFiles = await glob(
+      ["apps/*/package.json", "backend/*/package.json"],
+      { cwd: projectDir, absolute: true }
+    );
+
+    for (const file of packageFiles) {
+      try {
+        const content = JSON.parse(readFileSync(file, "utf-8"));
+        if (!content.scripts) {
+          content.scripts = {};
+        }
+
+        // Add check-types script if not present
+        if (!content.scripts["check-types"]) {
+          content.scripts["check-types"] = "tsc --noEmit";
+          writeFileSync(file, JSON.stringify(content, null, 2) + "\n");
+          console.log(
+            `  ✓ Added check-types to ${file.split("/").slice(-3).join("/")}`
+          );
+        }
+      } catch (err) {
+        console.warn(`  ⚠ Failed to update ${file}:`, err);
+      }
+    }
+  }
+
+  private async copyDocumentation(projectDir: string): Promise<void> {
+    const { copyFileSync, mkdirSync, existsSync } = await import("fs");
+    const { resolve, dirname } = await import("path");
+
+    console.log("📚 Copying documentation...");
+
+    try {
+      // Source: docs/agents/cli.md in the current package
+      // We need to find where the package is installed or running from
+      // Assuming we are running from dist/lib/better-t-stack-cli.js or similar
+      // The docs should be in ../../docs/agents/cli.md relative to this file's location in source
+      // Or in the package root if installed
+
+      let sourcePath = resolve(__dirname, "../../../docs/agents/cli.md");
+
+      // Check if we're in dist
+      if (!existsSync(sourcePath)) {
+        // Try to find it relative to package root (cwd when running dev)
+        sourcePath = resolve(process.cwd(), "docs/agents/cli.md");
+      }
+
+      if (!existsSync(sourcePath)) {
+        // Try to find it in node_modules if installed as dependency
+        try {
+          sourcePath = require.resolve("task-o-matic/docs/agents/cli.md");
+        } catch (e) {
+          // Ignore
+        }
+      }
+
+      if (existsSync(sourcePath)) {
+        const destPath = join(projectDir, "docs/task-o-matic.md");
+        const destDir = dirname(destPath);
+
+        if (!existsSync(destDir)) {
+          mkdirSync(destDir, { recursive: true });
+        }
+
+        copyFileSync(sourcePath, destPath);
+        console.log(`  ✓ Copied documentation to docs/task-o-matic.md`);
+      } else {
+        console.warn("  ⚠ Could not locate source documentation file");
+      }
+    } catch (err) {
+      console.warn("  ⚠ Failed to copy documentation:", err);
+    }
+  }
 }
 
 export interface InitOptions {
@@ -132,6 +229,7 @@ export interface InitOptions {
   serverDeploy?: string;
   noInstall?: boolean;
   examples?: string[];
+  includeDocs?: boolean;
 }
 
 export async function runBetterTStackCLI(
@@ -162,6 +260,7 @@ export async function runBetterTStackCLI(
     serverDeploy: options.serverDeploy || "none",
     install: !options.noInstall,
     examples: options.examples || [],
+    includeDocs: options.includeDocs,
   };
 
   const result = await btsService.createProject(

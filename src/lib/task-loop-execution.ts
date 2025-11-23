@@ -6,6 +6,7 @@ import {
   ExecutorTool,
   Task,
   ExecutorConfig,
+  ExecuteLoopConfig,
 } from "../types";
 import { ExecutorFactory } from "./executors/executor-factory";
 import { runValidations } from "./validation";
@@ -15,6 +16,8 @@ import chalk from "chalk";
 import { exec } from "child_process";
 import { promisify } from "util";
 import { getAIOperations } from "../utils/ai-service-factory";
+import { existsSync, readFileSync } from "fs";
+import { join } from "path";
 
 const execAsync = promisify(exec);
 
@@ -224,15 +227,121 @@ async function runVerificationCommands(
 async function executeTaskWithRetry(
   task: Task,
   tool: ExecutorTool,
-  verificationCommands: string[],
-  maxRetries: number,
-  dry: boolean,
-  tryModels?: Array<{ executor?: ExecutorTool; model?: string }>
+  config: ExecuteLoopConfig,
+  dry: boolean
 ): Promise<TaskExecutionAttempt[]> {
+  const {
+    maxRetries = 3,
+    verificationCommands = [],
+    tryModels,
+    plan,
+    planModel,
+    autoCommit,
+  } = config;
+
   const attempts: TaskExecutionAttempt[] = [];
   let currentAttempt = 1;
   let lastError: string | undefined;
+  let planContent: string | undefined;
 
+  // ----------------------------------------------------------------------
+  // PLANNING PHASE
+  // ----------------------------------------------------------------------
+  if (plan) {
+    console.log(
+      chalk.blue.bold(`\n🧠 Starting Planning Phase for Task: ${task.title}`)
+    );
+
+    const planFileName = `task-${task.id}-plan.md`;
+    const planExecutor = planModel
+      ? (planModel.split(":")[0] as ExecutorTool)
+      : tool;
+    const planModelName = planModel ? planModel.split(":")[1] : undefined;
+
+    const planningPrompt = `You are a senior software architect. Analyze the following task and create a detailed implementation plan.
+    
+Task: ${task.title}
+Description: ${task.description || "No description provided."}
+
+Requirements:
+1. Analyze the task requirements.
+2. Create a detailed step-by-step implementation plan.
+3. Identify necessary file changes.
+4. Write this plan to a file named "${planFileName}" in the current directory.
+5. Do NOT implement the code yet, just create the plan file.
+
+Please create the "${planFileName}" file now.`;
+
+    console.log(
+      chalk.cyan(
+        `   Using executor for planning: ${planExecutor}${
+          planModelName ? ` (${planModelName})` : ""
+        }`
+      )
+    );
+
+    // Create executor for planning
+    const planningConfig: ExecutorConfig = {
+      model: planModelName,
+      continueLastSession: false,
+    };
+
+    const executor = ExecutorFactory.create(planExecutor, planningConfig);
+
+    try {
+      await executor.execute(planningPrompt, dry, planningConfig);
+
+      if (!dry) {
+        // Verify plan file exists and read it
+        if (existsSync(planFileName)) {
+          planContent = readFileSync(planFileName, "utf-8");
+          console.log(
+            chalk.green(`✅ Plan created successfully: ${planFileName}`)
+          );
+
+          // Auto-commit plan if enabled
+          if (autoCommit) {
+            try {
+              console.log(chalk.blue(`📦 Staging plan file: ${planFileName}`));
+              await execAsync(`git add ${planFileName}`);
+              await execAsync(
+                `git commit -m "docs: create implementation plan for task ${task.id}"`
+              );
+              console.log(chalk.green("✅ Plan committed successfully"));
+            } catch (e) {
+              console.warn(
+                chalk.yellow(
+                  `⚠️  Failed to commit plan: ${
+                    e instanceof Error ? e.message : "Unknown error"
+                  }`
+                )
+              );
+            }
+          }
+        } else {
+          console.warn(
+            chalk.yellow(
+              `⚠️  Plan file ${planFileName} was not created by the executor.`
+            )
+          );
+        }
+      }
+    } catch (error) {
+      console.error(
+        chalk.red(
+          `❌ Planning phase failed: ${
+            error instanceof Error ? error.message : String(error)
+          }`
+        )
+      );
+      // We continue to execution even if planning failed, but maybe we should stop?
+      // For now, let's continue but log the error.
+    }
+  }
+
+  // ----------------------------------------------------------------------
+  // EXECUTION PHASE
+  // ----------------------------------------------------------------------
   while (currentAttempt <= maxRetries) {
     // Determine which executor and model to use for this attempt
     let currentExecutor = tool;
@@ -320,10 +429,14 @@ async function executeTaskWithRetry(
         );
       }
 
-      // Add task plan if available
-      const planData = await taskService.getTaskPlan(task.id);
-      if (planData) {
-        messageParts.push(`# Task Plan\n\n${planData.plan}\n`);
+      // Add task plan if available (from planning phase or service)
+      const storedPlanData = await taskService.getTaskPlan(task.id);
+      if (planContent) {
+        messageParts.push(
+          `# Implementation Plan\n\n${planContent}\n\nPlease follow this plan to implement the task.\n`
+        );
+      } else if (storedPlanData) {
+        messageParts.push(`# Task Plan\n\n${storedPlanData.plan}\n`);
       } else {
         messageParts.push(
           `# Task: ${task.title}\n\n${task.description || "No description"}\n`
@@ -622,14 +735,7 @@ export async function executeTaskLoop(
     );
 
     // Execute task with retry logic
-    const attempts = await executeTaskWithRetry(
-      task,
-      tool,
-      verificationCommands,
-      maxRetries,
-      dry,
-      config.tryModels
-    );
+    const attempts = await executeTaskWithRetry(task, tool, config, dry);
 
     // Check if task succeeded
     const lastAttempt = attempts[attempts.length - 1];

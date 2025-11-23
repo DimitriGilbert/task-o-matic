@@ -145,6 +145,7 @@ export interface BTSConfig {
   webDeploy: string; // "none"
   serverDeploy: string; // "none"
   install: boolean; // true
+  includeDocs?: boolean;
   addons: string[]; // ["turborepo"]
   examples: string[]; // []
   createdAt?: string;
@@ -339,6 +340,8 @@ export interface ExecuteLoopConfig {
   verificationCommands?: string[]; // Commands to run after each task
   autoCommit?: boolean; // Auto-commit after successful task execution
   tryModels?: ModelAttemptConfig[]; // Progressive model/executor configs for each attempt
+  plan?: boolean; // Generate a plan before execution
+  planModel?: string; // Model/executor to use for planning (e.g. "opencode:gpt-4o")
 }
 
 // Execute Loop Options

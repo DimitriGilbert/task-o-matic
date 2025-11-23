@@ -54,6 +54,12 @@ export const workflowCommand = new Command("workflow")
   .option("--no-auth", "Exclude authentication")
   .option("--bootstrap", "Bootstrap with Better-T-Stack")
   .option("--no-bootstrap", "Skip bootstrapping")
+  .option(
+    "--include-docs",
+    "Include Task-O-Matic documentation in new project",
+    true
+  )
+  .option("--no-include-docs", "Skip including documentation")
 
   // Step 2: Define PRD
   .option("--skip-prd", "Skip PRD definition")
@@ -338,6 +344,7 @@ async function stepInitialize(
     aiOptions: options,
     stackConfig,
     bootstrap,
+    includeDocs: options.includeDocs,
     streamingOptions,
     callbacks: {
       onProgress: displayProgress,

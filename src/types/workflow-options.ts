@@ -26,6 +26,7 @@ export interface WorkflowAutomationOptions extends StreamingAIOptions {
   database?: string; // Database choice
   auth?: boolean; // Include authentication
   bootstrap?: boolean; // Bootstrap with Better-T-Stack
+  includeDocs?: boolean; // Include documentation in new project
 
   // Step 2: Define PRD
   skipPrd?: boolean; // Skip PRD definition

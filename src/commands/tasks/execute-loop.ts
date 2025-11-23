@@ -30,7 +30,9 @@ function parseTryModels(value: string): ModelAttemptConfig[] {
 
       if (!validExecutors.includes(executor as ExecutorTool)) {
         throw new Error(
-          `Invalid executor "${executor}" in --try-models. Must be one of: ${validExecutors.join(", ")}`
+          `Invalid executor "${executor}" in --try-models. Must be one of: ${validExecutors.join(
+            ", "
+          )}`
         );
       }
 
@@ -83,7 +85,16 @@ export const executeLoopCommand = new Command("execute-loop")
       return [...previous, value];
     }
   )
-  .option("--auto-commit", "Automatically commit changes after each task", false)
+  .option(
+    "--auto-commit",
+    "Automatically commit changes after each task",
+    false
+  )
+  .option("--plan", "Generate an implementation plan before execution", false)
+  .option(
+    "--plan-model <model>",
+    "Model/executor to use for planning (e.g., 'opencode:gpt-4o')"
+  )
   .option("--dry", "Show what would be executed without running it", false)
   .action(async (options) => {
     try {
@@ -150,6 +161,8 @@ export const executeLoopCommand = new Command("execute-loop")
           verificationCommands: options.verify || [],
           autoCommit: options.autoCommit,
           tryModels,
+          plan: options.plan,
+          planModel: options.planModel,
         },
         dry: options.dry,
       };

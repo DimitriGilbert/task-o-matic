@@ -38,6 +38,7 @@ export class WorkflowService {
       auth?: boolean;
     };
     bootstrap?: boolean;
+    includeDocs?: boolean;
     streamingOptions?: StreamingOptions;
     callbacks?: ProgressCallback;
   }): Promise<InitializeResult> {
@@ -193,6 +194,7 @@ export class WorkflowService {
             runtime: "node",
             noInstall: false,
             noGit: false,
+            includeDocs: input.includeDocs,
           },
           projectDir
         );
