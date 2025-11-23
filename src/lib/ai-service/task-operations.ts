@@ -109,6 +109,8 @@ Use these tools to understand the project structure, existing code, and dependen
               ? ({ chunk }) => {
                   if (chunk.type === "text-delta") {
                     streamingOptions.onChunk!(chunk.text);
+                  } else if (chunk.type === "reasoning-delta") {
+                    streamingOptions.onReasoning?.(chunk.text);
                   }
                 }
               : undefined,
@@ -302,6 +304,8 @@ Use these tools to understand the project structure, existing code, and dependen
             ? ({ chunk }) => {
                 if (chunk.type === "text-delta") {
                   streamingOptions.onChunk!(chunk.text);
+                } else if (chunk.type === "reasoning-delta") {
+                  streamingOptions.onReasoning?.(chunk.text);
                 }
               }
             : undefined,

@@ -105,6 +105,8 @@ Use these tools to understand the project structure, existing code patterns, and
               ? ({ chunk }) => {
                   if (chunk.type === "text-delta") {
                     streamingOptions.onChunk!(chunk.text);
+                  } else if (chunk.type === "reasoning-delta") {
+                    streamingOptions.onReasoning?.(chunk.text);
                   }
                 }
               : undefined,
@@ -279,6 +281,8 @@ Use these tools to understand the current project structure, existing code patte
               ? ({ chunk }) => {
                   if (chunk.type === "text-delta") {
                     streamingOptions.onChunk!(chunk.text);
+                  } else if (chunk.type === "reasoning-delta") {
+                    streamingOptions.onReasoning?.(chunk.text);
                   }
                 }
               : undefined,
@@ -383,6 +387,8 @@ Use these tools to understand the current project structure, existing code patte
               ? ({ chunk }) => {
                   if (chunk.type === "text-delta") {
                     streamingOptions.onChunk!(chunk.text);
+                  } else if (chunk.type === "reasoning-delta") {
+                    streamingOptions.onReasoning?.(chunk.text);
                   }
                 }
               : undefined,

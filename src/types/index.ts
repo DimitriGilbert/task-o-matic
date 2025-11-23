@@ -263,6 +263,7 @@ export interface StreamingCallbacks {
   }) => void | Promise<void>;
   onError?: (error: unknown) => void | Promise<void>;
   onAbort?: (reason?: string) => void | Promise<void>;
+  onReasoning?: (text: string) => void | Promise<void>;
 }
 
 // Streaming Options Interface

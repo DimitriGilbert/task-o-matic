@@ -39,6 +39,8 @@ export class BaseOperations {
             ? ({ chunk }) => {
                 if (chunk.type === "text-delta") {
                   streamingOptions.onChunk!(chunk.text);
+                } else if (chunk.type === "reasoning-delta") {
+                  streamingOptions.onReasoning?.(chunk.text);
                 } else if (
                   chunk.type === "tool-result" &&
                   chunk.toolName === "get-library-docs"

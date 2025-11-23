@@ -1,5 +1,5 @@
-import chalk from 'chalk';
-import type { ProgressEvent } from '../../types/callbacks';
+import chalk from "chalk";
+import type { ProgressEvent } from "../../types/callbacks";
 
 /**
  * Display progress events for the CLI
@@ -7,11 +7,11 @@ import type { ProgressEvent } from '../../types/callbacks';
  */
 export function displayProgress(event: ProgressEvent): void {
   switch (event.type) {
-    case 'started':
-      console.log(chalk.blue('🤖 ' + event.message));
+    case "started":
+      console.log(chalk.blue("🤖 " + event.message));
       break;
 
-    case 'progress':
+    case "progress":
       if (event.current && event.total) {
         const percent = Math.round((event.current / event.total) * 100);
         console.log(
@@ -20,24 +20,28 @@ export function displayProgress(event: ProgressEvent): void {
           )
         );
       } else {
-        console.log(chalk.cyan('  → ' + event.message));
+        console.log(chalk.cyan("  → " + event.message));
       }
       break;
 
-    case 'stream-chunk':
+    case "stream-chunk":
       process.stdout.write(event.text);
       break;
 
-    case 'completed':
-      console.log(chalk.green('✓ ' + event.message));
+    case "reasoning-chunk":
+      process.stdout.write(chalk.magenta(event.text));
       break;
 
-    case 'warning':
-      console.log(chalk.yellow('⚠️  ' + event.message));
+    case "completed":
+      console.log(chalk.green("✓ " + event.message));
       break;
 
-    case 'info':
-      console.log(chalk.gray('  ℹ ' + event.message));
+    case "warning":
+      console.log(chalk.yellow("⚠️  " + event.message));
+      break;
+
+    case "info":
+      console.log(chalk.gray("  ℹ " + event.message));
       break;
   }
 }
@@ -46,6 +50,6 @@ export function displayProgress(event: ProgressEvent): void {
  * Display an error message
  */
 export function displayError(error: Error | unknown): void {
-  const message = error instanceof Error ? error.message : 'Unknown error';
-  console.error(chalk.red('❌ Error:'), message);
+  const message = error instanceof Error ? error.message : "Unknown error";
+  console.error(chalk.red("❌ Error:"), message);
 }

@@ -3,7 +3,7 @@
 import { Command } from "commander";
 import chalk from "chalk";
 import { existsSync, mkdirSync, writeFileSync } from "fs";
-import { resolve } from "path";
+import { resolve, join } from "path";
 import { configManager, Config } from "../lib/config";
 import { runBetterTStackCLI } from "../lib/better-t-stack-cli";
 
@@ -37,6 +37,9 @@ initCommand
   .option("--auth <auth>", "Authentication for bootstrap", "better-auth")
   .option("--context7-api-key <key>", "Context7 API key")
   .option("--directory <dir>", "Working directory for the project")
+  .option("--package-manager <pm>", "Package manager (npm/pnpm/bun)", "npm")
+  .option("--runtime <runtime>", "Runtime (bun/node)", "node")
+  .option("--payment <payment>", "Payment provider (none/polar)", "none")
   .action(async (options) => {
     // Handle directory creation/setup first
     if (options.directory) {
@@ -54,76 +57,7 @@ initCommand
       console.log(chalk.cyan(`  📁 Working directory: ${targetDir}`));
     }
 
-    const taskOMaticDir = configManager.getTaskOMaticDir();
-    console.log(
-      chalk.blue(`🔍 Checking for task-o-matic directory: ${taskOMaticDir}`)
-    );
-
-    if (existsSync(taskOMaticDir)) {
-      console.log(
-        chalk.yellow(
-          "⚠️  This directory is already initialized with task-o-matic."
-        )
-      );
-      return;
-    }
-
-    console.log(chalk.blue("🚀 Initializing task-o-matic project..."));
-
-    // Create .task-o-matic directory structure
-    const dirs = ["tasks", "prd", "logs", "docs"];
-    dirs.forEach((dir) => {
-      const fullPath = `${taskOMaticDir}/${dir}`;
-      mkdirSync(fullPath, { recursive: true });
-      console.log(chalk.green(`  ✓ Created ${fullPath}`));
-    });
-
-    // Initialize config with provided options
-    const config: Config = {
-      ai: {
-        provider: options.aiProvider,
-        model: options.aiModel,
-        maxTokens: parseInt(options.maxTokens) || 32768,
-        temperature: parseFloat(options.temperature) || 0.5,
-      },
-    };
-
-    // Add API key if provided
-    if (options.aiKey) {
-      config.ai.apiKey = options.aiKey;
-    }
-
-    // Add provider URL if provided
-    if (options.aiProviderUrl) {
-      config.ai.baseURL = options.aiProviderUrl;
-    }
-
-    configManager.setConfig(config);
-    configManager.save();
-    console.log(chalk.green(`  ✓ Created ${taskOMaticDir}/config.json`));
-
-    // Initialize mcp.json with context7 config
-    const mcpConfig: {
-      context7: {
-        apiKey?: string;
-      };
-    } = {
-      context7: {},
-    };
-
-    if (options.context7ApiKey) {
-      mcpConfig.context7.apiKey = options.context7ApiKey;
-    }
-
-    const mcpFilePath = `${taskOMaticDir}/mcp.json`;
-    writeFileSync(mcpFilePath, JSON.stringify(mcpConfig, null, 2));
-    console.log(chalk.green(`  ✓ Created ${mcpFilePath}`));
-
-    console.log(
-      chalk.green("\n✅ TaskOMatic project initialized successfully!")
-    );
-
-    // Run bootstrap by default if project name is provided (unless --no-bootstrap)
+    // If project name is provided, run bootstrap FIRST
     if (options.projectName && !options.noBootstrap) {
       console.log(chalk.blue("\n🚀 Running bootstrap..."));
 
@@ -132,16 +66,29 @@ initCommand
 
       try {
         const result = await runBetterTStackCLI(options, workingDir);
-        if (result.success) {
+        if (result.success && result.projectPath) {
           console.log(chalk.green(result.message));
+
+          // Update config manager to point to the new project directory
+          configManager.setWorkingDirectory(result.projectPath);
+          await configManager.load();
+
+          // Initialize task-o-matic structure in the new project directory
+          await initializeProjectStructure(options);
         } else {
           throw new Error(result.message);
         }
       } catch (error) {
-        // No chdir needed anymore
+        console.error(chalk.red("Bootstrap failed:"), error);
+        return; // Stop if bootstrap fails
       }
     } else {
-      console.log(chalk.cyan("\nNext steps:"));
+      // Standard initialization in current directory
+      await initializeProjectStructure(options);
+    }
+
+    console.log(chalk.cyan("\nNext steps:"));
+    if (!options.projectName) {
       console.log(
         "  1. Configure AI provider: task-o-matic config set-ai-provider <provider> <model>"
       );
@@ -151,8 +98,80 @@ initCommand
       console.log(
         '  3. Create your first task: task-o-matic tasks create --title "Your first task"'
       );
+    } else {
+      console.log(`  1. cd ${options.projectName}`);
+      console.log(
+        '  2. Create your first task: task-o-matic tasks create --title "Your first task"'
+      );
     }
   });
+
+async function initializeProjectStructure(options: any) {
+  const taskOMaticDir = configManager.getTaskOMaticDir();
+  console.log(
+    chalk.blue(`🔍 Checking for task-o-matic directory: ${taskOMaticDir}`)
+  );
+
+  if (existsSync(join(taskOMaticDir, "config.json"))) {
+    console.log(
+      chalk.yellow("⚠️  This project is already initialized with task-o-matic.")
+    );
+    return;
+  }
+
+  console.log(chalk.blue("🚀 Initializing task-o-matic project..."));
+
+  // Create .task-o-matic directory structure
+  const dirs = ["tasks", "prd", "logs", "docs"];
+  dirs.forEach((dir) => {
+    const fullPath = `${taskOMaticDir}/${dir}`;
+    mkdirSync(fullPath, { recursive: true });
+    console.log(chalk.green(`  ✓ Created ${fullPath}`));
+  });
+
+  // Initialize config with provided options
+  const config: Config = {
+    ai: {
+      provider: options.aiProvider,
+      model: options.aiModel,
+      maxTokens: parseInt(options.maxTokens) || 32768,
+      temperature: parseFloat(options.temperature) || 0.5,
+    },
+  };
+
+  // Add API key if provided
+  if (options.aiKey) {
+    config.ai.apiKey = options.aiKey;
+  }
+
+  // Add provider URL if provided
+  if (options.aiProviderUrl) {
+    config.ai.baseURL = options.aiProviderUrl;
+  }
+
+  configManager.setConfig(config);
+  configManager.save();
+  console.log(chalk.green(`  ✓ Created ${taskOMaticDir}/config.json`));
+
+  // Initialize mcp.json with context7 config
+  const mcpConfig: {
+    context7: {
+      apiKey?: string;
+    };
+  } = {
+    context7: {},
+  };
+
+  if (options.context7ApiKey) {
+    mcpConfig.context7.apiKey = options.context7ApiKey;
+  }
+
+  const mcpFilePath = `${taskOMaticDir}/mcp.json`;
+  writeFileSync(mcpFilePath, JSON.stringify(mcpConfig, null, 2));
+  console.log(chalk.green(`  ✓ Created ${mcpFilePath}`));
+
+  console.log(chalk.green("\n✅ TaskOMatic project initialized successfully!"));
+}
 
 // Bootstrap project with Better-T-Stack
 initCommand
@@ -190,6 +209,7 @@ initCommand
   )
   .option("--runtime <runtime>", "Runtime (bun/node)", "node")
   .option("--api <type>", "API type (trpc/orpc)")
+  .option("--payment <payment>", "Payment provider (none/polar)", "none")
   .action(async (name, options) => {
     const taskOMaticDir = configManager.getTaskOMaticDir();
 

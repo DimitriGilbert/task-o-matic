@@ -113,6 +113,8 @@ ${existingResearchContext}`,
               ? ({ chunk }) => {
                   if (chunk.type === "text-delta") {
                     streamingOptions.onChunk!(chunk.text);
+                  } else if (chunk.type === "reasoning-delta") {
+                    streamingOptions.onReasoning?.(chunk.text);
                   }
                 }
               : undefined,
@@ -245,6 +247,8 @@ ${existingResearchContext}`,
               ? ({ chunk }) => {
                   if (chunk.type === "text-delta") {
                     streamingOptions.onChunk!(chunk.text);
+                  } else if (chunk.type === "reasoning-delta") {
+                    streamingOptions.onReasoning?.(chunk.text);
                   } else if (chunk.type === "tool-result") {
                     if (chunk.toolName === "get-library-docs" && chunk.output) {
                       (async () => {

@@ -350,7 +350,10 @@ export class WorkflowService {
               callbacks: {
                 onProgress: (event) => {
                   // Only modify events that have a message property
-                  if (event.type !== "stream-chunk") {
+                  if (
+                    event.type !== "stream-chunk" &&
+                    event.type !== "reasoning-chunk"
+                  ) {
                     input.callbacks?.onProgress?.({
                       ...event,
                       message: `[${modelId}] ${event.message}`,

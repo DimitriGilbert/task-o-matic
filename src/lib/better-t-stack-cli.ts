@@ -40,7 +40,7 @@ export class BetterTStackService {
 
       if (result.success) {
         // Save configuration
-        await this.saveBTSConfig(name, config);
+        await this.saveBTSConfig(name, config, result.projectDirectory);
 
         // Post-bootstrap enhancements
         try {
@@ -103,11 +103,23 @@ export class BetterTStackService {
           ? config.examples
           : undefined,
       disableAnalytics: true,
+      payments: config.payments,
     };
   }
 
-  private async saveBTSConfig(name: string, config: BTSConfig): Promise<void> {
-    const taskOMaticDir = configManager.getTaskOMaticDir();
+  private async saveBTSConfig(
+    name: string,
+    config: BTSConfig,
+    projectPath?: string
+  ): Promise<void> {
+    const taskOMaticDir = projectPath
+      ? join(projectPath, ".task-o-matic")
+      : configManager.getTaskOMaticDir();
+
+    // Ensure directory exists if we're using a specific project path
+    if (projectPath && !require("fs").existsSync(taskOMaticDir)) {
+      require("fs").mkdirSync(taskOMaticDir, { recursive: true });
+    }
 
     const configData = JSON.stringify(
       {
@@ -220,7 +232,7 @@ export interface InitOptions {
   addons?: string[];
   runtime?: string;
   api?: string;
-  payments?: string;
+  payment?: string;
   orm?: string;
   dbSetup?: string;
   packageManager?: string;
@@ -249,9 +261,10 @@ export async function runBetterTStackCLI(
       : (options.database as BTSConfig["database"]) || "sqlite",
     auth: options.noAuth ? "none" : "better-auth",
     addons: options.addons || ["turborepo"],
-    runtime: isConvex ? "none" : options.runtime || "node",
+    runtime:
+      isConvex || backend === "self" ? "none" : options.runtime || "node",
     api: options.api || "none",
-    payments: options.payments || "none",
+    payments: options.payment || "none",
     orm: isConvex ? "none" : options.orm || "drizzle",
     dbSetup: isConvex ? "none" : options.dbSetup || "none",
     packageManager: options.packageManager || "npm",
