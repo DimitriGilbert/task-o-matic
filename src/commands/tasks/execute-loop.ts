@@ -95,6 +95,12 @@ export const executeLoopCommand = new Command("execute-loop")
     "--plan-model <model>",
     "Model/executor to use for planning (e.g., 'opencode:gpt-4o')"
   )
+  .option("--review-plan", "Pause for human review of the plan", false)
+  .option("--review", "Run AI review after execution", false)
+  .option(
+    "--review-model <model>",
+    "Model/executor to use for review (e.g., 'opencode:gpt-4o')"
+  )
   .option("--dry", "Show what would be executed without running it", false)
   .action(async (options) => {
     try {
@@ -163,6 +169,9 @@ export const executeLoopCommand = new Command("execute-loop")
           tryModels,
           plan: options.plan,
           planModel: options.planModel,
+          reviewPlan: options.reviewPlan,
+          review: options.review,
+          reviewModel: options.reviewModel,
         },
         dry: options.dry,
       };

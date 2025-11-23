@@ -342,6 +342,9 @@ export interface ExecuteLoopConfig {
   tryModels?: ModelAttemptConfig[]; // Progressive model/executor configs for each attempt
   plan?: boolean; // Generate a plan before execution
   planModel?: string; // Model/executor to use for planning (e.g. "opencode:gpt-4o")
+  reviewPlan?: boolean; // Pause for human review of the plan
+  review?: boolean; // Run AI review after execution
+  reviewModel?: string; // Model/executor to use for review
 }
 
 // Execute Loop Options

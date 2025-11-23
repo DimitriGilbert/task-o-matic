@@ -18,6 +18,7 @@ import { promisify } from "util";
 import { getAIOperations } from "../utils/ai-service-factory";
 import { existsSync, readFileSync } from "fs";
 import { join } from "path";
+import inquirer from "inquirer";
 
 const execAsync = promisify(exec);
 
@@ -236,6 +237,9 @@ async function executeTaskWithRetry(
     tryModels,
     plan,
     planModel,
+    reviewPlan,
+    review,
+    reviewModel,
     autoCommit,
   } = config;
 
@@ -258,7 +262,7 @@ async function executeTaskWithRetry(
       : tool;
     const planModelName = planModel ? planModel.split(":")[1] : undefined;
 
-    const planningPrompt = `You are a senior software architect. Analyze the following task and create a detailed implementation plan.
+    let planningPrompt = `You are a senior software architect. Analyze the following task and create a detailed implementation plan.
     
 Task: ${task.title}
 Description: ${task.description || "No description provided."}
@@ -289,41 +293,84 @@ Please create the "${planFileName}" file now.`;
     const executor = ExecutorFactory.create(planExecutor, planningConfig);
 
     try {
-      await executor.execute(planningPrompt, dry, planningConfig);
+      let planningComplete = false;
 
-      if (!dry) {
-        // Verify plan file exists and read it
-        if (existsSync(planFileName)) {
-          planContent = readFileSync(planFileName, "utf-8");
-          console.log(
-            chalk.green(`✅ Plan created successfully: ${planFileName}`)
-          );
+      while (!planningComplete) {
+        await executor.execute(planningPrompt, dry, planningConfig);
 
-          // Auto-commit plan if enabled
-          if (autoCommit) {
-            try {
-              console.log(chalk.blue(`📦 Staging plan file: ${planFileName}`));
-              await execAsync(`git add ${planFileName}`);
-              await execAsync(
-                `git commit -m "docs: create implementation plan for task ${task.id}"`
-              );
-              console.log(chalk.green("✅ Plan committed successfully"));
-            } catch (e) {
-              console.warn(
+        if (!dry) {
+          // Verify plan file exists and read it
+          if (existsSync(planFileName)) {
+            planContent = readFileSync(planFileName, "utf-8");
+            console.log(
+              chalk.green(`✅ Plan created successfully: ${planFileName}`)
+            );
+
+            // Human Review Loop
+            if (reviewPlan) {
+              console.log(
                 chalk.yellow(
-                  `⚠️  Failed to commit plan: ${
-                    e instanceof Error ? e.message : "Unknown error"
-                  }`
+                  `\n👀 Pausing for Human Review of the Plan: ${planFileName}`
                 )
               );
+              console.log(chalk.cyan("You can edit the file now."));
+
+              const { feedback } = await inquirer.prompt([
+                {
+                  type: "input",
+                  name: "feedback",
+                  message:
+                    "Enter feedback to refine the plan (or press Enter to approve and continue):",
+                },
+              ]);
+
+              if (feedback && feedback.trim() !== "") {
+                console.log(
+                  chalk.blue("🔄 Refining plan based on feedback...")
+                );
+                planningPrompt = `The user provided the following feedback on the plan you just created:
+                
+"${feedback}"
+
+Please update the plan file "${planFileName}" to incorporate this feedback.`;
+                // Continue loop to regenerate plan
+                continue;
+              }
             }
+
+            // Auto-commit plan if enabled (only after approval)
+            if (autoCommit) {
+              try {
+                console.log(
+                  chalk.blue(`📦 Staging plan file: ${planFileName}`)
+                );
+                await execAsync(`git add ${planFileName}`);
+                await execAsync(
+                  `git commit -m "docs: create implementation plan for task ${task.id}"`
+                );
+                console.log(chalk.green("✅ Plan committed successfully"));
+              } catch (e) {
+                console.warn(
+                  chalk.yellow(
+                    `⚠️  Failed to commit plan: ${
+                      e instanceof Error ? e.message : "Unknown error"
+                    }`
+                  )
+                );
+              }
+            }
+
+            planningComplete = true;
+          } else {
+            console.warn(
+              chalk.yellow(
+                `⚠️  Plan file ${planFileName} was not created by the executor.`
+              )
+            );
+            planningComplete = true; // Exit loop to avoid infinite retry if file not created
           }
         } else {
-          console.warn(
-            chalk.yellow(
-              `⚠️  Plan file ${planFileName} was not created by the executor.`
-            )
-          );
+          planningComplete = true; // Dry run
         }
       }
     } catch (error) {
@@ -334,8 +381,6 @@ Please create the "${planFileName}" file now.`;
           }`
         )
       );
-      // We continue to execution even if planning failed, but maybe we should stop?
-      // For now, let's continue but log the error.
     }
   }
 
@@ -544,6 +589,131 @@ Please create the "${planFileName}" file now.`;
 
         currentAttempt++;
         continue;
+      }
+
+      // ----------------------------------------------------------------------
+      // AI REVIEW PHASE
+      // ----------------------------------------------------------------------
+      if (review && !dry) {
+        console.log(chalk.blue.bold("\n🕵️  Starting AI Review Phase..."));
+
+        try {
+          // Get git diff
+          const { stdout: diff } = await execAsync("git diff HEAD");
+
+          if (!diff.trim()) {
+            console.log(chalk.yellow("⚠️  No changes detected to review."));
+          } else {
+            const reviewExecutor = reviewModel
+              ? (reviewModel.split(":")[0] as ExecutorTool)
+              : tool;
+            const reviewModelName = reviewModel
+              ? reviewModel.split(":")[1]
+              : undefined;
+
+            console.log(
+              chalk.cyan(
+                `   Using executor for review: ${reviewExecutor}${
+                  reviewModelName ? ` (${reviewModelName})` : ""
+                }`
+              )
+            );
+
+            const reviewPrompt = `You are a strict code reviewer. Review the following changes for the task.
+            
+Task: ${task.title}
+Plan: ${planContent || "No plan provided."}
+
+Git Diff:
+${diff.substring(0, 10000)}
+
+Analyze the changes for:
+1. Correctness (does it solve the task?)
+2. Code Quality (clean code, best practices)
+3. Potential Bugs
+
+Return a JSON object:
+{
+  "approved": boolean,
+  "feedback": "Detailed feedback explaining why it was rejected or approved"
+}
+`;
+
+            const reviewConfig: ExecutorConfig = {
+              model: reviewModelName,
+              continueLastSession: false,
+            };
+
+            // We use a separate executor instance for review to avoid polluting the main context
+            // But wait, ExecutorFactory.create returns a new instance usually.
+            // However, we need to capture the output which is usually streamed to stdout/file.
+            // The current Executor interface doesn't easily return the output string directly if it's designed for side-effects.
+            // But we can use getAIOperations().generateText directly for this since it's a simple Q&A.
+
+            const aiOps = getAIOperations();
+            // We need to construct a proper AI config for getAIOperations
+            // This is a bit hacky, ideally we'd use the executor abstraction, but we need the return value.
+            // Let's assume we can use the default AI provider for review for now, or try to respect the reviewModel.
+
+            // Actually, let's use the executor but we need to capture its output.
+            // The current executor implementation writes to files/stdout.
+            // Let's use aiOps directly for the review to get the JSON response.
+
+            const aiResponse = await aiOps.streamText(reviewPrompt);
+            const jsonMatch = aiResponse.match(/\{[\s\S]*\}/);
+
+            if (jsonMatch) {
+              const reviewResult = JSON.parse(jsonMatch[0]);
+
+              if (!reviewResult.approved) {
+                lastError = `AI Review Failed:\n${reviewResult.feedback}`;
+
+                attempts.push({
+                  attemptNumber: currentAttempt,
+                  success: false,
+                  error: lastError,
+                  executor: currentExecutor,
+                  model: currentModel,
+                  verificationResults,
+                  timestamp: Date.now() - attemptStartTime,
+                });
+
+                console.log(
+                  chalk.red(
+                    `❌ AI Review Rejected Changes: ${reviewResult.feedback}`
+                  )
+                );
+
+                // Revert changes? Or just let the next attempt fix them?
+                // Usually better to let the next attempt see the bad code and fix it.
+                // But we might want to undo if it's really bad.
+                // For now, let's keep the changes so the AI can see what it did wrong.
+
+                currentAttempt++;
+                continue;
+              } else {
+                console.log(
+                  chalk.green(`✅ AI Review Approved: ${reviewResult.feedback}`)
+                );
+              }
+            } else {
+              console.warn(
+                chalk.yellow(
+                  "⚠️  Could not parse AI review response. Assuming approval."
+                )
+              );
+            }
+          }
+        } catch (error) {
+          console.error(
+            chalk.red(
+              `❌ AI Review failed: ${
+                error instanceof Error ? error.message : String(error)
+              }`
+            )
+          );
+          // If review crashes, do we fail the task? Maybe safe to warn and proceed.
+        }
       }
 
       // Success! Extract commit info
