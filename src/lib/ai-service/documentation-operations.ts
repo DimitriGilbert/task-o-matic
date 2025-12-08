@@ -376,26 +376,42 @@ ${existingResearchContext}`,
     streamingOptions?: StreamingOptions,
     retryConfig?: Partial<RetryConfig>
   ): Promise<string> {
-    const prompt = `Create a concise recap of the documentation fetched for these libraries:
+    // Build variables for PromptBuilder
+    const librariesList = libraries
+      .map((lib) => `- ${lib.name} (${lib.context7Id}): ${lib.reason}`)
+      .join("\n");
 
-Libraries:
-${libraries
-  .map((lib) => `- ${lib.name} (${lib.context7Id}): ${lib.reason}`)
-  .join("\n")}
+    const documentationContents = documentContents
+      .map((doc) => `## ${doc.library}\n${doc.content.substring(0, 500)}...`)
+      .join("\n\n");
 
-Documentation Contents:
-${documentContents
-  .map((doc) => `## ${doc.library}\n${doc.content.substring(0, 500)}...`)
-  .join("\n\n")}
+    const promptResult = PromptBuilder.buildPrompt({
+      name: "documentation-recap",
+      type: "user",
+      variables: {
+        LIBRARIES_LIST: librariesList,
+        DOCUMENTATION_CONTENTS: documentationContents,
+      },
+    });
 
-Please provide a 2-3 sentence summary of what documentation is available and how it relates to the task.`;
+    if (!promptResult.success) {
+      throw new Error(
+        `Failed to build documentation recap prompt: ${promptResult.error}`
+      );
+    }
+
+    const systemPromptResult = PromptBuilder.buildPrompt({
+      name: "documentation-recap",
+      type: "system",
+      variables: {},
+    });
 
     return this.retryHandler.executeWithRetry(
       async () => {
         return this.streamText(
-          prompt,
+          promptResult.prompt!,
           undefined,
-          "You are a technical writer who creates concise summaries of documentation collections.",
+          systemPromptResult.prompt!,
           undefined,
           streamingOptions,
           { maxAttempts: 1 }

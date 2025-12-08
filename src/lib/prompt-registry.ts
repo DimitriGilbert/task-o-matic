@@ -10,8 +10,22 @@ import {
   DOCUMENTATION_DETECTION_PROMPT,
   TASK_PLANNING_PROMPT,
   TASK_PLANNING_SYSTEM_PROMPT,
+  TASK_EXECUTION_PROMPT,
+  TASK_EXECUTION_SYSTEM_PROMPT,
   PRD_QUESTION_PROMPT,
   PRD_QUESTION_SYSTEM_PROMPT,
+  DOCUMENTATION_RECAP_PROMPT,
+  DOCUMENTATION_RECAP_SYSTEM_PROMPT,
+  PRD_QUESTION_ANSWER_PROMPT,
+  PRD_QUESTION_ANSWER_SYSTEM_PROMPT,
+  PROJECT_INIT_SUGGESTION_PROMPT,
+  PROJECT_INIT_SUGGESTION_SYSTEM_PROMPT,
+  PRD_IMPROVEMENT_PROMPT,
+  PRD_IMPROVEMENT_SYSTEM_PROMPT,
+  TASK_PRIORITIZATION_PROMPT,
+  TASK_PRIORITIZATION_SYSTEM_PROMPT,
+  TASK_SPLITTING_ASSISTANCE_PROMPT,
+  TASK_SPLITTING_ASSISTANCE_SYSTEM_PROMPT,
 } from "../prompts";
 
 export interface PromptMetadata {
@@ -159,6 +173,31 @@ export class PromptRegistry {
         promptText: TASK_PLANNING_SYSTEM_PROMPT,
       },
     ],
+
+    // Task Execution Prompts
+    [
+      "task-execution",
+      {
+        name: "task-execution",
+        description: "Execute task with full project context",
+        type: "user",
+        requiredVariables: ["TASK_PLAN", "STACK_INFO"],
+        optionalVariables: ["RETRY_CONTEXT", "DOCUMENTATION_CONTEXT"],
+        promptText: TASK_EXECUTION_PROMPT,
+      },
+    ],
+    [
+      "task-execution-system",
+      {
+        name: "task-execution-system",
+        description: "System prompt for task execution",
+        type: "system",
+        requiredVariables: [],
+        optionalVariables: [],
+        promptText: TASK_EXECUTION_SYSTEM_PROMPT,
+      },
+    ],
+
     // PRD Question Prompts
     [
       "prd-question",
@@ -180,6 +219,144 @@ export class PromptRegistry {
         requiredVariables: [],
         optionalVariables: [],
         promptText: PRD_QUESTION_SYSTEM_PROMPT,
+      },
+    ],
+
+    // Documentation Recap Prompts
+    [
+      "documentation-recap",
+      {
+        name: "documentation-recap",
+        description: "Create concise recap of fetched documentation",
+        type: "user",
+        requiredVariables: ["LIBRARIES_LIST", "DOCUMENTATION_CONTENTS"],
+        optionalVariables: [],
+        promptText: DOCUMENTATION_RECAP_PROMPT,
+      },
+    ],
+    [
+      "documentation-recap-system",
+      {
+        name: "documentation-recap-system",
+        description: "System prompt for documentation recap",
+        type: "system",
+        requiredVariables: [],
+        optionalVariables: [],
+        promptText: DOCUMENTATION_RECAP_SYSTEM_PROMPT,
+      },
+    ],
+
+    // PRD Question Answer Prompts
+    [
+      "prd-question-answer",
+      {
+        name: "prd-question-answer",
+        description: "Answer questions about PRD",
+        type: "user",
+        requiredVariables: ["PRD_CONTENT", "QUESTIONS_TEXT"],
+        optionalVariables: ["CONTEXT_TEXT"],
+        promptText: PRD_QUESTION_ANSWER_PROMPT,
+      },
+    ],
+    [
+      "prd-question-answer-system",
+      {
+        name: "prd-question-answer-system",
+        description: "System prompt for PRD question answering",
+        type: "system",
+        requiredVariables: [],
+        optionalVariables: [],
+        promptText: PRD_QUESTION_ANSWER_SYSTEM_PROMPT,
+      },
+    ],
+
+    // Workflow Prompts
+    [
+      "project-init-suggestion",
+      {
+        name: "project-init-suggestion",
+        description: "Suggest project initialization configuration",
+        type: "user",
+        requiredVariables: ["USER_DESCRIPTION"],
+        optionalVariables: [],
+        promptText: PROJECT_INIT_SUGGESTION_PROMPT,
+      },
+    ],
+    [
+      "project-init-suggestion-system",
+      {
+        name: "project-init-suggestion-system",
+        description: "System prompt for project initialization",
+        type: "system",
+        requiredVariables: [],
+        optionalVariables: [],
+        promptText: PROJECT_INIT_SUGGESTION_SYSTEM_PROMPT,
+      },
+    ],
+    [
+      "prd-improvement",
+      {
+        name: "prd-improvement",
+        description: "Improve PRD based on user feedback",
+        type: "user",
+        requiredVariables: ["CURRENT_PRD", "USER_FEEDBACK"],
+        optionalVariables: [],
+        promptText: PRD_IMPROVEMENT_PROMPT,
+      },
+    ],
+    [
+      "prd-improvement-system",
+      {
+        name: "prd-improvement-system",
+        description: "System prompt for PRD improvement",
+        type: "system",
+        requiredVariables: [],
+        optionalVariables: [],
+        promptText: PRD_IMPROVEMENT_SYSTEM_PROMPT,
+      },
+    ],
+    [
+      "task-prioritization",
+      {
+        name: "task-prioritization",
+        description: "Prioritize tasks based on user guidance",
+        type: "user",
+        requiredVariables: ["TASKS_DESCRIPTION", "USER_GUIDANCE"],
+        optionalVariables: [],
+        promptText: TASK_PRIORITIZATION_PROMPT,
+      },
+    ],
+    [
+      "task-prioritization-system",
+      {
+        name: "task-prioritization-system",
+        description: "System prompt for task prioritization",
+        type: "system",
+        requiredVariables: [],
+        optionalVariables: [],
+        promptText: TASK_PRIORITIZATION_SYSTEM_PROMPT,
+      },
+    ],
+    [
+      "task-splitting-assistance",
+      {
+        name: "task-splitting-assistance",
+        description: "Generate task splitting instructions",
+        type: "user",
+        requiredVariables: ["TASK_TITLE", "USER_GUIDANCE"],
+        optionalVariables: ["TASK_CONTENT"],
+        promptText: TASK_SPLITTING_ASSISTANCE_PROMPT,
+      },
+    ],
+    [
+      "task-splitting-assistance-system",
+      {
+        name: "task-splitting-assistance-system",
+        description: "System prompt for task splitting assistance",
+        type: "system",
+        requiredVariables: [],
+        optionalVariables: [],
+        promptText: TASK_SPLITTING_ASSISTANCE_SYSTEM_PROMPT,
       },
     ],
   ]);

@@ -5,6 +5,7 @@ import { runValidations } from "./validation";
 import { ContextBuilder } from "./context-builder";
 import { getContextBuilder } from "../utils/ai-service-factory";
 import { hooks } from "./hooks";
+import { PromptBuilder } from "./prompt-builder";
 import chalk from "chalk";
 
 async function executeSingleTask(
@@ -29,62 +30,23 @@ async function executeSingleTask(
   const contextBuilder = getContextBuilder();
   const taskContext = await contextBuilder.buildContext(taskId);
 
-  // Build execution message with ALL context
-  const messageParts: string[] = [];
-
-  // Add task plan if available
+  // Get task plan if available
   const planData = await taskService.getTaskPlan(taskId);
-  if (planData) {
-    messageParts.push(`# Task Plan\n\n${planData.plan}\n`);
-  } else {
-    messageParts.push(
-      `# Task: ${task.title}\n\n${task.description || "No description"}\n`
-    );
+
+  // Build execution prompt using PromptBuilder
+  const promptResult = PromptBuilder.buildExecutionPrompt({
+    taskTitle: task.title,
+    taskDescription: task.description,
+    taskPlan: planData?.plan,
+    stack: taskContext.stack,
+    documentation: taskContext.documentation,
+  });
+
+  if (!promptResult.success) {
+    throw new Error(`Failed to build execution prompt: ${promptResult.error}`);
   }
 
-  // Add PRD context if available
-  if (taskContext.prdContent) {
-    messageParts.push(
-      `\n# Product Requirements Document\n\n${taskContext.prdContent}\n`
-    );
-  }
-
-  // Add stack/technology context
-  if (taskContext.stack) {
-    messageParts.push(`\n# Technology Stack\n\n`);
-    messageParts.push(`- **Project**: ${taskContext.stack.projectName}\n`);
-    messageParts.push(`- **Frontend**: ${taskContext.stack.frontend}\n`);
-    messageParts.push(`- **Backend**: ${taskContext.stack.backend}\n`);
-    if (taskContext.stack.database !== "none") {
-      messageParts.push(`- **Database**: ${taskContext.stack.database}\n`);
-    }
-    if (taskContext.stack.orm !== "none") {
-      messageParts.push(`- **ORM**: ${taskContext.stack.orm}\n`);
-    }
-    messageParts.push(`- **Auth**: ${taskContext.stack.auth}\n`);
-    if (taskContext.stack.addons.length > 0) {
-      messageParts.push(
-        `- **Addons**: ${taskContext.stack.addons.join(", ")}\n`
-      );
-    }
-    messageParts.push(
-      `- **Package Manager**: ${taskContext.stack.packageManager}\n`
-    );
-  }
-
-  // Add documentation context if available
-  if (taskContext.documentation) {
-    messageParts.push(`\n# Documentation Context\n\n`);
-    messageParts.push(`${taskContext.documentation.recap}\n`);
-    if (taskContext.documentation.files.length > 0) {
-      messageParts.push(`\n**Relevant Documentation Files**:\n`);
-      taskContext.documentation.files.forEach((file) => {
-        messageParts.push(`- ${file.path}\n`);
-      });
-    }
-  }
-
-  const executionMessage = messageParts.join("");
+  const executionMessage = promptResult.prompt!;
 
   if (!dry) {
     // Update task status to in-progress

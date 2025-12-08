@@ -12,6 +12,7 @@ import { ExecutorFactory } from "./executors/executor-factory";
 import { runValidations } from "./validation";
 import { getContextBuilder } from "../utils/ai-service-factory";
 import { hooks } from "./hooks";
+import { PromptBuilder } from "./prompt-builder";
 import chalk from "chalk";
 import { exec } from "child_process";
 import { promisify } from "util";
@@ -443,77 +444,62 @@ Please update the plan file "${planFileName}" to incorporate this feedback.`;
       const contextBuilder = getContextBuilder();
       const taskContext = await contextBuilder.buildContext(task.id);
 
-      const messageParts: string[] = [];
-
-      // Add retry context if this is a retry attempt
+      // Build retry context if this is a retry attempt
+      let retryContext = "";
       if (currentAttempt > 1 && lastError) {
-        messageParts.push(
-          `# RETRY ATTEMPT ${currentAttempt}/${maxRetries}\n\n`
-        );
+        const retryParts: string[] = [];
+        retryParts.push(`# RETRY ATTEMPT ${currentAttempt}/${maxRetries}\n\n`);
 
         // Add model escalation context
         if (currentModel) {
-          messageParts.push(
+          retryParts.push(
             `**Note**: You are ${currentExecutor} using the ${currentModel} model. This is a more capable model than the previous attempt.\n\n`
           );
         }
 
-        messageParts.push(
+        retryParts.push(
           `## Previous Attempt Failed With Error:\n\n${lastError}\n\n`
         );
-        messageParts.push(
+        retryParts.push(
           `Please analyze the error carefully and fix it. The error might be due to:\n`
         );
-        messageParts.push(`- Syntax errors\n`);
-        messageParts.push(`- Logic errors\n`);
-        messageParts.push(`- Missing dependencies or imports\n`);
-        messageParts.push(`- Incorrect configuration\n`);
-        messageParts.push(`- Build or test failures\n\n`);
-        messageParts.push(
+        retryParts.push(`- Syntax errors\n`);
+        retryParts.push(`- Logic errors\n`);
+        retryParts.push(`- Missing dependencies or imports\n`);
+        retryParts.push(`- Incorrect configuration\n`);
+        retryParts.push(`- Build or test failures\n\n`);
+        retryParts.push(
           `Please fix the error above and complete the task successfully.\n\n`
         );
+        retryContext = retryParts.join("");
       }
 
-      // Add task plan if available (from planning phase or service)
+      // Get task plan if available (from planning phase or service)
       const storedPlanData = await taskService.getTaskPlan(task.id);
+      let finalPlan: string | undefined;
       if (planContent) {
-        messageParts.push(
-          `# Implementation Plan\n\n${planContent}\n\nPlease follow this plan to implement the task.\n`
-        );
+        finalPlan = `${planContent}\n\nPlease follow this plan to implement the task.`;
       } else if (storedPlanData) {
-        messageParts.push(`# Task Plan\n\n${storedPlanData.plan}\n`);
-      } else {
-        messageParts.push(
-          `# Task: ${task.title}\n\n${task.description || "No description"}\n`
+        finalPlan = storedPlanData.plan;
+      }
+
+      // Build execution prompt using PromptBuilder
+      const promptResult = PromptBuilder.buildExecutionPrompt({
+        taskTitle: task.title,
+        taskDescription: task.description,
+        taskPlan: finalPlan,
+        stack: taskContext.stack,
+        documentation: taskContext.documentation,
+        retryContext,
+      });
+
+      if (!promptResult.success) {
+        throw new Error(
+          `Failed to build execution prompt: ${promptResult.error}`
         );
       }
 
-      // Add PRD context if available
-      if (taskContext.prdContent) {
-        messageParts.push(
-          `\n# Product Requirements Document\n\n${taskContext.prdContent}\n`
-        );
-      }
-
-      // Add stack/technology context
-      if (taskContext.stack) {
-        messageParts.push(`\n# Technology Stack\n\n`);
-        messageParts.push(`- **Project**: ${taskContext.stack.projectName}\n`);
-        messageParts.push(`- **Frontend**: ${taskContext.stack.frontend}\n`);
-        messageParts.push(`- **Backend**: ${taskContext.stack.backend}\n`);
-        if (taskContext.stack.database !== "none") {
-          messageParts.push(`- **Database**: ${taskContext.stack.database}\n`);
-        }
-        messageParts.push(`- **Auth**: ${taskContext.stack.auth}\n`);
-      }
-
-      // Add documentation context if available
-      if (taskContext.documentation) {
-        messageParts.push(`\n# Documentation Context\n\n`);
-        messageParts.push(`${taskContext.documentation.recap}\n`);
-      }
-
-      const executionMessage = messageParts.join("");
+      const executionMessage = promptResult.prompt!;
 
       // Update task status to in-progress
       if (!dry) {

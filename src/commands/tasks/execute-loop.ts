@@ -7,6 +7,14 @@ import {
   ModelAttemptConfig,
 } from "../../types";
 
+// Valid executor tools
+const VALID_EXECUTORS: ExecutorTool[] = [
+  "opencode",
+  "claude",
+  "gemini",
+  "codex",
+];
+
 /**
  * Parse --try-models option into ModelAttemptConfig array
  * Supports formats:
@@ -21,16 +29,10 @@ function parseTryModels(value: string): ModelAttemptConfig[] {
     // Check if it includes executor specification (executor:model format)
     if (trimmed.includes(":")) {
       const [executor, model] = trimmed.split(":");
-      const validExecutors: ExecutorTool[] = [
-        "opencode",
-        "claude",
-        "gemini",
-        "codex",
-      ];
 
-      if (!validExecutors.includes(executor as ExecutorTool)) {
+      if (!VALID_EXECUTORS.includes(executor as ExecutorTool)) {
         throw new Error(
-          `Invalid executor "${executor}" in --try-models. Must be one of: ${validExecutors.join(
+          `Invalid executor "${executor}" in --try-models. Must be one of: ${VALID_EXECUTORS.join(
             ", "
           )}`
         );
@@ -93,28 +95,22 @@ export const executeLoopCommand = new Command("execute-loop")
   .option("--plan", "Generate an implementation plan before execution", false)
   .option(
     "--plan-model <model>",
-    "Model/executor to use for planning (e.g., 'opencode:gpt-4o')"
+    "Model/executor to use for planning (e.g., 'opencode:gpt-4o' or 'gpt-4o')"
   )
   .option("--review-plan", "Pause for human review of the plan", false)
   .option("--review", "Run AI review after execution", false)
   .option(
     "--review-model <model>",
-    "Model/executor to use for review (e.g., 'opencode:gpt-4o')"
+    "Model/executor to use for review (e.g., 'opencode:gpt-4o' or 'gpt-4o')"
   )
   .option("--dry", "Show what would be executed without running it", false)
   .action(async (options) => {
     try {
       // Validate tool
-      const validTools: ExecutorTool[] = [
-        "opencode",
-        "claude",
-        "gemini",
-        "codex",
-      ];
-      if (!validTools.includes(options.tool)) {
+      if (!VALID_EXECUTORS.includes(options.tool)) {
         console.error(
           chalk.red(
-            `Invalid tool: ${options.tool}. Must be one of: ${validTools.join(
+            `Invalid tool: ${options.tool}. Must be one of: ${VALID_EXECUTORS.join(
               ", "
             )}`
           )

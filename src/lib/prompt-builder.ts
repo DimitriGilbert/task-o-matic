@@ -379,4 +379,82 @@ export class PromptBuilder {
         return prompt;
     }
   }
+
+  /**
+   * Build execution prompt with task context
+   */
+  static buildExecutionPrompt(options: {
+    taskTitle: string;
+    taskDescription?: string;
+    taskPlan?: string;
+    stack?: any;
+    documentation?: any;
+    retryContext?: string;
+  }): PromptBuilderResult {
+    const {
+      taskTitle,
+      taskDescription,
+      taskPlan,
+      stack,
+      documentation,
+      retryContext,
+    } = options;
+
+    // Build TASK_PLAN variable
+    let taskPlanText = "";
+    if (taskPlan) {
+      taskPlanText = `# Task Plan\n\n${taskPlan}\n`;
+    } else {
+      taskPlanText = `# Task: ${taskTitle}\n\n${taskDescription || "No description"}\n`;
+    }
+
+    // Build STACK_INFO variable
+    let stackInfo = "";
+    if (stack) {
+      const stackParts: string[] = [];
+      stackParts.push(`- **Project**: ${stack.projectName}`);
+      stackParts.push(`- **Frontend**: ${stack.frontend}`);
+      stackParts.push(`- **Backend**: ${stack.backend}`);
+      if (stack.database !== "none") {
+        stackParts.push(`- **Database**: ${stack.database}`);
+      }
+      if (stack.orm !== "none") {
+        stackParts.push(`- **ORM**: ${stack.orm}`);
+      }
+      stackParts.push(`- **Auth**: ${stack.auth}`);
+      if (stack.addons && stack.addons.length > 0) {
+        stackParts.push(`- **Addons**: ${stack.addons.join(", ")}`);
+      }
+      stackParts.push(`- **Package Manager**: ${stack.packageManager}`);
+      stackInfo = stackParts.join("\n");
+    }
+
+    // Build DOCUMENTATION_CONTEXT variable
+    let docContext = "";
+    if (documentation) {
+      const docParts: string[] = [];
+      docParts.push(`\n# Documentation Context\n`);
+      docParts.push(documentation.recap);
+      if (documentation.files && documentation.files.length > 0) {
+        docParts.push(`\n**Relevant Documentation Files**:`);
+        documentation.files.forEach((file: any) => {
+          docParts.push(`- ${file.path}`);
+        });
+      }
+      docContext = docParts.join("\n");
+    }
+
+    // Build RETRY_CONTEXT variable
+    const retryCtx = retryContext || "";
+
+    return this.buildPrompt({
+      name: "task-execution",
+      variables: {
+        RETRY_CONTEXT: retryCtx,
+        TASK_PLAN: taskPlanText,
+        STACK_INFO: stackInfo,
+        DOCUMENTATION_CONTEXT: docContext,
+      },
+    });
+  }
 }

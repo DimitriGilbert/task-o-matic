@@ -458,37 +458,33 @@ Use these tools to understand the current project structure, existing code patte
             }`
           : "";
 
-        const prompt = `You are a product expert helping to clarify a PRD.
+        const promptResult = PromptBuilder.buildPrompt({
+          name: "prd-question-answer",
+          type: "user",
+          variables: {
+            PRD_CONTENT: prdContent,
+            QUESTIONS_TEXT: questionsText,
+            CONTEXT_TEXT: contextText,
+          },
+        });
 
-PRD Content:
-${prdContent}${contextText}
+        if (!promptResult.success) {
+          throw new Error(
+            `Failed to build PRD question answer prompt: ${promptResult.error}`
+          );
+        }
 
-Please answer the following questions based on the PRD and context:
-
-${questionsText}
-
-Provide thoughtful, specific answers that will help refine the PRD.
-Format your response as JSON with the following structure:
-{
-  "answers": {
-    "1": "answer to question 1",
-    "2": "answer to question 2",
-    ...
-  }
-}`;
-
-        const systemPrompt = `You are a product expert analyzing PRDs and answering clarifying questions.
-Your answers should be:
-- Specific and actionable
-- Based on the PRD content and project context
-- Helpful for refining the PRD
-- Formatted as JSON`;
+        const systemPromptResult = PromptBuilder.buildPrompt({
+          name: "prd-question-answer",
+          type: "system",
+          variables: {},
+        });
 
         const response = await this.streamText(
           "",
           config,
-          systemPrompt,
-          prompt,
+          systemPromptResult.prompt!,
+          promptResult.prompt!,
           streamingOptions,
           { maxAttempts: 1 }
         );

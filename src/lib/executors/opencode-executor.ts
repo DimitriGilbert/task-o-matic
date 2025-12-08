@@ -45,7 +45,11 @@ export class OpencodeExecutor implements ExternalExecutor {
 
     if (dry) {
       console.log(chalk.cyan(`🔧 Using executor: ${this.name}`));
-      console.log(chalk.cyan(`opencode ${args.join(" ")}`));
+      // Quote arguments that contain spaces for display
+      const quotedArgs = args.map((arg) =>
+        arg.includes(" ") ? `"${arg.replace(/"/g, '\\"')}"` : arg
+      );
+      console.log(chalk.cyan(`opencode ${quotedArgs.join(" ")}`));
       return;
     }
 
