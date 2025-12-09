@@ -172,7 +172,7 @@ export class TaskService {
     return await getStorage().getTaskContent(id);
   }
 
-  async getTaskAIMetadata(id: string): Promise<any | null> {
+  async getTaskAIMetadata(id: string): Promise<TaskAIMetadata | null> {
     return await getStorage().getTaskAIMetadata(id);
   }
 

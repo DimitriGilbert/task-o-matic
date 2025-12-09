@@ -250,7 +250,7 @@ Use these tools to understand the project structure, existing code, and dependen
     userMessage?: string,
     streamingOptions?: StreamingOptions,
     retryConfig?: Partial<RetryConfig>
-  ): Promise<any> {
+  ): Promise<string> {
     return this.retryHandler.executeWithRetry(
       async () => {
         let prompt: string;

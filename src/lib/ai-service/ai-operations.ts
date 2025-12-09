@@ -270,7 +270,7 @@ export class AIOperations extends BaseOperations {
     userMessage?: string,
     streamingOptions?: StreamingOptions,
     retryConfig?: Partial<RetryConfig>
-  ): Promise<any> {
+  ): Promise<string> {
     return this.taskOps.planTask(
       taskContext,
       taskDetails,

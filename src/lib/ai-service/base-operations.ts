@@ -12,6 +12,35 @@ export class BaseOperations {
   protected retryHandler = new RetryHandler();
   protected modelProvider = new ModelProvider();
 
+  /**
+   * Merges AI configuration with proper precedence.
+   *
+   * Configuration precedence (highest to lowest):
+   * 1. Method parameter `config` (operation-specific overrides)
+   * 2. ConfigManager global config (project-level settings)
+   * 3. Environment variables (OPENAI_API_KEY, etc.)
+   * 4. Provider defaults (defined in config.ts)
+   *
+   * @param config - Optional operation-specific config overrides
+   * @returns Merged AIConfig with all precedence levels applied
+   *
+   * @example
+   * ```typescript
+   * // Override just the model for this operation
+   * const finalConfig = this.mergeAIConfig({ model: "gpt-4o" });
+   *
+   * // Use default config (from ConfigManager + env vars)
+   * const finalConfig = this.mergeAIConfig();
+   * ```
+   */
+  protected mergeAIConfig(config?: Partial<AIConfig>): AIConfig {
+    // Get base config (includes ConfigManager + env vars + defaults)
+    const baseConfig = this.modelProvider.getAIConfig();
+
+    // Apply operation-specific overrides (highest priority)
+    return { ...baseConfig, ...config };
+  }
+
   async streamText(
     prompt: string,
     config?: Partial<AIConfig>,
@@ -20,7 +49,8 @@ export class BaseOperations {
     streamingOptions?: StreamingOptions,
     retryConfig?: Partial<RetryConfig>
   ): Promise<string> {
-    const aiConfig = { ...this.modelProvider.getAIConfig(), ...config };
+    // Merge config with proper precedence (Bug fix 2.9)
+    const aiConfig = this.mergeAIConfig(config);
 
     return this.retryHandler.executeWithRetry(
       async () => {

@@ -147,14 +147,19 @@ export type BTSFrontend =
   // Custom frontends (handled separately by task-o-matic)
   | "cli"
   | "tui"
-  | "opentui"  // Alias for tui
+  | "opentui" // Alias for tui
+  | "medusa"
   | "none";
 
 // CLI dependency levels
-export type CliDependencyLevel = "minimal" | "standard" | "full" | "task-o-matic";
+export type CliDependencyLevel =
+  | "minimal"
+  | "standard"
+  | "full"
+  | "task-o-matic";
 
 export interface BTSConfig {
-  frontend: BTSFrontend | BTSFrontend[];  // Array to support multiple frontends
+  frontend: BTSFrontend | BTSFrontend[]; // Array to support multiple frontends
   backend: "convex" | "hono" | "express" | "none";
   database: "sqlite" | "postgres" | "mysql" | "none";
   auth: "better-auth" | "clerk" | "none";
