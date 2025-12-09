@@ -99,3 +99,19 @@ export function resetServiceInstances(): void {
   storage = null;
   contextBuilder = null;
 }
+
+/**
+ * FOR TESTING ONLY: Inject mock instances
+ * This allows tests to provide mock implementations without complex module mocking
+ */
+export function injectTestInstances(instances: {
+  storage?: TaskRepository;
+  aiOperations?: AIOperations;
+  modelProvider?: ModelProvider;
+  contextBuilder?: ContextBuilder;
+}): void {
+  if (instances.storage) storage = instances.storage;
+  if (instances.aiOperations) aiOperations = instances.aiOperations;
+  if (instances.modelProvider) modelProvider = instances.modelProvider;
+  if (instances.contextBuilder) contextBuilder = instances.contextBuilder;
+}

@@ -30,13 +30,88 @@ import { TaskIDGenerator } from "../utils/id-generator";
 
 /**
  * TaskService - Centralized business logic for all task operations
- * This service is framework-agnostic and can be used by CLI, TUI, or Web
+ *
+ * This service provides a comprehensive API for task management with AI-powered features.
+ * It's framework-agnostic and can be used by CLI, TUI, or Web applications.
+ *
+ * @example
+ * ```typescript
+ * import { TaskService } from "task-o-matic";
+ *
+ * // Initialize with default configuration
+ * const taskService = new TaskService();
+ *
+ * // Create a task with AI enhancement
+ * const result = await taskService.createTask({
+ *   title: "Implement feature",
+ *   content: "Feature description",
+ *   aiEnhance: true,
+ *   aiOptions: {
+ *     provider: "anthropic",
+ *     model: "claude-3-5-sonnet"
+ *   }
+ * });
+ * ```
  */
 export class TaskService {
   // ============================================================================
   // CORE CRUD OPERATIONS
   // ============================================================================
 
+  /**
+   * Creates a new task with optional AI enhancement
+   *
+   * @param input - Task creation parameters
+   * @param input.title - Task title (required, 1-255 characters)
+   * @param input.content - Task content/description (optional)
+   * @param input.parentId - Parent task ID for creating subtasks
+   * @param input.effort - Estimated effort ("small" | "medium" | "large")
+   * @param input.aiEnhance - Enable AI enhancement with Context7 documentation
+   * @param input.aiOptions - AI configuration override
+   * @param input.streamingOptions - Real-time streaming options
+   *
+   * @returns Promise resolving to task creation result
+   *
+   * @throws {TaskOMaticError} If task creation fails (e.g., AI operation errors, storage errors)
+   * @throws {Error} If input validation fails
+   *
+   * @example Basic task creation
+   * ```typescript
+   * const task = await taskService.createTask({
+   *   title: "Fix authentication bug",
+   *   content: "Users cannot login with valid credentials",
+   *   aiEnhance: false
+   * });
+   * ```
+   *
+   * @example Task with AI enhancement
+   * ```typescript
+   * try {
+   *   const enhancedTask = await taskService.createTask({
+   *     title: "Design authentication system",
+   *     content: "Implement OAuth2 + JWT authentication",
+   *     aiEnhance: true,
+   *     streamingOptions: {
+   *       onChunk: (chunk) => console.log("AI:", chunk)
+   *     }
+   *   });
+   *   console.log("Enhanced content:", enhancedTask.task.content);
+   * } catch (error) {
+   *   if (error instanceof TaskOMaticError) {
+   *     console.error("AI enhancement failed:", error.getDetails());
+   *   }
+   * }
+   * ```
+   *
+   * @example Creating subtasks
+   * ```typescript
+   * const subtask = await taskService.createTask({
+   *   title: "Implement OAuth2 flow",
+   *   parentId: "1",
+   *   effort: "medium"
+   * });
+   * ```
+   */
   async createTask(input: {
     title: string;
     content?: string;
@@ -142,6 +217,27 @@ export class TaskService {
     return { success: true, task, aiMetadata };
   }
 
+  /**
+   * List tasks with optional filtering
+   *
+   * @param filters - Filter criteria
+   * @param filters.status - Filter by task status ("todo", "in-progress", "completed")
+   * @param filters.tag - Filter by task tag
+   *
+   * @returns Promise resolving to array of matching tasks
+   *
+   * @example
+   * ```typescript
+   * // List all tasks
+   * const allTasks = await taskService.listTasks({});
+   *
+   * // List only completed tasks
+   * const completedTasks = await taskService.listTasks({ status: "completed" });
+   *
+   * // List tasks with specific tag
+   * const frontendTasks = await taskService.listTasks({ tag: "frontend" });
+   * ```
+   */
   async listTasks(filters: { status?: string; tag?: string }): Promise<Task[]> {
     const storage = getStorage();
     const topLevelTasks = await storage.getTopLevelTasks();
@@ -357,6 +453,35 @@ export class TaskService {
   // TASK NAVIGATION
   // ============================================================================
 
+  /**
+   * Get the next task based on priority and filtering criteria
+   *
+   * @param filters - Filter and priority criteria
+   * @param filters.status - Filter by task status
+   * @param filters.tag - Filter by task tag
+   * @param filters.effort - Filter by estimated effort
+   * @param filters.priority - Priority strategy ("newest", "oldest", "effort", or default)
+   *
+   * @returns Promise resolving to the highest priority task or null if none found
+   *
+   * @example
+   * ```typescript
+   * // Get the next task by default priority (task ID order)
+   * const nextTask = await taskService.getNextTask({});
+   *
+   * // Get the newest task with "todo" status
+   * const newestTodo = await taskService.getNextTask({
+   *   status: "todo",
+   *   priority: "newest"
+   * });
+   *
+   * // Get the highest effort task with specific tag
+   * const highEffortTask = await taskService.getNextTask({
+   *   tag: "backend",
+   *   priority: "effort"
+   * });
+   * ```
+   */
   async getNextTask(filters: {
     status?: string;
     tag?: string;
@@ -433,6 +558,41 @@ export class TaskService {
   // AI OPERATIONS
   // ============================================================================
 
+  /**
+   * Enhance a task with AI-generated documentation using Context7
+   *
+   * Uses AI to enrich the task description with relevant documentation,
+   * code examples, and best practices from Context7 documentation sources.
+   *
+   * @param taskId - ID of the task to enhance
+   * @param aiOptions - Optional AI configuration overrides
+   * @param streamingOptions - Optional streaming callbacks for real-time feedback
+   * @returns Promise resolving to enhancement result with metrics
+   *
+   * @throws {Error} If task not found
+   * @throws {TaskOMaticError} If AI enhancement fails
+   *
+   * @example Basic enhancement
+   * ```typescript
+   * const result = await taskService.enhanceTask("1");
+   * console.log("Enhanced content:", result.enhancedContent);
+   * console.log("Took:", result.stats.duration, "ms");
+   * ```
+   *
+   * @example With streaming
+   * ```typescript
+   * try {
+   *   const result = await taskService.enhanceTask("1", undefined, {
+   *     onChunk: (chunk) => process.stdout.write(chunk)
+   *   });
+   *   console.log("\nEnhancement complete!");
+   * } catch (error) {
+   *   if (error instanceof TaskOMaticError) {
+   *     console.error("Enhancement failed:", error.getDetails());
+   *   }
+   * }
+   * ```
+   */
   async enhanceTask(
     taskId: string,
     aiOptions?: AIOptions,
@@ -548,6 +708,52 @@ export class TaskService {
     };
   }
 
+  /**
+   * Split a task into subtasks using AI
+   *
+   * Analyzes the task and breaks it down into smaller, actionable subtasks
+   * with estimated effort. Can optionally use filesystem tools to understand
+   * project structure when creating subtasks.
+   *
+   * @param taskId - ID of the task to split
+   * @param aiOptions - Optional AI configuration overrides
+   * @param promptOverride - Optional custom prompt
+   * @param messageOverride - Optional custom message
+   * @param streamingOptions - Optional streaming callbacks
+   * @param enableFilesystemTools - Enable filesystem analysis for context
+   * @returns Promise resolving to split result with created subtasks
+   *
+   * @throws {Error} If task not found or already has subtasks
+   * @throws {TaskOMaticError} If AI operation fails
+   *
+   * @example Basic task splitting
+   * ```typescript
+   * const result = await taskService.splitTask("1");
+   * console.log(`Created ${result.subtasks.length} subtasks`);
+   * result.subtasks.forEach(subtask => {
+   *   console.log(`- ${subtask.title} (${subtask.estimatedEffort})`);
+   * });
+   * ```
+   *
+   * @example With filesystem tools for code analysis
+   * ```typescript
+   * try {
+   *   const result = await taskService.splitTask(
+   *     "1",
+   *     undefined,
+   *     undefined,
+   *     undefined,
+   *     { onChunk: (chunk) => console.log(chunk) },
+   *     true // Enable filesystem tools
+   *   );
+   *   console.log("AI analyzed codebase to create subtasks");
+   * } catch (error) {
+   *   if (error instanceof TaskOMaticError) {
+   *     console.error("Split failed:", error.suggestions);
+   *   }
+   * }
+   * ```
+   */
   async splitTask(
     taskId: string,
     aiOptions?: AIOptions,
@@ -703,6 +909,44 @@ export class TaskService {
     };
   }
 
+  /**
+   * Analyze and fetch documentation for a task using Context7
+   *
+   * Analyzes the task content to identify required libraries and documentation,
+   * then fetches relevant documentation from Context7. Caches documentation
+   * for future use.
+   *
+   * @param taskId - ID of the task to document
+   * @param force - Force re-fetch even if documentation exists
+   * @param aiOptions - Optional AI configuration overrides
+   * @param streamingOptions - Optional streaming callbacks
+   * @returns Promise resolving to documentation analysis result
+   *
+   * @throws {Error} If task not found or content is empty
+   * @throws {TaskOMaticError} If AI operation fails
+   *
+   * @example Analyze documentation needs
+   * ```typescript
+   * const result = await taskService.documentTask("1");
+   * if (result.documentation) {
+   *   console.log("Documentation fetched:");
+   *   console.log(result.documentation.recap);
+   *   console.log("Libraries:", result.documentation.libraries);
+   * }
+   * ```
+   *
+   * @example Force refresh documentation
+   * ```typescript
+   * try {
+   *   const result = await taskService.documentTask("1", true);
+   *   console.log(`Analyzed ${result.analysis.libraries.length} libraries`);
+   * } catch (error) {
+   *   if (error instanceof TaskOMaticError) {
+   *     console.error("Documentation fetch failed:", error.getDetails());
+   *   }
+   * }
+   * ```
+   */
   async documentTask(
     taskId: string,
     force: boolean = false,
@@ -856,6 +1100,46 @@ export class TaskService {
     };
   }
 
+  /**
+   * Generate an implementation plan for a task using AI
+   *
+   * Creates a detailed implementation plan with steps, considerations,
+   * and technical approach. Uses filesystem and Context7 tools to understand
+   * the project context and provide relevant suggestions.
+   *
+   * @param taskId - ID of the task to plan
+   * @param aiOptions - Optional AI configuration overrides
+   * @param streamingOptions - Optional streaming callbacks
+   * @returns Promise resolving to plan result with generated plan text
+   *
+   * @throws {Error} If task not found
+   * @throws {TaskOMaticError} If AI operation fails
+   *
+   * @example Basic implementation planning
+   * ```typescript
+   * const result = await taskService.planTask("1");
+   * console.log("Implementation Plan:");
+   * console.log(result.plan);
+   * console.log(`Generated in ${result.stats.duration}ms`);
+   * ```
+   *
+   * @example With streaming for real-time plan generation
+   * ```typescript
+   * try {
+   *   const result = await taskService.planTask("1", undefined, {
+   *     onChunk: (chunk) => {
+   *       // Display plan as it's generated
+   *       process.stdout.write(chunk);
+   *     }
+   *   });
+   *   console.log("\n\nPlan saved to:", `plans/${result.task.id}.md`);
+   * } catch (error) {
+   *   if (error instanceof TaskOMaticError) {
+   *     console.error("Planning failed:", error.getDetails());
+   *   }
+   * }
+   * ```
+   */
   async planTask(
     taskId: string,
     aiOptions?: AIOptions,

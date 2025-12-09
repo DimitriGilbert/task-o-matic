@@ -17,8 +17,10 @@ import {
 import { getContextBuilder } from "../../utils/ai-service-factory";
 import { filesystemTools } from "./filesystem-tools";
 import { BaseOperations } from "./base-operations";
+import { AIOperationUtility } from "../../utils/ai-operation-utility";
 
 export class TaskOperations extends BaseOperations {
+  private aiOperationUtility = new AIOperationUtility();
   async breakdownTask(
     task: Task,
     config?: Partial<AIConfig>,
@@ -33,110 +35,74 @@ export class TaskOperations extends BaseOperations {
   ): Promise<
     Array<{ title: string; content: string; estimatedEffort?: string }>
   > {
-    return this.retryHandler.executeWithRetry(
+    // Build prompt
+    let prompt: string;
+    if (promptOverride) {
+      prompt = promptOverride;
+    } else {
+      const variables: Record<string, string> = {
+        TASK_TITLE: task.title,
+        TASK_DESCRIPTION: task.description || "No description",
+      };
+
+      if (fullContent) {
+        variables.TASK_CONTENT = fullContent;
+      }
+
+      if (existingSubtasks && existingSubtasks.length > 0) {
+        const existingSubtasksText = existingSubtasks
+          .map(
+            (subtask, index) =>
+              `${index + 1}. ${subtask.title}: ${
+                subtask.description || "No description"
+              }`
+          )
+          .join("\n");
+        variables.EXISTING_SUBTASKS = existingSubtasksText;
+      }
+
+      if (stackInfo) {
+        variables.STACK_INFO = stackInfo;
+      }
+
+      const promptResult = PromptBuilder.buildPrompt({
+        name: "task-breakdown",
+        type: "user",
+        variables,
+      });
+
+      if (!promptResult.success) {
+        throw new Error(
+          `Failed to build task breakdown prompt: ${promptResult.error}`
+        );
+      }
+
+      prompt = promptResult.prompt!;
+    }
+
+    // Execute AI operation with proper error handling
+    const result = await this.aiOperationUtility.executeAIOperation(
+      "Task breakdown",
       async () => {
-        let prompt: string;
-        if (promptOverride) {
-          prompt = promptOverride;
-        } else {
-          const variables: Record<string, string> = {
-            TASK_TITLE: task.title,
-            TASK_DESCRIPTION: task.description || "No description",
-          };
+        // Prepare tools if filesystem tools are enabled
+        const tools = enableFilesystemTools ? filesystemTools : undefined;
 
-          if (fullContent) {
-            variables.TASK_CONTENT = fullContent;
-          }
-
-          if (existingSubtasks && existingSubtasks.length > 0) {
-            const existingSubtasksText = existingSubtasks
-              .map(
-                (subtask, index) =>
-                  `${index + 1}. ${subtask.title}: ${
-                    subtask.description || "No description"
-                  }`
-              )
-              .join("\n");
-            variables.EXISTING_SUBTASKS = existingSubtasksText;
-          }
-
-          if (stackInfo) {
-            variables.STACK_INFO = stackInfo;
-          }
-
-          const promptResult = PromptBuilder.buildPrompt({
-            name: "task-breakdown",
-            type: "user",
-            variables,
-          });
-
-          if (!promptResult.success) {
-            throw new Error(
-              `Failed to build task breakdown prompt: ${promptResult.error}`
-            );
-          }
-
-          prompt = promptResult.prompt!;
-        }
-
-        let response: string;
-
-        if (enableFilesystemTools) {
-          const model = this.modelProvider.getModel({
-            ...this.modelProvider.getAIConfig(),
-            ...config,
-          });
-
-          const allTools = {
-            ...filesystemTools,
-          };
-
-          const result = await streamText({
-            model,
-            tools: allTools,
-            system:
-              TASK_BREAKDOWN_SYSTEM_PROMPT +
-              `
+        const response = await this.aiOperationUtility.streamTextWithTools(
+          TASK_BREAKDOWN_SYSTEM_PROMPT +
+            (enableFilesystemTools
+              ? `
 
 You have access to filesystem tools that allow you to:
 - readFile: Read the contents of any file in the project
 - listDirectory: List contents of directories
 
-Use these tools to understand the project structure, existing code, and dependencies when breaking down tasks into subtasks.`,
-            messages: [{ role: "user", content: userMessage || prompt }],
-            maxRetries: 0,
-            onChunk: streamingOptions?.onChunk
-              ? ({ chunk }) => {
-                  if (chunk.type === "text-delta") {
-                    streamingOptions.onChunk!(chunk.text);
-                  } else if (chunk.type === "reasoning-delta") {
-                    streamingOptions.onReasoning?.(chunk.text);
-                  }
-                }
-              : undefined,
-            onFinish: streamingOptions?.onFinish
-              ? ({ text, finishReason, usage }) => {
-                  streamingOptions.onFinish!({
-                    text,
-                    finishReason,
-                    usage,
-                    isAborted: false,
-                  });
-                }
-              : undefined,
-          });
-
-          response = await result.text;
-        } else {
-          response = await this.streamText(
-            "",
-            config,
-            TASK_BREAKDOWN_SYSTEM_PROMPT,
-            userMessage || prompt,
-            streamingOptions,
-            { maxAttempts: 1 }
-          );
-        }
+Use these tools to understand the project structure, existing code, and dependencies when breaking down tasks into subtasks.`
+              : ""),
+          userMessage || prompt,
+          config,
+          streamingOptions,
+          tools
+        );
 
         const parseResult = this.jsonParser.parseJSONFromResponse<{
           subtasks: ParsedAITask[];
@@ -155,9 +121,16 @@ Use these tools to understand the project structure, existing code, and dependen
           estimatedEffort: subtask.effort,
         }));
       },
-      retryConfig,
-      "Task breakdown"
+      {
+        streamingOptions,
+        retryConfig,
+        aiConfig: config,
+        maxRetries: retryConfig?.maxAttempts || 2,
+      }
     );
+
+    // Return the result directly (errors are thrown, not returned)
+    return result.result;
   }
 
   async enhanceTask(
@@ -170,65 +143,69 @@ Use these tools to understand the project structure, existing code, and dependen
     streamingOptions?: StreamingOptions,
     retryConfig?: Partial<RetryConfig>
   ): Promise<string> {
-    return this.retryHandler.executeWithRetry(
-      async () => {
-        let contextInfo = "";
-        let prdContent = "";
+    // Build context
+    let contextInfo = "";
+    let prdContent = "";
 
-        if (taskId) {
-          const contextBuilder = getContextBuilder();
-          try {
-            const context = await contextBuilder.buildContext(taskId);
-            if (context.documentation || context.stack || context.prdContent) {
-              contextInfo = "\n\nAvailable Context:\n";
+    if (taskId) {
+      const contextBuilder = getContextBuilder();
+      try {
+        const context = await contextBuilder.buildContext(taskId);
+        if (context.documentation || context.stack || context.prdContent) {
+          contextInfo = "\n\nAvailable Context:\n";
 
-              if (context.stack) {
-                contextInfo += formatStackForContext(context.stack) + "\n";
-              }
+          if (context.stack) {
+            contextInfo += formatStackForContext(context.stack) + "\n";
+          }
 
-              if (context.documentation) {
-                contextInfo += `Documentation Available: ${context.documentation.recap}\n`;
-                if (context.documentation.files.length > 0) {
-                  contextInfo += `Documentation Files: ${context.documentation.files
-                    .map((f) => f.path)
-                    .join(", ")}\n`;
-                }
-              }
-
-              if (context.prdContent) {
-                prdContent = context.prdContent;
-              }
+          if (context.documentation) {
+            contextInfo += `Documentation Available: ${context.documentation.recap}\n`;
+            if (context.documentation.files.length > 0) {
+              contextInfo += `Documentation Files: ${context.documentation.files
+                .map((f) => f.path)
+                .join(", ")}\n`;
             }
-          } catch (error) {
-            throw error;
-          }
-        }
-
-        let prompt: string;
-        if (promptOverride) {
-          prompt = promptOverride;
-        } else {
-          const promptResult = PromptBuilder.buildPrompt({
-            name: "task-enhancement",
-            type: "user",
-            variables: {
-              TASK_TITLE: title,
-              TASK_DESCRIPTION: description || "None",
-              CONTEXT_INFO: contextInfo,
-              PRD_CONTENT: prdContent || "No PRD content available",
-            },
-          });
-
-          if (!promptResult.success) {
-            throw new Error(
-              `Failed to build task enhancement prompt: ${promptResult.error}`
-            );
           }
 
-          prompt = promptResult.prompt!;
+          if (context.prdContent) {
+            prdContent = context.prdContent;
+          }
         }
+      } catch (error) {
+        throw error;
+      }
+    }
 
-        return this.streamText(
+    // Build prompt
+    let prompt: string;
+    if (promptOverride) {
+      prompt = promptOverride;
+    } else {
+      const promptResult = PromptBuilder.buildPrompt({
+        name: "task-enhancement",
+        type: "user",
+        variables: {
+          TASK_TITLE: title,
+          TASK_DESCRIPTION: description || "None",
+          CONTEXT_INFO: contextInfo,
+          PRD_CONTENT: prdContent || "No PRD content available",
+        },
+      });
+
+      if (!promptResult.success) {
+        throw new Error(
+          `Failed to build task enhancement prompt: ${promptResult.error}`
+        );
+      }
+
+      prompt = promptResult.prompt!;
+    }
+
+    // Execute AI operation with proper error handling
+    const result = await this.aiOperationUtility.executeAIOperation(
+      "Task enhancement",
+      async () => {
+        return await this.aiOperationUtility.streamText(
           "",
           config,
           TASK_ENHANCEMENT_SYSTEM_PROMPT,
@@ -237,9 +214,16 @@ Use these tools to understand the project structure, existing code, and dependen
           { maxAttempts: 1 }
         );
       },
-      retryConfig,
-      "Task enhancement"
+      {
+        streamingOptions,
+        retryConfig,
+        aiConfig: config,
+        maxRetries: retryConfig?.maxAttempts || 2,
+      }
     );
+
+    // Return the result directly (errors are thrown, not returned)
+    return result.result;
   }
 
   async planTask(
@@ -251,46 +235,41 @@ Use these tools to understand the project structure, existing code, and dependen
     streamingOptions?: StreamingOptions,
     retryConfig?: Partial<RetryConfig>
   ): Promise<string> {
-    return this.retryHandler.executeWithRetry(
+    // Build prompt
+    let prompt: string;
+    if (promptOverride) {
+      prompt = promptOverride;
+    } else {
+      const promptResult = PromptBuilder.buildPrompt({
+        name: "task-planning",
+        type: "user",
+        variables: {
+          TASK_CONTEXT: taskContext,
+          TASK_DETAILS: taskDetails,
+        },
+      });
+
+      if (!promptResult.success) {
+        throw new Error(
+          `Failed to build task planning prompt: ${promptResult.error}`
+        );
+      }
+
+      prompt = promptResult.prompt!;
+    }
+
+    // Execute AI operation with proper error handling
+    const result = await this.aiOperationUtility.executeAIOperation(
+      "Task planning",
       async () => {
-        let prompt: string;
-        if (promptOverride) {
-          prompt = promptOverride;
-        } else {
-          const promptResult = PromptBuilder.buildPrompt({
-            name: "task-planning",
-            type: "user",
-            variables: {
-              TASK_CONTEXT: taskContext,
-              TASK_DETAILS: taskDetails,
-            },
-          });
-
-          if (!promptResult.success) {
-            throw new Error(
-              `Failed to build task planning prompt: ${promptResult.error}`
-            );
-          }
-
-          prompt = promptResult.prompt!;
-        }
-
-        const model = this.modelProvider.getModel({
-          ...this.modelProvider.getAIConfig(),
-          ...config,
-        });
-
         const mcpTools = await this.context7Client.getMCPTools();
         const allTools = {
           ...(mcpTools as ToolSet),
           ...filesystemTools,
         };
 
-        const result = streamText({
-          model,
-          tools: allTools,
-          system:
-            TASK_PLANNING_SYSTEM_PROMPT +
+        return await this.aiOperationUtility.streamTextWithTools(
+          TASK_PLANNING_SYSTEM_PROMPT +
             `
 
 You have access to filesystem tools that allow you to:
@@ -298,33 +277,21 @@ You have access to filesystem tools that allow you to:
 - listDirectory: List contents of directories
 
 Use these tools to understand the project structure, existing code, and dependencies when creating implementation plans.`,
-          messages: [{ role: "user", content: userMessage || prompt }],
-          maxRetries: 0,
-          onChunk: streamingOptions?.onChunk
-            ? ({ chunk }) => {
-                if (chunk.type === "text-delta") {
-                  streamingOptions.onChunk!(chunk.text);
-                } else if (chunk.type === "reasoning-delta") {
-                  streamingOptions.onReasoning?.(chunk.text);
-                }
-              }
-            : undefined,
-          onFinish: streamingOptions?.onFinish
-            ? ({ text, finishReason, usage }) => {
-                streamingOptions.onFinish!({
-                  text,
-                  finishReason,
-                  usage,
-                  isAborted: false,
-                });
-              }
-            : undefined,
-        });
-
-        return (await result).text;
+          userMessage || prompt,
+          config,
+          streamingOptions,
+          allTools
+        );
       },
-      retryConfig,
-      "Task planning"
+      {
+        streamingOptions,
+        retryConfig,
+        aiConfig: config,
+        maxRetries: retryConfig?.maxAttempts || 2,
+      }
     );
+
+    // Return the result directly (errors are thrown, not returned)
+    return result.result;
   }
 }
