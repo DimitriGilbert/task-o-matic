@@ -1,5 +1,5 @@
 import assert from "assert";
-import { extractCommitInfo } from "../lib/task-loop-execution";
+import { extractCommitInfo } from "../lib/git-utils";
 
 describe("Task Loop Git Integration", () => {
   const mockTaskTitle = "Test Task";

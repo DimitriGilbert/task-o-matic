@@ -1,10 +1,10 @@
 import { Command } from "commander";
 import { taskService } from "../../services/tasks";
-import { hooks } from "../../lib/hooks";
 import { createStreamingOptions } from "../../utils/streaming-options";
-import { displayProgress, displayError } from "../../cli/display/progress";
+import { displayError } from "../../cli/display/progress";
 import { displayEnhancementResult } from "../../cli/display/common";
 import { displayCreatedTask } from "../../cli/display/task";
+import { withProgressTracking } from "../../utils/progress-tracking";
 
 export const createCommand = new Command("create")
   .description("Create a new task with AI enhancement using Context7")
@@ -29,13 +29,8 @@ export const createCommand = new Command("create")
         "Enhancement"
       );
 
-      const progressHandler = (payload: any) => {
-        displayProgress(payload);
-      };
-      hooks.on("task:progress", progressHandler);
-
-      try {
-        const result = await taskService.createTask({
+      const result = await withProgressTracking(async () => {
+        return await taskService.createTask({
           title: options.title,
           content: options.content,
           parentId: options.parentId,
@@ -50,12 +45,10 @@ export const createCommand = new Command("create")
           },
           streamingOptions,
         });
+      });
 
-        displayEnhancementResult(options.aiEnhance && options.stream);
-        displayCreatedTask(result.task, result.aiMetadata);
-      } finally {
-        hooks.off("task:progress", progressHandler);
-      }
+      displayEnhancementResult(options.aiEnhance && options.stream);
+      displayCreatedTask(result.task, result.aiMetadata);
     } catch (error) {
       displayError(error);
       process.exit(1);

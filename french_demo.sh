@@ -72,7 +72,7 @@ echo ""
 
 # Step 3: Initialize task-o-matic
 echo "Step 3: We initialize task-o-matic in our workspace!"
-../dist/cli/bin.js init init --project-name le-croissant-magique
+../dist/cli/bin.js init init --project-name le-croissant-magique --package-manager bun
 echo "Configuration... It is done. Ze AI is ready."
 echo "Let's see if ze project is ready to run..."
 if [ -f "le-croissant-magique/package.json" ]; then
@@ -93,10 +93,13 @@ echo ""
 # echo "---"
 # echo ""
 
+mv .env le-croissant-magique/.env
+cd le-croissant-magique
+
 # Step 5: Parse ze PRD
 echo "Step 5: Ze moment of truth! We give ze PRD to ze AI."
 echo "Let's see if ze machine understands 'l'art du croissant'."
-../dist/cli/bin.js prd parse --file prd_croissant.md --stream
+../../dist/cli/bin.js prd parse --file ../prd_croissant.md --stream
 # ../dist/cli/bin.js prd parse --file prd_croissant.md --stream --ai-reasoning 4000
 echo ""
 
@@ -127,17 +130,17 @@ echo ""
 echo "Step 8: Now we split ALL ze tasks into smaller, bite-sized pieces!"
 echo "Because big tasks are like... how you say... 'intimidating', non?"
 echo "Ze AI will break down every task into manageable subtasks!"
-../dist/cli/bin.js tasks split --all --stream
+../../dist/cli/bin.js tasks split --all --stream
 # ../dist/cli/bin.js tasks split --all --stream --reasoning 4000
 echo ""
 echo "Magnifique! Now we have many small tasks to conquer. Like eating a croissant one flaky layer at a time!"
 echo "Let us see ze final result..."
-../dist/cli/bin.js tasks list
+../../dist/cli/bin.js tasks list
 echo "---"
 echo ""
 echo "Now we enhance each task one by one... like a patient baker!"
 echo "Note: In a real scenario, you would enhance each task by ID like:"
-echo "../dist/cli/bin.js tasks enhance --task-id <task-id> --stream"
+echo "../../dist/cli/bin.js tasks enhance --task-id <task-id> --stream"
 echo "For now, let us create a new enhanced task to demonstrate!"
 # ../dist/cli/bin.js tasks create --title "Enhanced Croissant Map Feature" --content "Create an interactive map showing all bakeries with real-time croissant quality ratings" --ai-enhance --stream
 echo ""

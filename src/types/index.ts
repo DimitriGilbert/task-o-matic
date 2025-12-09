@@ -308,9 +308,18 @@ export interface ExecuteTaskOptions {
   tool?: ExecutorTool;
   message?: string;
   dry?: boolean;
-  validate?: string[];
+  validate?: string[]; // Alias: verification commands (supports both --validate and --verify)
   model?: string; // Model to use
   continueSession?: boolean; // Continue last session
+  // New options (unified with execute-loop)
+  maxRetries?: number; // Enable retry logic (opt-in, default: undefined = disabled)
+  tryModels?: ModelAttemptConfig[]; // Progressive model escalation
+  plan?: boolean; // Generate implementation plan
+  planModel?: string; // Model/executor for planning
+  reviewPlan?: boolean; // Enable human plan review
+  review?: boolean; // Enable AI code review
+  reviewModel?: string; // Model/executor for review
+  autoCommit?: boolean; // Auto-commit changes
 }
 
 export interface ExternalExecutor {
@@ -346,6 +355,8 @@ export interface ExecuteLoopConfig {
   reviewPlan?: boolean; // Pause for human review of the plan
   review?: boolean; // Run AI review after execution
   reviewModel?: string; // Model/executor to use for review
+  customMessage?: string; // NEW: Custom message override (from execute command)
+  continueSession?: boolean; // NEW: Continue last session (from execute command)
 }
 
 // Execute Loop Options
@@ -392,6 +403,38 @@ export interface ExecuteLoopResult {
     finalStatus: "completed" | "failed";
   }>;
   duration: number;
+}
+
+// Unified Task Execution Configuration (used by both execute and execute-loop)
+export interface TaskExecutionConfig {
+  tool: ExecutorTool;
+  executorConfig?: ExecutorConfig;
+  customMessage?: string; // Override execution message
+  verificationCommands?: string[]; // Validation/verification commands
+  enableRetry?: boolean; // Enable retry logic (default: false for execute, true for execute-loop)
+  maxRetries?: number; // Maximum retries per task (default: 3)
+  tryModels?: ModelAttemptConfig[]; // Progressive model/executor configs
+  enablePlanPhase?: boolean; // Generate implementation plan
+  planModel?: string; // Model/executor for planning (format: "executor:model" or "model")
+  reviewPlan?: boolean; // Enable human plan review
+  enableReviewPhase?: boolean; // Enable AI code review
+  reviewModel?: string; // Model/executor for review (format: "executor:model" or "model")
+  autoCommit?: boolean; // Auto-commit changes
+  executeSubtasks?: boolean; // Execute subtasks recursively (default: true)
+  dry?: boolean; // Dry run mode
+}
+
+// Unified Task Execution Result (used by both execute and execute-loop)
+export interface TaskExecutionResult {
+  success: boolean;
+  attempts: TaskExecutionAttempt[];
+  commitInfo?: {
+    message: string;
+    files: string[];
+  };
+  subtaskResults?: TaskExecutionResult[]; // Results from subtask execution
+  planContent?: string; // Generated plan content
+  reviewFeedback?: string; // Review feedback if review was enabled
 }
 
 // Re-export result types from results.ts

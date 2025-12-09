@@ -1,15 +1,23 @@
 import { Command } from "commander";
 import chalk from "chalk";
 import { taskService } from "../../services/tasks";
-import { hooks } from "../../lib/hooks";
 import { createStreamingOptions } from "../../utils/streaming-options";
-import { displayProgress, displayError } from "../../cli/display/progress";
 import { displaySubtaskCreation } from "../../cli/display/task";
+import { withProgressTracking } from "../../utils/progress-tracking";
+import { validateMutuallyExclusive } from "../../utils/cli-validators";
+import { executeBulkOperation } from "../../utils/bulk-operations";
+import { confirmBulkOperation } from "../../utils/confirmation";
+import { SplitCommandOptions } from "../../types/cli-options";
+import { wrapCommandHandler } from "../../utils/command-error-handler";
 
 export const splitCommand = new Command("split")
   .description("Split a task into smaller subtasks using AI")
   .option("--task-id <id>", "Task ID to split")
   .option("--all", "Split all existing tasks that don't have subtasks")
+  .option("--status <status>", "Filter tasks by status (todo/in-progress/completed)")
+  .option("--tag <tag>", "Filter tasks by tag")
+  .option("--dry", "Preview what would be split without making changes")
+  .option("--force", "Skip confirmation prompt for bulk operations")
   .option("--stream", "Show streaming AI output during breakdown")
   .option("--ai-provider <provider>", "AI provider override")
   .option("--ai-model <model>", "AI model override")
@@ -20,42 +28,41 @@ export const splitCommand = new Command("split")
     "Enable reasoning for OpenRouter models (max reasoning tokens)"
   )
   .option("--tools", "Enable filesystem tools for project analysis")
-  .action(async (options) => {
-    try {
-      if (!options.taskId && !options.all) {
-        throw new Error("Either --task-id or --all must be specified");
-      }
-
-      if (options.taskId && options.all) {
-        throw new Error("Cannot specify both --task-id and --all");
-      }
+  .action(wrapCommandHandler("Task splitting", async (options: SplitCommandOptions) => {
+    // Validate mutual exclusivity (only if no filters provided)
+    if (!options.status && !options.tag) {
+      validateMutuallyExclusive(options, "taskId", "all", "task-id", "all");
+    }
 
       const splitSingleTask = async (taskId: string) => {
+        if (options.dry) {
+          const task = await taskService.getTask(taskId);
+          console.log(chalk.blue(`[DRY RUN] Would split: ${task?.title || taskId}`));
+          return;
+        }
+
         const streamingOptions = createStreamingOptions(
           options.stream,
           "Task breakdown"
         );
 
-        const progressHandler = (payload: any) => {
-          displayProgress(payload);
-        };
-        hooks.on("task:progress", progressHandler);
-
         try {
-          const result = await taskService.splitTask(
-            taskId,
-            {
-              aiProvider: options.aiProvider,
-              aiModel: options.aiModel,
-              aiKey: options.aiKey,
-              aiProviderUrl: options.aiProviderUrl,
-              aiReasoning: options.reasoning,
-            },
-            undefined,
-            undefined,
-            streamingOptions,
-            options.tools
-          );
+          const result = await withProgressTracking(async () => {
+            return await taskService.splitTask(
+              taskId,
+              {
+                aiProvider: options.aiProvider,
+                aiModel: options.aiModel,
+                aiKey: options.aiKey,
+                aiProviderUrl: options.aiProviderUrl,
+                aiReasoning: options.reasoning,
+              },
+              undefined,
+              undefined,
+              streamingOptions,
+              options.tools
+            );
+          });
 
           displaySubtaskCreation(result.subtasks);
 
@@ -81,50 +88,44 @@ export const splitCommand = new Command("split")
             return;
           }
           throw error;
-        } finally {
-          hooks.off("task:progress", progressHandler);
         }
       };
 
       if (options.taskId) {
         await splitSingleTask(options.taskId);
-      } else if (options.all) {
-        const allTasks = await taskService.listTasks({});
-        if (allTasks.length === 0) {
-          console.log(chalk.yellow("No tasks found to split."));
+      } else {
+        // Build filters for bulk operation
+        const filters: any = {};
+        if (options.status) filters.status = options.status;
+        if (options.tag) filters.tag = options.tag;
+
+        // Get task count for confirmation
+        const tasks = await taskService.listTasks(filters);
+
+        if (tasks.length === 0) {
+          console.log(chalk.yellow("No tasks found matching the filters"));
           return;
         }
 
-        console.log(chalk.blue(`🔧 Splitting ${allTasks.length} tasks...`));
+        // Confirm bulk operation
+        const confirmed = await confirmBulkOperation(
+          "split",
+          tasks.length,
+          options.force
+        );
 
-        for (let i = 0; i < allTasks.length; i++) {
-          const task = allTasks[i];
-          console.log(
-            chalk.cyan(
-              `\n[${i + 1}/${allTasks.length}] Splitting: ${task.title}`
-            )
-          );
-          try {
-            await splitSingleTask(task.id);
-          } catch (error) {
-            console.log(
-              chalk.red(
-                `❌ Failed to split task ${task.id}: ${
-                  error instanceof Error ? error.message : "Unknown error"
-                }`
-              )
-            );
-          }
+        if (!confirmed) {
+          console.log(chalk.yellow("Operation cancelled"));
+          return;
         }
 
-        console.log(
-          chalk.green(
-            `\n✓ Bulk splitting complete! Processed ${allTasks.length} tasks.`
-          )
+        await executeBulkOperation(
+          (taskId) => splitSingleTask(taskId),
+          {
+            operationName: "Splitting",
+            operationEmoji: "🔧",
+            filters,
+          }
         );
       }
-    } catch (error) {
-      displayError(error);
-      process.exit(1);
-    }
-  });
+  }));

@@ -6,50 +6,9 @@ import {
   ExecutorTool,
   ModelAttemptConfig,
 } from "../../types";
-
-// Valid executor tools
-const VALID_EXECUTORS: ExecutorTool[] = [
-  "opencode",
-  "claude",
-  "gemini",
-  "codex",
-];
-
-/**
- * Parse --try-models option into ModelAttemptConfig array
- * Supports formats:
- * - "model1,model2,model3" - just models (uses default executor)
- * - "opencode:gpt-4o,claude:sonnet-4" - executor:model format
- * - Mixed: "gpt-4o,claude:sonnet-4,gemini:gemini-2.0"
- */
-function parseTryModels(value: string): ModelAttemptConfig[] {
-  return value.split(",").map((item) => {
-    const trimmed = item.trim();
-
-    // Check if it includes executor specification (executor:model format)
-    if (trimmed.includes(":")) {
-      const [executor, model] = trimmed.split(":");
-
-      if (!VALID_EXECUTORS.includes(executor as ExecutorTool)) {
-        throw new Error(
-          `Invalid executor "${executor}" in --try-models. Must be one of: ${VALID_EXECUTORS.join(
-            ", "
-          )}`
-        );
-      }
-
-      return {
-        executor: executor as ExecutorTool,
-        model: model.trim(),
-      };
-    }
-
-    // Just a model name - use default executor
-    return {
-      model: trimmed,
-    };
-  });
-}
+import { parseTryModels, validateExecutor, VALID_EXECUTORS } from "../../utils/model-executor-parser";
+import { ExecuteLoopCommandOptions } from "../../types/cli-options";
+import { wrapCommandHandler } from "../../utils/command-error-handler";
 
 export const executeLoopCommand = new Command("execute-loop")
   .description(
@@ -88,6 +47,22 @@ export const executeLoopCommand = new Command("execute-loop")
     }
   )
   .option(
+    "--validate <command>",
+    "Alias for --verify (validation command, can be used multiple times)",
+    (value: string, previous: string[] = []) => {
+      return [...previous, value];
+    }
+  )
+  .option(
+    "--message <message>",
+    "Custom message to send to the tool (overrides task plan)"
+  )
+  .option(
+    "--continue-session",
+    "Continue the last session (for error feedback)",
+    false
+  )
+  .option(
     "--auto-commit",
     "Automatically commit changes after each task",
     false
@@ -104,10 +79,9 @@ export const executeLoopCommand = new Command("execute-loop")
     "Model/executor to use for review (e.g., 'opencode:gpt-4o' or 'gpt-4o')"
   )
   .option("--dry", "Show what would be executed without running it", false)
-  .action(async (options) => {
-    try {
+  .action(wrapCommandHandler("Execute loop", async (options: ExecuteLoopCommandOptions) => {
       // Validate tool
-      if (!VALID_EXECUTORS.includes(options.tool)) {
+      if (!validateExecutor(options.tool)) {
         console.error(
           chalk.red(
             `Invalid tool: ${options.tool}. Must be one of: ${VALID_EXECUTORS.join(
@@ -150,6 +124,12 @@ export const executeLoopCommand = new Command("execute-loop")
         }
       }
 
+      // Combine both --verify and --validate options
+      const verifications = [
+        ...(options.verify || []),
+        ...(options.validate || []),
+      ];
+
       // Build options
       const executeOptions: ExecuteLoopOptions = {
         filters: {
@@ -160,7 +140,7 @@ export const executeLoopCommand = new Command("execute-loop")
         tool: options.tool as ExecutorTool,
         config: {
           maxRetries: options.maxRetries,
-          verificationCommands: options.verify || [],
+          verificationCommands: verifications,
           autoCommit: options.autoCommit,
           tryModels,
           plan: options.plan,
@@ -168,6 +148,8 @@ export const executeLoopCommand = new Command("execute-loop")
           reviewPlan: options.reviewPlan,
           review: options.review,
           reviewModel: options.reviewModel,
+          customMessage: options.message, // NEW: custom message override
+          continueSession: options.continueSession, // NEW: session continuation
         },
         dry: options.dry,
       };
@@ -190,11 +172,4 @@ export const executeLoopCommand = new Command("execute-loop")
           `\n✅ All ${result.completedTasks} task(s) completed successfully!`
         )
       );
-    } catch (error) {
-      console.error(
-        chalk.red("Execute loop failed:"),
-        error instanceof Error ? error.message : "Unknown error"
-      );
-      process.exit(1);
-    }
-  });
+  }));

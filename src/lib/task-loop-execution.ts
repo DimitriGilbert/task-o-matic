@@ -2,814 +2,16 @@ import { taskService } from "../services/tasks";
 import {
   ExecuteLoopOptions,
   ExecuteLoopResult,
-  TaskExecutionAttempt,
   ExecutorTool,
   Task,
-  ExecutorConfig,
-  ExecuteLoopConfig,
+  TaskExecutionConfig,
 } from "../types";
-import { ExecutorFactory } from "./executors/executor-factory";
-import { runValidations } from "./validation";
-import { getContextBuilder } from "../utils/ai-service-factory";
-import { hooks } from "./hooks";
-import { PromptBuilder } from "./prompt-builder";
+import { executeTaskCore } from "./task-execution-core";
 import chalk from "chalk";
-import { exec } from "child_process";
-import { promisify } from "util";
-import { getAIOperations } from "../utils/ai-service-factory";
-import { existsSync, readFileSync } from "fs";
-import { join } from "path";
-import inquirer from "inquirer";
-
-const execAsync = promisify(exec);
-
-/**
- * Extract commit message and file list from AI conversation/output
- * This function analyzes the executor's work and generates appropriate commit info
- */
-/**
- * Extract commit message and file list from git state
- * This function analyzes the actual git state to generate appropriate commit info
- */
-export async function extractCommitInfo(
-  taskId: string,
-  taskTitle: string,
-  executionMessage: string,
-  gitState: {
-    beforeHead: string;
-    afterHead: string;
-    hasUncommittedChanges: boolean;
-  },
-  execFn: (
-    command: string
-  ) => Promise<{ stdout: string; stderr: string }> = execAsync,
-  aiOps: any = getAIOperations()
-): Promise<{ message: string; files: string[] }> {
-  try {
-    // Case 1: Executor created a commit
-    if (gitState.beforeHead !== gitState.afterHead) {
-      console.log(
-        chalk.blue("📝 Executor created a commit, extracting info...")
-      );
-      const { stdout } = await execFn(
-        `git show --stat --format="%s%n%b" ${gitState.afterHead}`
-      );
-
-      const lines = stdout.trim().split("\n");
-      const message = lines[0].trim();
-      // Parse files from stat output (e.g. " src/file.ts | 10 +")
-      const files = lines
-        .slice(1)
-        .filter((line) => line.includes("|"))
-        .map((line) => line.split("|")[0].trim());
-
-      return {
-        message,
-        files,
-      };
-    }
-
-    // Case 2: Executor left uncommitted changes
-    if (gitState.hasUncommittedChanges) {
-      console.log(
-        chalk.blue(
-          "📝 Uncommitted changes detected, generating commit message..."
-        )
-      );
-
-      // Get the diff to send to AI
-      const { stdout: diff } = await execFn("git diff HEAD");
-
-      // Get list of changed files
-      const { stdout: status } = await execFn("git status --porcelain");
-      const files = status
-        .split("\n")
-        .filter((line) => line.length > 0)
-        .map((line) => line.substring(3).trim())
-        .filter((file) => file.length > 0);
-
-      // Use AI to generate commit message based on the diff
-      // const aiOps = getAIOperations(); // Injected
-
-      const prompt = `Based on the following git diff, generate a concise git commit message.
-      
-Task: ${taskTitle}
-
-Git Diff:
-${diff.substring(0, 10000)} // Limit diff size
-
-Please respond in JSON format:
-{
-  "message": "concise commit message following conventional commits format"
-}
-
-The commit message should:
-- Follow conventional commits format (feat:, fix:, refactor:, etc.)
-- Be concise and descriptive
-- Focus on what changed
-`;
-
-      const response = await aiOps.streamText(
-        prompt,
-        undefined,
-        "You are a helpful assistant that generates git commit messages."
-      );
-
-      // Try to parse JSON from response
-      const jsonMatch = response.match(/\{[\s\S]*\}/);
-      let message = `feat: complete task ${taskTitle}`;
-
-      if (jsonMatch) {
-        try {
-          const parsed = JSON.parse(jsonMatch[0]);
-          if (parsed.message) {
-            message = parsed.message;
-          }
-        } catch (e) {
-          // Ignore parse error
-        }
-      }
-
-      return {
-        message,
-        files,
-      };
-    }
-
-    // Case 3: No changes detected
-    return {
-      message: `feat: complete task ${taskTitle}`,
-      files: [],
-    };
-  } catch (error) {
-    console.warn(
-      chalk.yellow(
-        `⚠️  Failed to extract commit info: ${
-          error instanceof Error ? error.message : "Unknown error"
-        }`
-      )
-    );
-    // Fallback commit info
-    return {
-      message: `feat: complete task ${taskTitle}`,
-      files: [],
-    };
-  }
-}
-
-/**
- * Run verification commands and return results
- */
-async function runVerificationCommands(
-  commands: string[],
-  dry: boolean
-): Promise<
-  Array<{
-    command: string;
-    success: boolean;
-    output?: string;
-    error?: string;
-  }>
-> {
-  const results: Array<{
-    command: string;
-    success: boolean;
-    output?: string;
-    error?: string;
-  }> = [];
-
-  if (dry) {
-    console.log(chalk.yellow("🔍 DRY RUN - Verification commands:"));
-    commands.forEach((cmd) => {
-      console.log(chalk.cyan(`  ${cmd}`));
-      results.push({
-        command: cmd,
-        success: true,
-        output: "DRY RUN - not executed",
-      });
-    });
-    return results;
-  }
-
-  for (const command of commands) {
-    console.log(chalk.blue(`🧪 Running verification: ${command}`));
-
-    try {
-      const { stdout, stderr } = await execAsync(command);
-      console.log(chalk.green(`✅ Verification passed: ${command}`));
-
-      results.push({
-        command,
-        success: true,
-        output: stdout.trim(),
-      });
-    } catch (error: any) {
-      console.error(chalk.red(`❌ Verification failed: ${command}`));
-
-      const errorOutput = error.stderr || error.stdout || error.message;
-      console.error(chalk.red(`   Error: ${errorOutput}`));
-
-      results.push({
-        command,
-        success: false,
-        error: errorOutput,
-      });
-
-      // Return early on first failure
-      break;
-    }
-  }
-
-  return results;
-}
-
-/**
- * Execute a single task with retry logic and error correction
- */
-async function executeTaskWithRetry(
-  task: Task,
-  tool: ExecutorTool,
-  config: ExecuteLoopConfig,
-  dry: boolean
-): Promise<TaskExecutionAttempt[]> {
-  const {
-    maxRetries = 3,
-    verificationCommands = [],
-    tryModels,
-    plan,
-    planModel,
-    reviewPlan,
-    review,
-    reviewModel,
-    autoCommit,
-  } = config;
-
-  const attempts: TaskExecutionAttempt[] = [];
-  let currentAttempt = 1;
-  let lastError: string | undefined;
-  let planContent: string | undefined;
-
-  // ----------------------------------------------------------------------
-  // PLANNING PHASE
-  // ----------------------------------------------------------------------
-  if (plan) {
-    console.log(
-      chalk.blue.bold(`\n🧠 Starting Planning Phase for Task: ${task.title}`)
-    );
-
-    const planFileName = `task-${task.id}-plan.md`;
-    const planExecutor = planModel
-      ? (planModel.split(":")[0] as ExecutorTool)
-      : tool;
-    const planModelName = planModel ? planModel.split(":")[1] : undefined;
-
-    let planningPrompt = `You are a senior software architect. Analyze the following task and create a detailed implementation plan.
-    
-Task: ${task.title}
-Description: ${task.description || "No description provided."}
-
-Requirements:
-1. Analyze the task requirements.
-2. Create a detailed step-by-step implementation plan.
-3. Identify necessary file changes.
-4. Write this plan to a file named "${planFileName}" in the current directory.
-5. Do NOT implement the code yet, just create the plan file.
-
-Please create the "${planFileName}" file now.`;
-
-    console.log(
-      chalk.cyan(
-        `   Using executor for planning: ${planExecutor}${
-          planModelName ? ` (${planModelName})` : ""
-        }`
-      )
-    );
-
-    // Create executor for planning
-    const planningConfig: ExecutorConfig = {
-      model: planModelName,
-      continueLastSession: false,
-    };
-
-    const executor = ExecutorFactory.create(planExecutor, planningConfig);
-
-    try {
-      let planningComplete = false;
-
-      while (!planningComplete) {
-        await executor.execute(planningPrompt, dry, planningConfig);
-
-        if (!dry) {
-          // Verify plan file exists and read it
-          if (existsSync(planFileName)) {
-            planContent = readFileSync(planFileName, "utf-8");
-            console.log(
-              chalk.green(`✅ Plan created successfully: ${planFileName}`)
-            );
-
-            // Human Review Loop
-            if (reviewPlan) {
-              console.log(
-                chalk.yellow(
-                  `\n👀 Pausing for Human Review of the Plan: ${planFileName}`
-                )
-              );
-              console.log(chalk.cyan("You can edit the file now."));
-
-              const { feedback } = await inquirer.prompt([
-                {
-                  type: "input",
-                  name: "feedback",
-                  message:
-                    "Enter feedback to refine the plan (or press Enter to approve and continue):",
-                },
-              ]);
-
-              if (feedback && feedback.trim() !== "") {
-                console.log(
-                  chalk.blue("🔄 Refining plan based on feedback...")
-                );
-                planningPrompt = `The user provided the following feedback on the plan you just created:
-                
-"${feedback}"
-
-Please update the plan file "${planFileName}" to incorporate this feedback.`;
-                // Continue loop to regenerate plan
-                continue;
-              }
-            }
-
-            // Auto-commit plan if enabled (only after approval)
-            if (autoCommit) {
-              try {
-                console.log(
-                  chalk.blue(`📦 Staging plan file: ${planFileName}`)
-                );
-                await execAsync(`git add ${planFileName}`);
-                await execAsync(
-                  `git commit -m "docs: create implementation plan for task ${task.id}"`
-                );
-                console.log(chalk.green("✅ Plan committed successfully"));
-              } catch (e) {
-                console.warn(
-                  chalk.yellow(
-                    `⚠️  Failed to commit plan: ${
-                      e instanceof Error ? e.message : "Unknown error"
-                    }`
-                  )
-                );
-              }
-            }
-
-            planningComplete = true;
-          } else {
-            console.warn(
-              chalk.yellow(
-                `⚠️  Plan file ${planFileName} was not created by the executor.`
-              )
-            );
-            planningComplete = true; // Exit loop to avoid infinite retry if file not created
-          }
-        } else {
-          planningComplete = true; // Dry run
-        }
-      }
-    } catch (error) {
-      console.error(
-        chalk.red(
-          `❌ Planning phase failed: ${
-            error instanceof Error ? error.message : String(error)
-          }`
-        )
-      );
-    }
-  }
-
-  // ----------------------------------------------------------------------
-  // EXECUTION PHASE
-  // ----------------------------------------------------------------------
-  while (currentAttempt <= maxRetries) {
-    // Determine which executor and model to use for this attempt
-    let currentExecutor = tool;
-    let currentModel: string | undefined;
-
-    if (tryModels && tryModels.length > 0) {
-      // Use the model config for this attempt (or last one if we've exceeded the list)
-      const modelConfigIndex = Math.min(
-        currentAttempt - 1,
-        tryModels.length - 1
-      );
-      const modelConfig = tryModels[modelConfigIndex];
-
-      // Override executor if specified
-      if (modelConfig.executor) {
-        currentExecutor = modelConfig.executor;
-      }
-
-      // Store model name if specified
-      if (modelConfig.model) {
-        currentModel = modelConfig.model;
-      }
-    }
-
-    console.log(
-      chalk.blue(
-        `\n🎯 Attempt ${currentAttempt}/${maxRetries} for task: ${task.title} (${task.id})`
-      )
-    );
-
-    if (currentModel) {
-      console.log(
-        chalk.cyan(
-          `   Using executor: ${currentExecutor} with model: ${currentModel}`
-        )
-      );
-    } else {
-      console.log(chalk.cyan(`   Using executor: ${currentExecutor}`));
-    }
-
-    const attemptStartTime = Date.now();
-
-    // Capture git state before execution
-    let beforeHead = "";
-    try {
-      const { stdout } = await execAsync("git rev-parse HEAD");
-      beforeHead = stdout.trim();
-    } catch (e) {
-      // Git might not be initialized or no commits yet
-    }
-
-    try {
-      // Build execution message with context
-      const contextBuilder = getContextBuilder();
-      const taskContext = await contextBuilder.buildContext(task.id);
-
-      // Build retry context if this is a retry attempt
-      let retryContext = "";
-      if (currentAttempt > 1 && lastError) {
-        const retryParts: string[] = [];
-        retryParts.push(`# RETRY ATTEMPT ${currentAttempt}/${maxRetries}\n\n`);
-
-        // Add model escalation context
-        if (currentModel) {
-          retryParts.push(
-            `**Note**: You are ${currentExecutor} using the ${currentModel} model. This is a more capable model than the previous attempt.\n\n`
-          );
-        }
-
-        retryParts.push(
-          `## Previous Attempt Failed With Error:\n\n${lastError}\n\n`
-        );
-        retryParts.push(
-          `Please analyze the error carefully and fix it. The error might be due to:\n`
-        );
-        retryParts.push(`- Syntax errors\n`);
-        retryParts.push(`- Logic errors\n`);
-        retryParts.push(`- Missing dependencies or imports\n`);
-        retryParts.push(`- Incorrect configuration\n`);
-        retryParts.push(`- Build or test failures\n\n`);
-        retryParts.push(
-          `Please fix the error above and complete the task successfully.\n\n`
-        );
-        retryContext = retryParts.join("");
-      }
-
-      // Get task plan if available (from planning phase or service)
-      const storedPlanData = await taskService.getTaskPlan(task.id);
-      let finalPlan: string | undefined;
-      if (planContent) {
-        finalPlan = `${planContent}\n\nPlease follow this plan to implement the task.`;
-      } else if (storedPlanData) {
-        finalPlan = storedPlanData.plan;
-      }
-
-      // Build execution prompt using PromptBuilder
-      const promptResult = PromptBuilder.buildExecutionPrompt({
-        taskTitle: task.title,
-        taskDescription: task.description,
-        taskPlan: finalPlan,
-        stack: taskContext.stack,
-        documentation: taskContext.documentation,
-        retryContext,
-      });
-
-      if (!promptResult.success) {
-        throw new Error(
-          `Failed to build execution prompt: ${promptResult.error}`
-        );
-      }
-
-      const executionMessage = promptResult.prompt!;
-
-      // Update task status to in-progress
-      if (!dry) {
-        await taskService.setTaskStatus(task.id, "in-progress");
-        console.log(chalk.yellow("⏳ Task status updated to in-progress"));
-      }
-
-      // Emit execution:start event
-      await hooks.emit("execution:start", {
-        taskId: task.id,
-        tool: currentExecutor,
-      });
-
-      // Create executor and run
-      // Build executor config
-      const executorConfig: ExecutorConfig = {
-        model: currentModel,
-        continueLastSession: currentAttempt > 1, // Resume session on retries
-      };
-
-      // Log session resumption
-      if (currentAttempt > 1) {
-        console.log(
-          chalk.cyan(
-            "🔄 Resuming previous session to provide error feedback to AI"
-          )
-        );
-      }
-
-      const executor = ExecutorFactory.create(currentExecutor, executorConfig);
-
-      // Add model info to execution message if specified
-      let finalExecutionMessage = executionMessage;
-      if (currentModel) {
-        finalExecutionMessage =
-          `**Model Configuration**: Using ${currentModel}\n\n` +
-          executionMessage;
-      }
-
-      await executor.execute(finalExecutionMessage, dry, executorConfig);
-
-      // Run verification commands
-      const verificationResults = await runVerificationCommands(
-        verificationCommands,
-        dry
-      );
-
-      // Check if all verifications passed
-      const allVerificationsPassed = verificationResults.every(
-        (r) => r.success
-      );
-
-      if (!allVerificationsPassed) {
-        // Verification failed - prepare error message for retry
-        const failedVerification = verificationResults.find((r) => !r.success);
-        lastError = `Verification command "${failedVerification?.command}" failed:\n${failedVerification?.error}`;
-
-        attempts.push({
-          attemptNumber: currentAttempt,
-          success: false,
-          error: lastError,
-          executor: currentExecutor,
-          model: currentModel,
-          verificationResults,
-          timestamp: Date.now() - attemptStartTime,
-        });
-
-        console.log(
-          chalk.red(
-            `❌ Task execution failed verification on attempt ${currentAttempt}`
-          )
-        );
-
-        currentAttempt++;
-        continue;
-      }
-
-      // ----------------------------------------------------------------------
-      // AI REVIEW PHASE
-      // ----------------------------------------------------------------------
-      if (review && !dry) {
-        console.log(chalk.blue.bold("\n🕵️  Starting AI Review Phase..."));
-
-        try {
-          // Get git diff
-          const { stdout: diff } = await execAsync("git diff HEAD");
-
-          if (!diff.trim()) {
-            console.log(chalk.yellow("⚠️  No changes detected to review."));
-          } else {
-            const reviewExecutor = reviewModel
-              ? (reviewModel.split(":")[0] as ExecutorTool)
-              : tool;
-            const reviewModelName = reviewModel
-              ? reviewModel.split(":")[1]
-              : undefined;
-
-            console.log(
-              chalk.cyan(
-                `   Using executor for review: ${reviewExecutor}${
-                  reviewModelName ? ` (${reviewModelName})` : ""
-                }`
-              )
-            );
-
-            const reviewPrompt = `You are a strict code reviewer. Review the following changes for the task.
-            
-Task: ${task.title}
-Plan: ${planContent || "No plan provided."}
-
-Git Diff:
-${diff.substring(0, 10000)}
-
-Analyze the changes for:
-1. Correctness (does it solve the task?)
-2. Code Quality (clean code, best practices)
-3. Potential Bugs
-
-Return a JSON object:
-{
-  "approved": boolean,
-  "feedback": "Detailed feedback explaining why it was rejected or approved"
-}
-`;
-
-            const reviewConfig: ExecutorConfig = {
-              model: reviewModelName,
-              continueLastSession: false,
-            };
-
-            // We use a separate executor instance for review to avoid polluting the main context
-            // But wait, ExecutorFactory.create returns a new instance usually.
-            // However, we need to capture the output which is usually streamed to stdout/file.
-            // The current Executor interface doesn't easily return the output string directly if it's designed for side-effects.
-            // But we can use getAIOperations().generateText directly for this since it's a simple Q&A.
-
-            const aiOps = getAIOperations();
-            // We need to construct a proper AI config for getAIOperations
-            // This is a bit hacky, ideally we'd use the executor abstraction, but we need the return value.
-            // Let's assume we can use the default AI provider for review for now, or try to respect the reviewModel.
-
-            // Actually, let's use the executor but we need to capture its output.
-            // The current executor implementation writes to files/stdout.
-            // Let's use aiOps directly for the review to get the JSON response.
-
-            const aiResponse = await aiOps.streamText(reviewPrompt);
-            const jsonMatch = aiResponse.match(/\{[\s\S]*\}/);
-
-            if (jsonMatch) {
-              const reviewResult = JSON.parse(jsonMatch[0]);
-
-              if (!reviewResult.approved) {
-                lastError = `AI Review Failed:\n${reviewResult.feedback}`;
-
-                attempts.push({
-                  attemptNumber: currentAttempt,
-                  success: false,
-                  error: lastError,
-                  executor: currentExecutor,
-                  model: currentModel,
-                  verificationResults,
-                  timestamp: Date.now() - attemptStartTime,
-                });
-
-                console.log(
-                  chalk.red(
-                    `❌ AI Review Rejected Changes: ${reviewResult.feedback}`
-                  )
-                );
-
-                // Revert changes? Or just let the next attempt fix them?
-                // Usually better to let the next attempt see the bad code and fix it.
-                // But we might want to undo if it's really bad.
-                // For now, let's keep the changes so the AI can see what it did wrong.
-
-                currentAttempt++;
-                continue;
-              } else {
-                console.log(
-                  chalk.green(`✅ AI Review Approved: ${reviewResult.feedback}`)
-                );
-              }
-            } else {
-              console.warn(
-                chalk.yellow(
-                  "⚠️  Could not parse AI review response. Assuming approval."
-                )
-              );
-            }
-          }
-        } catch (error) {
-          console.error(
-            chalk.red(
-              `❌ AI Review failed: ${
-                error instanceof Error ? error.message : String(error)
-              }`
-            )
-          );
-          // If review crashes, do we fail the task? Maybe safe to warn and proceed.
-        }
-      }
-
-      // Success! Extract commit info
-      let commitInfo: { message: string; files: string[] } | undefined;
-
-      if (!dry) {
-        console.log(chalk.blue("📝 Extracting commit information..."));
-
-        // Capture git state after execution
-        let afterHead = "";
-        let hasUncommittedChanges = false;
-
-        try {
-          const { stdout: headStdout } = await execAsync("git rev-parse HEAD");
-          afterHead = headStdout.trim();
-
-          const { stdout: statusStdout } = await execAsync(
-            "git status --porcelain"
-          );
-          hasUncommittedChanges = statusStdout.trim().length > 0;
-        } catch (e) {
-          // Git issues
-        }
-
-        commitInfo = await extractCommitInfo(
-          task.id,
-          task.title,
-          executionMessage,
-          {
-            beforeHead,
-            afterHead,
-            hasUncommittedChanges,
-          }
-        );
-        console.log(chalk.green(`✅ Commit message: ${commitInfo.message}`));
-        if (commitInfo.files.length > 0) {
-          console.log(
-            chalk.green(`📁 Changed files: ${commitInfo.files.join(", ")}`)
-          );
-        }
-      }
-
-      // Update task status to completed
-      if (!dry) {
-        await taskService.setTaskStatus(task.id, "completed");
-        console.log(chalk.green("✅ Task execution completed successfully"));
-      }
-
-      // Record successful attempt
-      attempts.push({
-        attemptNumber: currentAttempt,
-        success: true,
-        executor: currentExecutor,
-        model: currentModel,
-        verificationResults,
-        commitInfo,
-        timestamp: Date.now() - attemptStartTime,
-      });
-
-      // Emit execution:end event
-      await hooks.emit("execution:end", { taskId: task.id, success: true });
-
-      return attempts; // Success - exit retry loop
-    } catch (error) {
-      lastError = error instanceof Error ? error.message : String(error);
-
-      attempts.push({
-        attemptNumber: currentAttempt,
-        success: false,
-        error: lastError,
-        executor: currentExecutor,
-        model: currentModel,
-        timestamp: Date.now() - attemptStartTime,
-      });
-
-      // Emit execution:error event
-      await hooks.emit("execution:error", {
-        taskId: task.id,
-        error: error instanceof Error ? error : new Error(String(error)),
-      });
-
-      console.log(
-        chalk.red(
-          `❌ Task execution failed on attempt ${currentAttempt}: ${lastError}`
-        )
-      );
-
-      if (!dry && currentAttempt < maxRetries) {
-        // Reset task status to todo for retry
-        await taskService.setTaskStatus(task.id, "todo");
-        console.log(chalk.yellow("⏸  Task status reset to todo for retry"));
-      }
-
-      currentAttempt++;
-    }
-  }
-
-  // All retries exhausted
-  if (!dry) {
-    await taskService.setTaskStatus(task.id, "todo");
-    console.log(
-      chalk.red("❌ All retry attempts exhausted, task status reset to todo")
-    );
-  }
-
-  return attempts;
-}
 
 /**
  * Execute multiple tasks in a loop with retry and verification
+ * This delegates to the unified executeTaskCore for each task
  */
 export async function executeTaskLoop(
   options: ExecuteLoopOptions
@@ -821,6 +23,14 @@ export async function executeTaskLoop(
     maxRetries = 3,
     verificationCommands = [],
     autoCommit = false,
+    tryModels,
+    plan,
+    planModel,
+    reviewPlan,
+    review,
+    reviewModel,
+    customMessage,
+    continueSession,
   } = config;
 
   console.log(chalk.blue.bold("\n🔄 Starting Task Loop Execution\n"));
@@ -890,67 +100,72 @@ export async function executeTaskLoop(
       )
     );
 
-    // Execute task with retry logic
-    const attempts = await executeTaskWithRetry(task, tool, config, dry);
+    // Build unified task execution config
+    const taskConfig: TaskExecutionConfig = {
+      tool,
+      customMessage, // NEW: Support custom message override
+      executorConfig: {
+        continueLastSession: continueSession, // NEW: Support session continuation
+      },
+      verificationCommands,
+      enableRetry: true, // Always enable retry in loop
+      maxRetries,
+      tryModels,
+      enablePlanPhase: plan,
+      planModel,
+      reviewPlan,
+      enableReviewPhase: review,
+      reviewModel,
+      autoCommit,
+      executeSubtasks: true, // Now supports subtasks!
+      dry,
+    };
 
-    // Check if task succeeded
-    const lastAttempt = attempts[attempts.length - 1];
-    const succeeded = lastAttempt.success;
+    try {
+      // Execute task using unified core
+      const result = await executeTaskCore(task.id, taskConfig);
 
-    if (succeeded) {
-      completedTasks++;
-      console.log(
-        chalk.green.bold(
-          `\n✅ Task ${task.title} completed successfully after ${attempts.length} attempt(s)\n`
-        )
-      );
-    } else {
-      failedTasks++;
-      console.log(
-        chalk.red.bold(
-          `\n❌ Task ${task.title} failed after ${attempts.length} attempt(s)\n`
-        )
-      );
-    }
+      // Check if task succeeded
+      const succeeded = result.success;
 
-    taskResults.push({
-      taskId: task.id,
-      taskTitle: task.title,
-      attempts,
-      finalStatus: succeeded ? "completed" : "failed",
-    });
-
-    // Auto-commit if enabled and task succeeded
-    if (autoCommit && succeeded && !dry && lastAttempt.commitInfo) {
-      try {
-        const { message, files } = lastAttempt.commitInfo;
-
-        if (files.length > 0) {
-          // Stage specific files
-          const gitAdd = `git add ${files.join(" ")}`;
-          console.log(chalk.blue(`📦 Staging files: ${gitAdd}`));
-          await execAsync(gitAdd);
-        } else {
-          // Stage all changes
-          console.log(chalk.blue("📦 Staging all changes"));
-          await execAsync("git add .");
-        }
-
-        // Commit
-        const gitCommit = `git commit -m "${message}"`;
-        console.log(chalk.blue(`💾 Committing: ${message}`));
-        await execAsync(gitCommit);
-
-        console.log(chalk.green("✅ Changes committed successfully\n"));
-      } catch (error) {
-        console.warn(
-          chalk.yellow(
-            `⚠️  Auto-commit failed: ${
-              error instanceof Error ? error.message : "Unknown error"
-            }\n`
+      if (succeeded) {
+        completedTasks++;
+        console.log(
+          chalk.green.bold(
+            `\n✅ Task ${task.title} completed successfully after ${result.attempts.length} attempt(s)\n`
+          )
+        );
+      } else {
+        failedTasks++;
+        console.log(
+          chalk.red.bold(
+            `\n❌ Task ${task.title} failed after ${result.attempts.length} attempt(s)\n`
           )
         );
       }
+
+      taskResults.push({
+        taskId: task.id,
+        taskTitle: task.title,
+        attempts: result.attempts,
+        finalStatus: succeeded ? "completed" : "failed",
+      });
+    } catch (error) {
+      failedTasks++;
+      console.error(
+        chalk.red.bold(
+          `\n❌ Task ${task.title} failed with error: ${
+            error instanceof Error ? error.message : "Unknown error"
+          }\n`
+        )
+      );
+
+      taskResults.push({
+        taskId: task.id,
+        taskTitle: task.title,
+        attempts: [],
+        finalStatus: "failed",
+      });
     }
   }
 
