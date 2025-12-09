@@ -23,6 +23,10 @@ import {
   DeleteTaskResult,
 } from "../types/results";
 import { hooks } from "../lib/hooks";
+import { createMetricsStreamingOptions } from "../utils/streaming-utils";
+import { getErrorMessage } from "../utils/error-utils";
+import { requireTask } from "../utils/storage-utils";
+import { TaskIDGenerator } from "../utils/id-generator";
 
 /**
  * TaskService - Centralized business logic for all task operations
@@ -53,10 +57,23 @@ export class TaskService {
         type: "progress",
       });
 
-      const context = await getContextBuilder().buildContextForNewTask(
-        input.title,
-        input.content
-      );
+      // Build context with error handling (Bug fix 2.2)
+      let context;
+      try {
+        context = await getContextBuilder().buildContextForNewTask(
+          input.title,
+          input.content
+        );
+      } catch (error) {
+        // Log warning but don't fail task creation
+        console.warn(
+          "Warning: Could not build context:",
+          getErrorMessage(error)
+        );
+        // Continue with empty context
+        context = { stack: undefined, existingResearch: {} };
+      }
+
       const stackInfo = formatStackInfo(context.stack);
 
       const enhancementAIConfig = buildAIConfig(input.aiOptions);
@@ -67,8 +84,10 @@ export class TaskService {
       });
 
       const taskDescription = input.content ?? "";
+      // Generate temporary ID for AI operations (Bug fix 2.6)
+      const tempTaskId = TaskIDGenerator.generate();
       content = await getAIOperations().enhanceTaskWithDocumentation(
-        `task-${Date.now()}`,
+        tempTaskId,
         input.title,
         taskDescription,
         stackInfo,
@@ -446,36 +465,10 @@ export class TaskService {
       type: "progress",
     });
 
-    // Capture metrics
-    let tokenUsage:
-      | { prompt: number; completion: number; total: number }
-      | undefined;
-    let timeToFirstToken: number | undefined;
+    // Use utility to wrap streaming options and capture metrics (DRY fix 1.1)
     const aiStartTime = Date.now();
-
-    // Wrap streaming options to capture metrics
-    const metricsStreamingOptions: StreamingOptions = {
-      ...streamingOptions,
-      onFinish: async (result: any) => {
-        if (result.usage) {
-          tokenUsage = {
-            prompt: result.usage.inputTokens || result.usage.promptTokens || 0,
-            completion:
-              result.usage.outputTokens || result.usage.completionTokens || 0,
-            total: result.usage.totalTokens || 0,
-          };
-        }
-        // Call original onFinish if provided
-        await streamingOptions?.onFinish?.(result);
-      },
-      onChunk: (chunk: string) => {
-        if (chunk && !timeToFirstToken) {
-          timeToFirstToken = Date.now() - aiStartTime;
-        }
-        // Call original onChunk if provided
-        streamingOptions?.onChunk?.(chunk);
-      },
-    };
+    const { options: metricsStreamingOptions, getMetrics } =
+      createMetricsStreamingOptions(streamingOptions, aiStartTime);
 
     const enhancedContent =
       await getAIOperations().enhanceTaskWithDocumentation(
@@ -488,6 +481,9 @@ export class TaskService {
         enhancementAIConfig,
         context.existingResearch
       );
+
+    // Extract metrics after AI call
+    const { tokenUsage, timeToFirstToken } = getMetrics();
 
     hooks.emit("task:progress", {
       message: "Saving enhanced content...",
@@ -599,36 +595,10 @@ export class TaskService {
       type: "progress",
     });
 
-    // Capture metrics
-    let tokenUsage:
-      | { prompt: number; completion: number; total: number }
-      | undefined;
-    let timeToFirstToken: number | undefined;
+    // Use utility to wrap streaming options and capture metrics (DRY fix 1.1)
     const aiStartTime = Date.now();
-
-    // Wrap streaming options to capture metrics
-    const metricsStreamingOptions: StreamingOptions = {
-      ...streamingOptions,
-      onFinish: async (result: any) => {
-        if (result.usage) {
-          tokenUsage = {
-            prompt: result.usage.inputTokens || result.usage.promptTokens || 0,
-            completion:
-              result.usage.outputTokens || result.usage.completionTokens || 0,
-            total: result.usage.totalTokens || 0,
-          };
-        }
-        // Call original onFinish if provided
-        await streamingOptions?.onFinish?.(result);
-      },
-      onChunk: (chunk: string) => {
-        if (chunk && !timeToFirstToken) {
-          timeToFirstToken = Date.now() - aiStartTime;
-        }
-        // Call original onChunk if provided
-        streamingOptions?.onChunk?.(chunk);
-      },
-    };
+    const { options: metricsStreamingOptions, getMetrics } =
+      createMetricsStreamingOptions(streamingOptions, aiStartTime);
 
     // Use AI service to break down the task with enhanced context
     const subtaskData = await getAIOperations().breakdownTask(
@@ -644,13 +614,19 @@ export class TaskService {
       enableFilesystemTools
     );
 
+    // Extract metrics after AI call
+    const { tokenUsage, timeToFirstToken } = getMetrics();
+
     hooks.emit("task:progress", {
       message: `Creating ${subtaskData.length} subtasks...`,
       type: "progress",
     });
 
-    // Create subtasks
+    // Create subtasks and save AI metadata for each (Bug fix 2.3)
     const createdSubtasks = [];
+    const aiConfig = getModelProvider().getAIConfig();
+    const splitTimestamp = Date.now();
+
     for (let i = 0; i < subtaskData.length; i++) {
       const subtask = subtaskData[i];
 
@@ -668,11 +644,26 @@ export class TaskService {
         parentId: taskId,
       });
       createdSubtasks.push(result.task);
+
+      // Save AI metadata for each subtask (Bug fix 2.3)
+      const subtaskMetadata = {
+        taskId: result.task.id,
+        aiGenerated: true,
+        aiPrompt:
+          promptOverride ||
+          "Split task into meaningful subtasks with full context and existing subtask awareness",
+        confidence: 0.9,
+        aiProvider: aiConfig.provider,
+        aiModel: aiConfig.model,
+        splitAt: splitTimestamp,
+        parentTaskId: taskId,
+        subtaskIndex: i + 1,
+      };
+      await getStorage().saveTaskAIMetadata(subtaskMetadata);
     }
 
-    // Create AI metadata for tracking using actual AI config
-    const aiConfig = getModelProvider().getAIConfig();
-    const aiMetadata = {
+    // Save AI metadata for parent task as well
+    const parentMetadata = {
       taskId: task.id,
       aiGenerated: true,
       aiPrompt:
@@ -681,10 +672,10 @@ export class TaskService {
       confidence: 0.9,
       aiProvider: aiConfig.provider,
       aiModel: aiConfig.model,
-      splitAt: Date.now(),
+      splitAt: splitTimestamp,
+      subtasksCreated: createdSubtasks.length,
     };
-
-    await getStorage().saveTaskAIMetadata(aiMetadata);
+    await getStorage().saveTaskAIMetadata(parentMetadata);
 
     const duration = Date.now() - startTime;
 
@@ -920,36 +911,10 @@ export class TaskService {
       type: "progress",
     });
 
-    // Capture metrics
-    let tokenUsage:
-      | { prompt: number; completion: number; total: number }
-      | undefined;
-    let timeToFirstToken: number | undefined;
+    // Use utility to wrap streaming options and capture metrics (DRY fix 1.1)
     const aiStartTime = Date.now();
-
-    // Wrap streaming options to capture metrics
-    const metricsStreamingOptions: StreamingOptions = {
-      ...streamingOptions,
-      onFinish: async (result: any) => {
-        if (result.usage) {
-          tokenUsage = {
-            prompt: result.usage.inputTokens || result.usage.promptTokens || 0,
-            completion:
-              result.usage.outputTokens || result.usage.completionTokens || 0,
-            total: result.usage.totalTokens || 0,
-          };
-        }
-        // Call original onFinish if provided
-        await streamingOptions?.onFinish?.(result);
-      },
-      onChunk: (chunk: string) => {
-        if (chunk && !timeToFirstToken) {
-          timeToFirstToken = Date.now() - aiStartTime;
-        }
-        // Call original onChunk if provided
-        streamingOptions?.onChunk?.(chunk);
-      },
-    };
+    const { options: metricsStreamingOptions, getMetrics } =
+      createMetricsStreamingOptions(streamingOptions, aiStartTime);
 
     const plan = await aiService.planTask(
       taskContext,
@@ -959,6 +924,9 @@ export class TaskService {
       undefined,
       metricsStreamingOptions
     );
+
+    // Extract metrics after AI call
+    const { tokenUsage, timeToFirstToken } = getMetrics();
 
     hooks.emit("task:progress", {
       message: "Saving plan...",
@@ -1031,10 +999,9 @@ export class TaskService {
         task,
       };
     } catch (error) {
+      // Use utility for error message extraction (DRY fix 1.3)
       throw new Error(
-        `Failed to add documentation from file: ${
-          error instanceof Error ? error.message : "Unknown error"
-        }`
+        `Failed to add documentation from file: ${getErrorMessage(error)}`
       );
     }
   }
@@ -1063,11 +1030,8 @@ export class TaskService {
 
         plan = readFileSync(resolvedPath, "utf-8");
       } catch (error) {
-        throw new Error(
-          `Failed to read plan file: ${
-            error instanceof Error ? error.message : "Unknown error"
-          }`
-        );
+        // Use utility for error message extraction (DRY fix 1.3)
+        throw new Error(`Failed to read plan file: ${getErrorMessage(error)}`);
       }
     } else if (planText) {
       plan = planText;

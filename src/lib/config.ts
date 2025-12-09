@@ -244,3 +244,24 @@ export class ConfigManager {
 }
 
 export const configManager = new ConfigManager();
+
+/**
+ * Helper function to set working directory and reload config.
+ * Combines the common pattern of setWorkingDirectory + load.
+ *
+ * @param dir - Working directory path
+ * @param manager - ConfigManager instance (defaults to singleton)
+ * @returns Loaded config
+ *
+ * @example
+ * ```typescript
+ * await setupWorkingDirectory("/path/to/project");
+ * ```
+ */
+export async function setupWorkingDirectory(
+  dir: string,
+  manager: ConfigManager = configManager
+): Promise<Config> {
+  manager.setWorkingDirectory(dir);
+  return await manager.load();
+}

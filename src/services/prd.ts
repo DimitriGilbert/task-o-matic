@@ -10,9 +10,11 @@ import { getAIOperations, getStorage } from "../utils/ai-service-factory";
 import { buildAIConfig, AIOptions } from "../utils/ai-config-builder";
 import { AIConfig, StreamingOptions } from "../types";
 import { PRDParseResult } from "../types/results";
-import { configManager } from "../lib/config";
+import { configManager, setupWorkingDirectory } from "../lib/config";
 import { isValidAIProvider } from "../lib/validation";
 import { ProgressCallback } from "../types/callbacks";
+import { createMetricsStreamingOptions } from "../utils/streaming-utils";
+import { validateFileExists } from "../utils/file-utils";
 
 /**
  * PRDService - Business logic for PRD operations
@@ -42,10 +44,8 @@ export class PRDService {
       message: "Starting PRD parsing...",
     });
 
-    // Validate file exists
-    if (!existsSync(input.file)) {
-      throw new Error(`PRD file not found: ${input.file}`);
-    }
+    // Validate file exists (DRY fix 1.2)
+    validateFileExists(input.file, `PRD file not found: ${input.file}`);
 
     // Ensure we're in a task-o-matic project
     const taskOMaticDir = configManager.getTaskOMaticDir();
@@ -55,11 +55,9 @@ export class PRDService {
       );
     }
 
-    // Set working directory from CLI layer (defaults to process.cwd() for backward compatibility)
+    // Set working directory and reload config (DRY fix 1.4)
     const workingDir = input.workingDirectory || process.cwd();
-    configManager.setWorkingDirectory(workingDir);
-    // Reload config after changing working directory
-    await configManager.load();
+    await setupWorkingDirectory(workingDir);
 
     input.callbacks?.onProgress?.({
       type: "progress",
@@ -113,35 +111,9 @@ export class PRDService {
 
     const stepStart2 = Date.now();
 
-    // Capture metrics
-    let tokenUsage:
-      | { prompt: number; completion: number; total: number }
-      | undefined;
-    let timeToFirstToken: number | undefined;
-
-    // Wrap streaming options to capture metrics
-    const metricsStreamingOptions: StreamingOptions = {
-      ...input.streamingOptions,
-      onFinish: async (result: any) => {
-        if (result.usage) {
-          tokenUsage = {
-            prompt: result.usage.inputTokens || result.usage.promptTokens || 0,
-            completion:
-              result.usage.outputTokens || result.usage.completionTokens || 0,
-            total: result.usage.totalTokens || 0,
-          };
-        }
-        // Call original onFinish if provided
-        await input.streamingOptions?.onFinish?.(result);
-      },
-      onChunk: (chunk: string) => {
-        if (chunk && !timeToFirstToken) {
-          timeToFirstToken = Date.now() - stepStart2;
-        }
-        // Call original onChunk if provided
-        input.streamingOptions?.onChunk?.(chunk);
-      },
-    };
+    // Use utility to wrap streaming options and capture metrics (DRY fix 1.1)
+    const { options: metricsStreamingOptions, getMetrics } =
+      createMetricsStreamingOptions(input.streamingOptions, stepStart2);
 
     const result = await getAIOperations().parsePRD(
       prdContent,
@@ -153,6 +125,9 @@ export class PRDService {
       workingDir, // Pass working directory to AI operations
       input.enableFilesystemTools
     );
+
+    // Extract metrics after AI call
+    const { tokenUsage, timeToFirstToken } = getMetrics();
 
     steps.push({
       step: "AI Parsing",
@@ -266,13 +241,12 @@ export class PRDService {
       message: "Generating clarifying questions...",
     });
 
-    if (!existsSync(input.file)) {
-      throw new Error(`PRD file not found: ${input.file}`);
-    }
+    // Validate file exists (DRY fix 1.2)
+    validateFileExists(input.file, `PRD file not found: ${input.file}`);
 
+    // Set working directory and reload config (DRY fix 1.4)
     const workingDir = input.workingDirectory || process.cwd();
-    configManager.setWorkingDirectory(workingDir);
-    await configManager.load();
+    await setupWorkingDirectory(workingDir);
 
     input.callbacks?.onProgress?.({
       type: "progress",
@@ -331,15 +305,12 @@ export class PRDService {
       message: "Starting PRD improvement...",
     });
 
-    // Validate file exists
-    if (!existsSync(input.file)) {
-      throw new Error(`PRD file not found: ${input.file}`);
-    }
+    // Validate file exists (DRY fix 1.2)
+    validateFileExists(input.file, `PRD file not found: ${input.file}`);
 
-    // Set working directory from CLI layer (defaults to process.cwd() for backward compatibility)
+    // Set working directory and reload config (DRY fix 1.4)
     const workingDir = input.workingDirectory || process.cwd();
-    configManager.setWorkingDirectory(workingDir);
-    await configManager.load();
+    await setupWorkingDirectory(workingDir);
 
     input.callbacks?.onProgress?.({
       type: "progress",
