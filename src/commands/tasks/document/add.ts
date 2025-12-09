@@ -6,9 +6,9 @@ import { AddDocumentationCommandOptions } from "../../../types/cli-options";
 
 export const addDocumentationCommand = new Command("add-documentation")
   .description("Add documentation to a task from a file")
-  .requiredOption("--id <id>", "Task ID")
-  .requiredOption("--doc-file <path>", "Path to documentation file")
-  .option("--overwrite", "Overwrite existing documentation")
+  .requiredOption("-i, --id <id>", "Task ID")
+  .requiredOption("-f, --doc-file <path>", "Path to documentation file")
+  .option("-o, --overwrite", "Overwrite existing documentation")
   .action(wrapCommandHandler("Add documentation", async (options: AddDocumentationCommandOptions) => {
     const task = await taskService.getTask(options.id);
     if (!task) {

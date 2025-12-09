@@ -5,9 +5,9 @@ import { displayError } from "../../cli/display/progress";
 
 export const statusCommand = new Command("status")
   .description("Set task status")
-  .requiredOption("--id <id>", "Task ID")
+  .requiredOption("-i, --id <id>", "Task ID")
   .requiredOption(
-    "--status <status>",
+    "-s, --status <status>",
     "New status (todo/in-progress/completed)"
   )
   .action(async (options) => {

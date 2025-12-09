@@ -6,11 +6,11 @@ import { displayError } from "../../cli/display/progress";
 
 export const nextCommand = new Command("get-next")
   .description("Get the next task to work on (defaults to hierarchical order)")
-  .option("--status <status>", "Filter by status (todo/in-progress)")
-  .option("--tag <tag>", "Filter by tag")
-  .option("--effort <effort>", "Filter by effort (small/medium/large)")
+  .option("-s, --status <status>", "Filter by status (todo/in-progress)")
+  .option("-t, --tag <tag>", "Filter by tag")
+  .option("-e, --effort <effort>", "Filter by effort (small/medium/large)")
   .option(
-    "--priority <priority>",
+    "-p, --priority <priority>",
     "Sort priority (newest/oldest/effort)",
     "hierarchical"
   )

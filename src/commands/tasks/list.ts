@@ -5,8 +5,8 @@ import { displayError } from "../../cli/display/progress";
 
 export const listCommand = new Command("list")
   .description("List all tasks")
-  .option("--status <status>", "Filter by status (todo/in-progress/completed)")
-  .option("--tag <tag>", "Filter by tag")
+  .option("-s, --status <status>", "Filter by status (todo/in-progress/completed)")
+  .option("-t, --tag <tag>", "Filter by tag")
   .action(async (options) => {
     try {
       const tasks = await taskService.listTasks({

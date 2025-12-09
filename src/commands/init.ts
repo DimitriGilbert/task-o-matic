@@ -8,7 +8,7 @@ import { configManager, Config } from "../lib/config";
 import { runBetterTStackCLI } from "../lib/better-t-stack-cli";
 
 export const initCommand = new Command("init").description(
-  "Initialize task-o-matic project and bootstrap Better-T-Stack"
+  "Initialize task-o-matic project and bootstrap projects (web/native/cli/tui)"
 );
 
 // Initialize task-o-matic project
@@ -31,7 +31,7 @@ initCommand
   .option("--temperature <temp>", "AI temperature", "0.5")
   .option("--no-bootstrap", "Skip bootstrap after initialization")
   .option("--project-name <name>", "Project name for bootstrap")
-  .option("--frontend <frontend>", "Frontend framework for bootstrap", "next")
+  .option("--frontend <frontends...>", "Frontend framework(s) - space/comma-separated (next, native-bare, cli, tui, etc.)", "next")
   .option("--backend <backend>", "Backend framework for bootstrap", "convex")
   .option("--database <database>", "Database for bootstrap")
   .option("--auth <auth>", "Authentication for bootstrap", "better-auth")
@@ -40,6 +40,8 @@ initCommand
   .option("--package-manager <pm>", "Package manager (npm/pnpm/bun)", "npm")
   .option("--runtime <runtime>", "Runtime (bun/node)", "node")
   .option("--payment <payment>", "Payment provider (none/polar)", "none")
+  .option("--cli-deps <level>", "CLI dependency level (minimal/standard/full/task-o-matic)", "standard")
+  .option("--tui-framework <framework>", "TUI framework (solid/vue/react)", "solid")
   .action(async (options) => {
     // Handle directory creation/setup first
     if (options.directory) {
@@ -176,11 +178,11 @@ async function initializeProjectStructure(options: any) {
 // Bootstrap project with Better-T-Stack
 initCommand
   .command("bootstrap")
-  .description("Bootstrap a new project using Better-T-Stack")
+  .description("Bootstrap a new project (web/native/cli/tui)")
   .argument("<name>", "Project name")
   .option(
-    "--frontend <frontend>",
-    "Frontend framework (next/tanstack-router/react-router/etc)",
+    "--frontend <frontends...>",
+    "Frontend framework(s) - space/comma-separated (next, native-bare, cli, tui, etc.)",
     "next"
   )
   .option(
@@ -210,6 +212,8 @@ initCommand
   .option("--runtime <runtime>", "Runtime (bun/node)", "node")
   .option("--api <type>", "API type (trpc/orpc)")
   .option("--payment <payment>", "Payment provider (none/polar)", "none")
+  .option("--cli-deps <level>", "CLI dependency level (minimal/standard/full/task-o-matic)", "standard")
+  .option("--tui-framework <framework>", "TUI framework (solid/vue/react)", "solid")
   .action(async (name, options) => {
     const taskOMaticDir = configManager.getTaskOMaticDir();
 
@@ -259,15 +263,44 @@ initCommand.action(() => {
   );
   console.log("");
   console.log(chalk.cyan("Examples:"));
+  console.log("  # Basic initialization:");
   console.log("  task-o-matic init init");
   console.log("  task-o-matic init init --project-name my-app");
+  console.log("");
+  console.log("  # Web + Native + CLI + TUI (monorepo):");
   console.log(
-    "  task-o-matic init init --project-name my-app --ai-provider openrouter --ai-key your-key --frontend next --backend hono"
+    "  task-o-matic init init --project-name my-app --frontend \"next native-uniwind cli tui\" --backend hono"
   );
+  console.log("");
+  console.log("  # CLI only:");
+  console.log(
+    "  task-o-matic init init --project-name my-cli --frontend cli --cli-deps full"
+  );
+  console.log("");
+  console.log("  # TUI only:");
+  console.log(
+    "  task-o-matic init init --project-name my-tui --frontend tui --tui-framework solid"
+  );
+  console.log("");
+  console.log("  # Web + Native (monorepo):");
+  console.log(
+    "  task-o-matic init init --project-name my-app --frontend \"next native-bare\" --backend hono"
+  );
+  console.log("");
+  console.log("  # Multiple web frontends:");
+  console.log(
+    "  task-o-matic init init --project-name my-app --frontend \"next tanstack-router\" --backend hono"
+  );
+  console.log("");
+  console.log("  # No bootstrap:");
   console.log("  task-o-matic init init --project-name my-app --no-bootstrap");
+  console.log("");
+  console.log("  # Custom directory:");
   console.log(
     "  task-o-matic init init --directory my-workspace --project-name my-app"
   );
+  console.log("");
+  console.log("  # Bootstrap command:");
   console.log(
     "  task-o-matic init bootstrap my-app --frontend next --backend hono --database postgres"
   );
@@ -292,13 +325,27 @@ initCommand.action(() => {
   console.log("");
   console.log(chalk.cyan("Bootstrap Options:"));
   console.log(
-    "  --frontend <frontend>         Frontend framework (next/tanstack-router/react-router/etc)"
+    "  --frontend <frontends...>     Frontend framework(s) - multiple values supported"
   );
   console.log(
-    "  --backend <backend>           Backend framework (hono/express/elysia)"
+    "                                Web: next, tanstack-router, react-router, nuxt, svelte, solid"
+  );
+  console.log(
+    "                                Native: native-bare, native-uniwind, native-unistyles"
+  );
+  console.log(
+    "                                Custom: cli, tui"
+  );
+  console.log(
+    "  --backend <backend>           Backend framework (hono/express/elysia/convex)"
   );
   console.log(
     "  --database <database>         Database (sqlite/postgres/mysql/mongodb)"
   );
-  console.log("  --auth                       Include authentication");
+  console.log("  --auth <auth>                Authentication (better-auth/none)");
+  console.log("  --cli-deps <level>           CLI dependency level (minimal/standard/full/task-o-matic)");
+  console.log("  --tui-framework <framework>  TUI framework (solid/vue/react)");
+  console.log("  --package-manager <pm>       Package manager (npm/pnpm/bun)");
+  console.log("  --runtime <runtime>          Runtime (node/bun)");
+  console.log("  --payment <payment>          Payment provider (none/polar)");
 });

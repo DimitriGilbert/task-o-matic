@@ -1,6 +1,6 @@
-import { BTSConfig } from "../types";
+import { BTSConfig, BTSFrontend, InitOptions } from "../types";
 import { configManager } from "./config";
-import { writeFileSync } from "fs";
+import { writeFileSync, mkdirSync } from "fs";
 import { join } from "path";
 
 export class BetterTStackService {
@@ -82,9 +82,12 @@ export class BetterTStackService {
   }
 
   private convertToAPIConfig(config: BTSConfig) {
+    // Ensure frontend is always an array for Better-T-Stack API
+    const frontend = Array.isArray(config.frontend) ? config.frontend : [config.frontend];
+
     return {
       // Don't use 'yes' flag when providing explicit configuration
-      frontend: [config.frontend],
+      frontend,
       backend: config.backend,
       runtime: config.runtime,
       api: config.api,
@@ -222,69 +225,245 @@ export class BetterTStackService {
   }
 }
 
-export interface InitOptions {
-  projectName?: string;
-  name?: string;
-  frontend: string;
-  backend: string;
-  database: string;
-  noAuth?: boolean;
-  addons?: string[];
-  runtime?: string;
-  api?: string;
-  payment?: string;
-  orm?: string;
-  dbSetup?: string;
-  packageManager?: string;
-  noGit?: boolean;
-  webDeploy?: string;
-  serverDeploy?: string;
-  noInstall?: boolean;
-  examples?: string[];
-  includeDocs?: boolean;
+// Helper methods for multi-frontend support
+export class BetterTStackIntegration {
+  private btsService: BetterTStackService;
+
+  constructor() {
+    this.btsService = new BetterTStackService();
+  }
+
+  /**
+   * Parse frontend option into array of frontends
+   */
+  private parseFrontends(frontendOption?: BTSFrontend | BTSFrontend[] | string): BTSFrontend[] {
+    if (!frontendOption) return [];
+
+    // If already array, return it
+    if (Array.isArray(frontendOption)) return frontendOption;
+
+    // If string, split by comma or space
+    if (typeof frontendOption === "string") {
+      return frontendOption
+        .split(/[\s,]+/)
+        .map((f) => f.trim())
+        .filter(Boolean) as BTSFrontend[];
+    }
+
+    // Single value
+    return [frontendOption];
+  }
+
+  /**
+   * Split frontends into Better-T-Stack frontends vs custom frontends
+   */
+  private splitFrontends(frontends: BTSFrontend[]): {
+    btsFrontends: BTSFrontend[];
+    customFrontends: BTSFrontend[];
+  } {
+    const customTypes = new Set<string>(["cli", "tui", "opentui"]);
+
+    return {
+      btsFrontends: frontends.filter((f) => !customTypes.has(f)),
+      customFrontends: frontends.filter((f) => customTypes.has(f)),
+    };
+  }
+
+  /**
+   * Create project with support for multiple frontends
+   */
+  async createProject(
+    name: string,
+    options: InitOptions,
+    workingDirectory?: string
+  ): Promise<{ success: boolean; message: string; projectPath?: string }> {
+    const workingDir = workingDirectory || configManager.getWorkingDirectory();
+    const frontends = this.parseFrontends(options.frontend);
+    const { btsFrontends, customFrontends } = this.splitFrontends(frontends);
+
+    const isMonorepo = frontends.length > 1;
+    let projectPath = join(workingDir, name);
+    const results: string[] = [];
+
+    try {
+      // Step 1: Bootstrap Better-T-Stack project FIRST (if any BTS frontends)
+      // This creates the monorepo structure that CLI/TUI will be added to
+      if (btsFrontends.length > 0) {
+        const result = await this.bootstrapBetterTStackProject(
+          name,
+          btsFrontends,
+          options,
+          workingDir
+        );
+        if (!result.success) throw new Error(result.message);
+
+        // Get the actual project path from Better-T-Stack result
+        // This is the full path where the project was created
+        projectPath = join(workingDir, name);
+        results.push(result.message);
+      } else if (isMonorepo) {
+        // Create monorepo structure manually if no BTS frontends
+        // (e.g., just cli + tui with no web/native)
+        mkdirSync(projectPath, { recursive: true });
+        mkdirSync(join(projectPath, "apps"), { recursive: true });
+        console.log(`📁 Created monorepo structure at ${projectPath}`);
+      }
+
+      // Step 2: AFTER Better-T-Stack creates the structure, add custom frontends
+      // These get added into the apps/ directory that Better-T-Stack created
+      for (const frontend of customFrontends) {
+        if (frontend === "cli") {
+          const result = await this.addCliToProject(
+            name,
+            projectPath,
+            isMonorepo,
+            options
+          );
+          results.push(result.message);
+        }
+
+        if (frontend === "tui" || frontend === "opentui") {
+          const result = await this.addTuiToProject(
+            name,
+            projectPath,
+            isMonorepo,
+            options
+          );
+          results.push(result.message);
+        }
+      }
+
+      return {
+        success: true,
+        message: results.join("\n"),
+        projectPath,
+      };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      return {
+        success: false,
+        message: `Project creation failed: ${message}`,
+      };
+    }
+  }
+
+  /**
+   * Bootstrap Better-T-Stack project with one or more frontends
+   */
+  private async bootstrapBetterTStackProject(
+    name: string,
+    frontends: BTSFrontend[],
+    options: InitOptions,
+    workingDir: string
+  ): Promise<{ success: boolean; message: string; projectPath: string }> {
+    const backend = options.backend || "hono";
+    const isConvex = backend === "convex";
+
+    const btsConfig: BTSConfig = {
+      projectName: options.name || options.projectName || name,
+      frontend: frontends.length === 1 ? frontends[0] : frontends, // Pass array if multiple
+      backend: (backend as BTSConfig["backend"]) || "hono",
+      database: isConvex
+        ? "none"
+        : (options.database as BTSConfig["database"]) || "sqlite",
+      auth: options.noAuth ? "none" : "better-auth",
+      addons: options.addons || ["turborepo"],
+      runtime: isConvex || backend === "self" ? "none" : options.runtime || "node",
+      api: options.api || "none",
+      payments: options.payment || "none",
+      orm: isConvex ? "none" : options.orm || "drizzle",
+      dbSetup: isConvex ? "none" : options.dbSetup || "none",
+      packageManager: options.packageManager || "npm",
+      git: !options.noGit,
+      webDeploy: options.webDeploy || "none",
+      serverDeploy: options.serverDeploy || "none",
+      install: !options.noInstall,
+      examples: options.examples || [],
+      includeDocs: options.includeDocs,
+    };
+
+    const result = await this.btsService.createProject(name, btsConfig, workingDir);
+    return {
+      success: result.success,
+      message: result.message,
+      projectPath: result.projectPath,
+    };
+  }
+
+  /**
+   * Add CLI app to project (standalone or monorepo)
+   */
+  private async addCliToProject(
+    projectName: string,
+    projectPath: string,
+    isMonorepo: boolean,
+    options: InitOptions
+  ): Promise<{ success: boolean; message: string }> {
+    const { bootstrapCliProject } = await import("./bootstrap/cli-bootstrap.js");
+
+    const cliPath = isMonorepo ? join(projectPath, "apps", "cli") : projectPath;
+    const cliName = isMonorepo ? `${projectName}-cli` : projectName;
+
+    const result = await bootstrapCliProject({
+      projectName: cliName,
+      projectPath: cliPath,
+      dependencyLevel: options.cliDeps || "standard",
+      packageManager: (options.packageManager as "npm" | "pnpm" | "bun") || "npm",
+      runtime: (options.runtime as "node" | "bun") || "node",
+      typescript: true,
+    });
+
+    if (!result.success) throw new Error(result.message);
+
+    return {
+      success: true,
+      message: isMonorepo
+        ? `✅ CLI app added to apps/cli/`
+        : `✅ CLI project "${projectName}" created successfully!`,
+    };
+  }
+
+  /**
+   * Add TUI app to project (standalone or monorepo)
+   */
+  private async addTuiToProject(
+    projectName: string,
+    projectPath: string,
+    isMonorepo: boolean,
+    options: InitOptions
+  ): Promise<{ success: boolean; message: string }> {
+    const { bootstrapOpenTuiProject } = await import("./bootstrap/opentui-bootstrap.js");
+
+    const tuiPath = isMonorepo ? join(projectPath, "apps", "tui") : projectPath;
+    const tuiName = isMonorepo ? `${projectName}-tui` : projectName;
+
+    const result = await bootstrapOpenTuiProject({
+      projectName: tuiName,
+      projectPath: tuiPath,
+      framework: (options.tuiFramework as "solid" | "vue" | "react") || "solid",
+      packageManager: (options.packageManager as "npm" | "pnpm" | "bun") || "bun",
+    });
+
+    if (!result.success) throw new Error(result.message);
+
+    return {
+      success: true,
+      message: isMonorepo
+        ? `✅ TUI app added to apps/tui/`
+        : `✅ TUI project "${projectName}" created successfully!`,
+    };
+  }
 }
 
+// Export backward-compatible function
 export async function runBetterTStackCLI(
   options: InitOptions,
   workingDirectory?: string
 ): Promise<{ success: boolean; message: string; projectPath?: string }> {
-  const btsService = new BetterTStackService();
-  const backend = options.backend;
-  const isConvex = backend === "convex";
-
-  const btsConfig: BTSConfig = {
-    projectName: options.name || options.projectName || "default-project",
-    frontend: (options.frontend as BTSConfig["frontend"]) || "next",
-    backend: (backend as BTSConfig["backend"]) || "convex",
-    database: isConvex
-      ? "none"
-      : (options.database as BTSConfig["database"]) || "sqlite",
-    auth: options.noAuth ? "none" : "better-auth",
-    addons: options.addons || ["turborepo"],
-    runtime:
-      isConvex || backend === "self" ? "none" : options.runtime || "node",
-    api: options.api || "none",
-    payments: options.payment || "none",
-    orm: isConvex ? "none" : options.orm || "drizzle",
-    dbSetup: isConvex ? "none" : options.dbSetup || "none",
-    packageManager: options.packageManager || "npm",
-    git: !options.noGit,
-    webDeploy: options.webDeploy || "none",
-    serverDeploy: options.serverDeploy || "none",
-    install: !options.noInstall,
-    examples: options.examples || [],
-    includeDocs: options.includeDocs,
-  };
-
-  const result = await btsService.createProject(
-    options.projectName || options.name || "",
-    btsConfig,
+  const integration = new BetterTStackIntegration();
+  return integration.createProject(
+    options.projectName || options.name || "default-project",
+    options,
     workingDirectory
   );
-
-  return {
-    success: result.success,
-    message: result.message,
-    projectPath: result.projectPath,
-  };
 }

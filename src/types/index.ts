@@ -129,8 +129,32 @@ export interface PRDQuestionResponse {
 }
 
 // Better-T-Stack Integration
+
+// Frontend types - supports Better-T-Stack frontends + custom (CLI, TUI)
+export type BTSFrontend =
+  // Better-T-Stack web frontends
+  | "tanstack-router"
+  | "react-router"
+  | "tanstack-start"
+  | "next"
+  | "nuxt"
+  | "svelte"
+  | "solid"
+  // Better-T-Stack native frontends
+  | "native-bare"
+  | "native-uniwind"
+  | "native-unistyles"
+  // Custom frontends (handled separately by task-o-matic)
+  | "cli"
+  | "tui"
+  | "opentui"  // Alias for tui
+  | "none";
+
+// CLI dependency levels
+export type CliDependencyLevel = "minimal" | "standard" | "full" | "task-o-matic";
+
 export interface BTSConfig {
-  frontend: "react" | "next" | "vue" | "none";
+  frontend: BTSFrontend | BTSFrontend[];  // Array to support multiple frontends
   backend: "convex" | "hono" | "express" | "none";
   database: "sqlite" | "postgres" | "mysql" | "none";
   auth: "better-auth" | "clerk" | "none";
@@ -150,6 +174,52 @@ export interface BTSConfig {
   examples: string[]; // []
   createdAt?: string;
   _source?: string; // Track if config came from file or fallback
+}
+
+// Init command options (add to support new frontends)
+export interface InitOptions {
+  // Project metadata
+  projectName?: string;
+  name?: string;
+  directory?: string;
+
+  // AI configuration
+  aiProvider?: string;
+  aiModel?: string;
+  aiKey?: string;
+  aiProviderUrl?: string;
+  maxTokens?: string;
+  temperature?: string;
+  context7ApiKey?: string;
+
+  // Frontend configuration - can now be array or comma-separated string
+  frontend?: BTSFrontend | BTSFrontend[] | string;
+  cliDeps?: CliDependencyLevel;
+  tuiFramework?: "solid" | "vue" | "react";
+
+  // Backend configuration
+  backend?: string;
+  database?: string;
+  orm?: string;
+  dbSetup?: string;
+  auth?: string;
+  noAuth?: boolean;
+
+  // Build & deployment
+  runtime?: string;
+  api?: string;
+  payment?: string;
+  packageManager?: string;
+  webDeploy?: string;
+  serverDeploy?: string;
+
+  // Options
+  addons?: string[];
+  examples?: string[];
+  noGit?: boolean;
+  noInstall?: boolean;
+  noBootstrap?: boolean;
+  includeDocs?: boolean;
 }
 
 export interface CreateTaskRequest {

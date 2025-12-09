@@ -1,5 +1,7 @@
+import type { BTSFrontend } from "../types/index.js";
+
 export interface StackInfo {
-  frontend: string;
+  frontend: BTSFrontend | BTSFrontend[];
   backend: string;
   database: string;
   orm: string;
@@ -12,8 +14,12 @@ export function formatStackInfo(stack: StackInfo | null | undefined): string {
     return "Not detected";
   }
 
+  const frontendStr = Array.isArray(stack.frontend)
+    ? stack.frontend.join(", ")
+    : stack.frontend;
+
   const parts = [
-    `Frontend: ${stack.frontend}`,
+    `Frontend: ${frontendStr}`,
     `Backend: ${stack.backend}`
   ];
   
@@ -39,5 +45,9 @@ export function formatStackForContext(stack: StackInfo | null | undefined): stri
     return "";
   }
 
-  return `Technology Stack: ${stack.frontend} + ${stack.backend} + ${stack.database}`;
+  const frontendStr = Array.isArray(stack.frontend)
+    ? stack.frontend.join(" + ")
+    : stack.frontend;
+
+  return `Technology Stack: ${frontendStr} + ${stack.backend} + ${stack.database}`;
 }
