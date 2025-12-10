@@ -1481,5 +1481,19 @@ export class TaskService {
   }
 }
 
-// Export singleton instance
-export const taskService = new TaskService();
+// Lazy singleton instance - only created when first accessed
+let taskServiceInstance: TaskService | undefined;
+
+export function getTaskService(): TaskService {
+  if (!taskServiceInstance) {
+    taskServiceInstance = new TaskService();
+  }
+  return taskServiceInstance;
+}
+
+// Backward compatibility: export as const but use getter
+export const taskService = new Proxy({} as TaskService, {
+  get(target, prop) {
+    return (getTaskService() as any)[prop];
+  },
+});

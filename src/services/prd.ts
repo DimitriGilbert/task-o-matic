@@ -708,5 +708,19 @@ export class PRDService {
   }
 }
 
-// Export singleton instance
-export const prdService = new PRDService();
+// Lazy singleton instance - only created when first accessed
+let prdServiceInstance: PRDService | undefined;
+
+export function getPRDService(): PRDService {
+  if (!prdServiceInstance) {
+    prdServiceInstance = new PRDService();
+  }
+  return prdServiceInstance;
+}
+
+// Backward compatibility: export as const but use getter
+export const prdService = new Proxy({} as PRDService, {
+  get(target, prop) {
+    return (getPRDService() as any)[prop];
+  },
+});

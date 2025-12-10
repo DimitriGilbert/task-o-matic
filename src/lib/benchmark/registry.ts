@@ -1,6 +1,6 @@
 import { BenchmarkableOperation, WorkflowBenchmarkInput } from "./types";
 import { prdService } from "../../services/prd";
-import { TaskService } from "../../services/tasks"; // We'll need to instantiate this or use a singleton if available
+import { taskService } from "../../services/tasks";
 import { workflowBenchmarkService } from "../../services/workflow-benchmark";
 import { AIOptions } from "../../utils/ai-config-builder";
 import { StreamingOptions } from "../../types";
@@ -77,11 +77,6 @@ export class BenchmarkRegistry {
     });
 
     // Task Breakdown Adapter
-    // Note: TaskService is a class, we need an instance.
-    // In a real app we should use dependency injection or a singleton.
-    // For now, we'll create a new instance or assume one is available.
-    const taskService = new TaskService();
-
     this.register({
       id: "task-breakdown",
       name: "Task Breakdown",
