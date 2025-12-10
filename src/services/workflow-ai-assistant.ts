@@ -3,6 +3,10 @@ import { getAIOperations } from "../utils/ai-service-factory";
 import { buildAIConfig, AIOptions } from "../utils/ai-config-builder";
 import { configManager } from "../lib/config";
 import { PromptBuilder } from "../lib/prompt-builder";
+import {
+  createStandardError,
+  TaskOMaticErrorCodes,
+} from "../utils/task-o-matic-error";
 
 /**
  * WorkflowAIAssistant - AI-powered decision making for workflow steps
@@ -37,7 +41,8 @@ export class WorkflowAIAssistant {
     });
 
     if (!promptResult.success) {
-      throw new Error(
+      throw createStandardError(
+        TaskOMaticErrorCodes.CONFIGURATION_ERROR,
         `Failed to build project init prompt: ${promptResult.error}`
       );
     }
@@ -60,7 +65,17 @@ export class WorkflowAIAssistant {
     try {
       const jsonMatch = result.match(/\{[\s\S]*\}/);
       if (!jsonMatch) {
-        throw new Error("No JSON found in AI response");
+        throw createStandardError(
+          TaskOMaticErrorCodes.AI_OPERATION_FAILED,
+          "No JSON found in AI response for init config",
+          {
+            context: "The AI did not return a valid JSON object.",
+            suggestions: [
+              "Try a different model or provider.",
+              "Check the prompt for clarity.",
+            ],
+          }
+        );
       }
       return JSON.parse(jsonMatch[0]);
     } catch (error) {
@@ -118,7 +133,8 @@ export class WorkflowAIAssistant {
     });
 
     if (!promptResult.success) {
-      throw new Error(
+      throw createStandardError(
+        TaskOMaticErrorCodes.CONFIGURATION_ERROR,
         `Failed to build PRD improvement prompt: ${promptResult.error}`
       );
     }
@@ -177,7 +193,8 @@ export class WorkflowAIAssistant {
     });
 
     if (!promptResult.success) {
-      throw new Error(
+      throw createStandardError(
+        TaskOMaticErrorCodes.CONFIGURATION_ERROR,
         `Failed to build task prioritization prompt: ${promptResult.error}`
       );
     }
@@ -200,7 +217,17 @@ export class WorkflowAIAssistant {
     try {
       const jsonMatch = result.match(/\{[\s\S]*\}/);
       if (!jsonMatch) {
-        throw new Error("No JSON found in AI response");
+        throw createStandardError(
+          TaskOMaticErrorCodes.AI_OPERATION_FAILED,
+          "No JSON found in AI response for task prioritization",
+          {
+            context: "The AI did not return a valid JSON object.",
+            suggestions: [
+              "Try a different model or provider.",
+              "Check the prompt for clarity.",
+            ],
+          }
+        );
       }
       return JSON.parse(jsonMatch[0]);
     } catch (error) {
@@ -243,7 +270,8 @@ export class WorkflowAIAssistant {
     });
 
     if (!promptResult.success) {
-      throw new Error(
+      throw createStandardError(
+        TaskOMaticErrorCodes.CONFIGURATION_ERROR,
         `Failed to build task splitting prompt: ${promptResult.error}`
       );
     }

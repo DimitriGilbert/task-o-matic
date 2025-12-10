@@ -12,6 +12,11 @@ export const prdCommand = new Command("prd").description(
   "Manage PRDs and generate tasks"
 );
 
+import {
+  createStandardError,
+  TaskOMaticErrorCodes,
+} from "../utils/task-o-matic-error";
+
 // Helper to parse model string (provider:model)
 function parseModelString(modelStr: string): {
   provider: string;
@@ -19,8 +24,15 @@ function parseModelString(modelStr: string): {
 } {
   const parts = modelStr.split(":");
   if (parts.length < 2) {
-    throw new Error(
-      `Invalid model format: ${modelStr}. Expected provider:model`
+    throw createStandardError(
+      TaskOMaticErrorCodes.INVALID_INPUT,
+      `Invalid model format: ${modelStr}. Expected provider:model`,
+      {
+        suggestions: [
+          "Use the format 'provider:model'",
+          "Example: 'anthropic:claude-3.5-sonnet'",
+        ],
+      }
     );
   }
   return { provider: parts[0], model: parts[1] };

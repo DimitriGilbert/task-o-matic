@@ -1,3 +1,8 @@
+import {
+  createStandardError,
+  TaskOMaticErrorCodes,
+} from "./task-o-matic-error";
+
 /**
  * Extracts a readable error message from an unknown error value.
  * Handles Error objects, strings, objects with message property, and unknown types.
@@ -62,7 +67,7 @@ export function formatError(error: unknown, context?: string): string {
  *
  * @param error - The original error
  * @param context - Context to add to the error
- * @returns A new Error instance with formatted message
+ * @returns A new TaskOMaticError instance with formatted message
  *
  * @example
  * ```typescript
@@ -73,8 +78,15 @@ export function formatError(error: unknown, context?: string): string {
  * }
  * ```
  */
-export function createContextError(error: unknown, context: string): Error {
-  return new Error(formatError(error, context));
+export function createContextError(
+  error: unknown,
+  context: string
+): import("./task-o-matic-error").TaskOMaticError {
+  return createStandardError(
+    TaskOMaticErrorCodes.UNEXPECTED_ERROR,
+    formatError(error, context),
+    { cause: error instanceof Error ? error : undefined }
+  );
 }
 
 /**
@@ -95,9 +107,18 @@ export function isError(error: unknown): error is Error {
  * @param error - Value to convert
  * @returns An Error instance
  */
-export function toError(error: unknown): Error {
+export function toError(
+  error: unknown
+): import("./task-o-matic-error").TaskOMaticError {
   if (error instanceof Error) {
-    return error;
+    return createStandardError(
+      TaskOMaticErrorCodes.UNEXPECTED_ERROR,
+      error.message,
+      { cause: error }
+    );
   }
-  return new Error(getErrorMessage(error));
+  return createStandardError(
+    TaskOMaticErrorCodes.UNEXPECTED_ERROR,
+    getErrorMessage(error)
+  );
 }

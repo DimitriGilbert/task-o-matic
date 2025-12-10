@@ -1,3 +1,8 @@
+import {
+  formatTaskNotFoundError,
+  createStandardError,
+  TaskOMaticErrorCodes,
+} from "../utils/task-o-matic-error";
 import { taskService } from "../services/tasks";
 import {
   TaskExecutionConfig,
@@ -46,7 +51,7 @@ export async function executeTaskCore(
   // Load task
   const task = await taskService.getTask(taskId);
   if (!task) {
-    throw new Error(`Task with ID ${taskId} not found`);
+    throw formatTaskNotFoundError(taskId);
   }
 
   // Check if task has subtasks and should execute them recursively
@@ -413,7 +418,8 @@ async function executeSingleAttempt(
     });
 
     if (!promptResult.success) {
-      throw new Error(
+      throw createStandardError(
+        TaskOMaticErrorCodes.CONFIGURATION_ERROR,
         `Failed to build execution prompt: ${promptResult.error}`
       );
     }

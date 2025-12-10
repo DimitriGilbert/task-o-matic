@@ -1,3 +1,8 @@
+import {
+  createStandardError,
+  TaskOMaticErrorCodes,
+} from "./task-o-matic-error";
+
 /**
  * Validate that exactly one of two mutually exclusive options is provided
  *
@@ -6,7 +11,7 @@
  * @param field2 - Second field name in options
  * @param field1Label - Display label for first field (defaults to field1)
  * @param field2Label - Display label for second field (defaults to field2)
- * @throws Error if neither or both fields are provided
+ * @throws TaskOMaticError if neither or both fields are provided
  *
  * @example
  * ```typescript
@@ -24,12 +29,14 @@ export function validateMutuallyExclusive(
   const has2 = Boolean(options[field2]);
 
   if (!has1 && !has2) {
-    throw new Error(
+    throw createStandardError(
+      TaskOMaticErrorCodes.INVALID_INPUT,
       `Either --${field1Label} or --${field2Label} must be specified`
     );
   }
   if (has1 && has2) {
-    throw new Error(
+    throw createStandardError(
+      TaskOMaticErrorCodes.INVALID_INPUT,
       `Cannot specify both --${field1Label} and --${field2Label}`
     );
   }
@@ -48,7 +55,7 @@ export interface FieldSpec {
  *
  * @param options - The command options object
  * @param fields - Array of field specifications
- * @throws Error if none or multiple fields are provided
+ * @throws TaskOMaticError if none or multiple fields are provided
  *
  * @example
  * ```typescript
@@ -67,11 +74,17 @@ export function validateOneRequired(
 
   if (provided.length === 0) {
     const labels = fields.map((f) => `--${f.label}`).join(", ");
-    throw new Error(`One of ${labels} must be specified`);
+    throw createStandardError(
+      TaskOMaticErrorCodes.INVALID_INPUT,
+      `One of ${labels} must be specified`
+    );
   }
   if (provided.length > 1) {
     const labels = provided.map((f) => `--${f.label}`).join(", ");
-    throw new Error(`Cannot specify multiple options: ${labels}`);
+    throw createStandardError(
+      TaskOMaticErrorCodes.INVALID_INPUT,
+      `Cannot specify multiple options: ${labels}`
+    );
   }
 }
 

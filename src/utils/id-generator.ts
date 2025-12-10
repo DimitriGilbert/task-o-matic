@@ -1,4 +1,8 @@
 import { randomBytes } from "crypto";
+import {
+  createStandardError,
+  TaskOMaticErrorCodes,
+} from "./task-o-matic-error";
 
 /**
  * Generates unique task IDs with consistent format.
@@ -89,7 +93,7 @@ export class TaskIDGenerator {
    * @param prefix - Prefix for the ID
    * @param maxAttempts - Maximum number of generation attempts
    * @returns Unique task ID
-   * @throws Error if unable to generate unique ID after maxAttempts
+   * @throws TaskOMaticError if unable to generate unique ID after maxAttempts
    */
   static generateUnique(
     existingIds: Set<string>,
@@ -103,8 +107,15 @@ export class TaskIDGenerator {
       }
     }
 
-    throw new Error(
-      `Failed to generate unique ID after ${maxAttempts} attempts`
+    throw createStandardError(
+      TaskOMaticErrorCodes.UNEXPECTED_ERROR,
+      `Failed to generate unique ID after ${maxAttempts} attempts`,
+      {
+        context: `Could not find a unique ID with prefix '${prefix}' after ${maxAttempts} attempts.`,
+        suggestions: [
+          "Increase maxAttempts if you have a very large number of tasks.",
+        ],
+      }
     );
   }
 

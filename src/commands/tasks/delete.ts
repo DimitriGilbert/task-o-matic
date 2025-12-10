@@ -3,6 +3,7 @@ import chalk from "chalk";
 import { taskService } from "../../services/tasks";
 import { displayTaskDelete } from "../../cli/display/task";
 import { displayError } from "../../cli/display/progress";
+import { formatTaskNotFoundError } from "../../utils/task-o-matic-error";
 
 export const deleteCommand = new Command("delete")
   .description("Delete a task")
@@ -14,7 +15,7 @@ export const deleteCommand = new Command("delete")
       if (!options.force) {
         const task = await taskService.getTask(options.id);
         if (!task) {
-          throw new Error(`Task with ID ${options.id} not found`);
+          throw formatTaskNotFoundError(options.id);
         }
 
         console.log(

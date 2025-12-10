@@ -5,6 +5,10 @@ import { createOpenRouter } from "@openrouter/ai-sdk-provider";
 import type { LanguageModelV2 } from "@ai-sdk/provider";
 import { AIConfig } from "../../types";
 import { configManager } from "../config";
+import {
+  createStandardError,
+  TaskOMaticErrorCodes,
+} from "../../utils/task-o-matic-error";
 
 export class ModelProvider {
   public getAIConfig(): AIConfig {
@@ -46,21 +50,71 @@ export class ModelProvider {
 
     switch (provider) {
       case "openai":
-        if (!apiKey) throw new Error("OpenAI API key is required");
+        if (!apiKey)
+          throw createStandardError(
+            TaskOMaticErrorCodes.AI_CONFIGURATION_ERROR,
+            "OpenAI API key is required",
+            {
+              suggestions: [
+                "Set the OPENAI_API_KEY environment variable.",
+                "Run `task-o-matic config set-ai-key <key>`",
+              ],
+            }
+          );
         return openai(model);
 
       case "anthropic":
-        if (!apiKey) throw new Error("Anthropic API key is required");
+        if (!apiKey)
+          throw createStandardError(
+            TaskOMaticErrorCodes.AI_CONFIGURATION_ERROR,
+            "Anthropic API key is required",
+            {
+              suggestions: [
+                "Set the ANTHROPIC_API_KEY environment variable.",
+                "Run `task-o-matic config set-ai-key <key>`",
+              ],
+            }
+          );
         return anthropic(model);
 
       case "openrouter":
-        if (!apiKey) throw new Error("OpenRouter API key is required");
+        if (!apiKey)
+          throw createStandardError(
+            TaskOMaticErrorCodes.AI_CONFIGURATION_ERROR,
+            "OpenRouter API key is required",
+            {
+              suggestions: [
+                "Set the OPENROUTER_API_KEY environment variable.",
+                "Run `task-o-matic config set-ai-key <key>`",
+              ],
+            }
+          );
         const openRouterProvider = createOpenRouter({ apiKey });
         return openRouterProvider(model);
 
       case "custom":
-        if (!apiKey) throw new Error("Custom API key is required");
-        if (!baseURL) throw new Error("Custom provider requires baseURL");
+        if (!apiKey)
+          throw createStandardError(
+            TaskOMaticErrorCodes.AI_CONFIGURATION_ERROR,
+            "Custom API key is required for custom provider",
+            {
+              suggestions: [
+                "Set the CUSTOM_API_KEY environment variable.",
+                "Run `task-o-matic config set-ai-key <key>`",
+              ],
+            }
+          );
+        if (!baseURL)
+          throw createStandardError(
+            TaskOMaticErrorCodes.AI_CONFIGURATION_ERROR,
+            "Custom provider requires baseURL",
+            {
+              suggestions: [
+                "Set the CUSTOM_API_URL environment variable.",
+                "Run `task-o-matic config set-ai-provider-url <url>`",
+              ],
+            }
+          );
         const customProvider = createOpenAICompatible({
           name: "custom",
           apiKey,
@@ -69,7 +123,16 @@ export class ModelProvider {
         return customProvider(model);
 
       default:
-        throw new Error(`Unsupported provider: ${provider}`);
+        throw createStandardError(
+          TaskOMaticErrorCodes.AI_CONFIGURATION_ERROR,
+          `Unsupported provider: ${provider}`,
+          {
+            suggestions: [
+              "Use one of the supported providers: 'openai', 'anthropic', 'openrouter', 'custom'.",
+              "Run `task-o-matic config set-ai-provider <provider>`",
+            ],
+          }
+        );
     }
   }
 }

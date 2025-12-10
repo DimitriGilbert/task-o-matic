@@ -5,6 +5,11 @@ import chalk from "chalk";
 import { existsSync, mkdirSync, writeFileSync } from "fs";
 import { resolve, join } from "path";
 import { configManager, Config } from "../lib/config";
+import { displayError } from "../cli/display/progress";
+import {
+  createStandardError,
+  TaskOMaticErrorCodes,
+} from "../utils/task-o-matic-error";
 import { runBetterTStackCLI } from "../lib/better-t-stack-cli";
 
 export const initCommand = new Command("init").description(
@@ -77,11 +82,25 @@ initCommand
 
           // Initialize task-o-matic structure in the new project directory
           await initializeProjectStructure(options);
+
+// ... (existing code)
+
         } else {
-          throw new Error(result.message);
+          throw createStandardError(
+            TaskOMaticErrorCodes.UNEXPECTED_ERROR,
+            result.message,
+            {
+              context:
+                "Bootstrap process failed. The error originated from the 'better-t-stack-cli' tool.",
+              suggestions: [
+                "Check the output from 'better-t-stack-cli' for more details.",
+                "Ensure that 'better-t-stack-cli' is installed and configured correctly.",
+              ],
+            }
+          );
         }
       } catch (error) {
-        console.error(chalk.red("Bootstrap failed:"), error);
+        displayError(error);
         return; // Stop if bootstrap fails
       }
     } else {
@@ -243,10 +262,21 @@ initCommand
       if (result.success) {
         console.log(chalk.green(result.message));
       } else {
-        throw new Error(result.message);
+        throw createStandardError(
+          TaskOMaticErrorCodes.UNEXPECTED_ERROR,
+          result.message,
+          {
+            context:
+              "Bootstrap process failed. The error originated from the 'better-t-stack-cli' tool.",
+            suggestions: [
+              "Check the output from 'better-t-stack-cli' for more details.",
+              "Ensure that 'better-t-stack-cli' is installed and configured correctly.",
+            ],
+          }
+        );
       }
     } catch (error) {
-      // No chdir needed anymore
+      displayError(error);
     }
   });
 

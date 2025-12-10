@@ -1,4 +1,9 @@
 import { Task } from "../types/index.js";
+import {
+  createStandardError,
+  formatTaskNotFoundError,
+  TaskOMaticErrorCodes,
+} from "./task-o-matic-error";
 
 /**
  * Ensures a task is not null, throwing an error if it is.
@@ -7,7 +12,7 @@ import { Task } from "../types/index.js";
  * @param task - Task that may be null
  * @param taskId - ID of the task for error message
  * @returns The task if not null
- * @throws Error if task is null
+ * @throws TaskOMaticError if task is null
  *
  * @example
  * ```typescript
@@ -18,7 +23,7 @@ import { Task } from "../types/index.js";
  */
 export function requireTask(task: Task | null, taskId: string): Task {
   if (!task) {
-    throw new Error(`Task not found: ${taskId}`);
+    throw formatTaskNotFoundError(taskId);
   }
   return task;
 }
@@ -29,7 +34,7 @@ export function requireTask(task: Task | null, taskId: string): Task {
  * @param tasks - Array of tasks that may contain nulls
  * @param context - Context for error message (e.g., "subtasks", "dependencies")
  * @returns Array of tasks with nulls filtered out
- * @throws Error if any task is null
+ * @throws TaskOMaticError if any task is null
  */
 export function requireTasks(
   tasks: (Task | null)[],
@@ -47,7 +52,10 @@ export function requireTasks(
   });
 
   if (missingIds.length > 0) {
-    throw new Error(`Missing ${context}: ${missingIds.join(", ")}`);
+    throw createStandardError(
+      TaskOMaticErrorCodes.STORAGE_INTEGRITY_ERROR,
+      `Missing ${context}: ${missingIds.join(", ")}`
+    );
   }
 
   return validTasks;
@@ -74,10 +82,13 @@ export function filterNullTasks(tasks: (Task | null)[]): Task[] {
  * Validates that a task ID is a non-empty string.
  *
  * @param taskId - Task ID to validate
- * @throws Error if task ID is invalid
+ * @throws TaskOMaticError if task ID is invalid
  */
 export function validateTaskId(taskId: string): void {
   if (!taskId || typeof taskId !== "string" || !taskId.trim()) {
-    throw new Error("Invalid task ID: must be a non-empty string");
+    throw createStandardError(
+      TaskOMaticErrorCodes.INVALID_INPUT,
+      "Invalid task ID: must be a non-empty string"
+    );
   }
 }

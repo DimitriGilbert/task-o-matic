@@ -6,6 +6,10 @@ import { configManager, ConfigCallbacks } from "../lib/config";
 import { AIOperations } from "../lib/ai-service/ai-operations";
 import { ModelProvider } from "../lib/ai-service/model-provider";
 import { StorageCallbacks } from "../lib/storage/storage-callbacks";
+import {
+  createStandardError,
+  TaskOMaticErrorCodes,
+} from "./task-o-matic-error";
 
 export interface ServiceOptions {
   storageCallbacks?: StorageCallbacks;
@@ -75,8 +79,12 @@ export function getStorage(): TaskRepository {
 
     // Note: This check relies on FS. Web apps should call initializeServices first.
     if (!existsSync(taskOMaticDir)) {
-      throw new Error(
-        `Not a task-o-matic project. Run 'task-o-matic init' first.`
+      throw createStandardError(
+        TaskOMaticErrorCodes.CONFIGURATION_ERROR,
+        "Not a task-o-matic project. Run 'task-o-matic init' first.",
+        {
+          suggestions: ["Run `task-o-matic init` in your project root."],
+        }
       );
     }
 

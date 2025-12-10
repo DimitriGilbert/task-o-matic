@@ -1,4 +1,8 @@
 import { ExecutorTool, ModelAttemptConfig } from "../types";
+import {
+  createStandardError,
+  TaskOMaticErrorCodes,
+} from "./task-o-matic-error";
 
 /**
  * Valid executor tools
@@ -19,7 +23,7 @@ export const VALID_EXECUTORS: ExecutorTool[] = [
  *
  * @param value - Comma-separated model/executor specifications
  * @returns Array of model attempt configurations
- * @throws Error if an invalid executor is specified
+ * @throws TaskOMaticError if an invalid executor is specified
  *
  * @example
  * ```typescript
@@ -36,7 +40,8 @@ export function parseTryModels(value: string): ModelAttemptConfig[] {
       const [executor, model] = trimmed.split(":");
 
       if (!VALID_EXECUTORS.includes(executor as ExecutorTool)) {
-        throw new Error(
+        throw createStandardError(
+          TaskOMaticErrorCodes.INVALID_INPUT,
           `Invalid executor "${executor}" in --try-models. Must be one of: ${VALID_EXECUTORS.join(
             ", "
           )}`

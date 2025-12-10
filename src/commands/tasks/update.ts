@@ -2,6 +2,10 @@ import { Command } from "commander";
 import { taskService } from "../../services/tasks";
 import { displayTaskUpdate } from "../../cli/display/task";
 import { displayError } from "../../cli/display/progress";
+import {
+  createStandardError,
+  TaskOMaticErrorCodes,
+} from "../../utils/task-o-matic-error";
 
 export const updateCommand = new Command("update")
   .description("Update an existing task")
@@ -15,7 +19,16 @@ export const updateCommand = new Command("update")
     try {
       const { id, ...updates } = options;
       if (Object.keys(updates).length === 0) {
-        throw new Error("At least one field must be specified for update");
+        throw createStandardError(
+          TaskOMaticErrorCodes.INVALID_INPUT,
+          "At least one field must be specified for update",
+          {
+            suggestions: [
+              "Specify a field to update, e.g., --title 'New Title'",
+              "Use --help for a list of available options",
+            ],
+          }
+        );
       }
 
       const updatedTask = await taskService.updateTask(id, {

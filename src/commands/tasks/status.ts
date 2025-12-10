@@ -2,6 +2,7 @@ import { Command } from "commander";
 import { taskService } from "../../services/tasks";
 import { displayTaskStatusChange } from "../../cli/display/task";
 import { displayError } from "../../cli/display/progress";
+import { formatTaskNotFoundError } from "../../utils/task-o-matic-error";
 
 export const statusCommand = new Command("status")
   .description("Set task status")
@@ -14,7 +15,7 @@ export const statusCommand = new Command("status")
     try {
       const task = await taskService.getTask(options.id);
       if (!task) {
-        throw new Error(`Task with ID ${options.id} not found`);
+        throw formatTaskNotFoundError(options.id);
       }
 
       const oldStatus = task.status;

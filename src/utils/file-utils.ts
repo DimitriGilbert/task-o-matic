@@ -1,5 +1,9 @@
 import { existsSync } from "fs";
 import { access, constants } from "fs/promises";
+import {
+  createStandardError,
+  TaskOMaticErrorCodes,
+} from "./task-o-matic-error";
 
 /**
  * Validates that a file exists at the given path (synchronous).
@@ -7,12 +11,12 @@ import { access, constants } from "fs/promises";
  *
  * @param filePath - Path to the file to validate
  * @param customMessage - Optional custom error message
- * @throws Error if file doesn't exist
+ * @throws TaskOMaticError if file doesn't exist
  *
  * @example
  * ```typescript
  * validateFileExists("./config.json", "Configuration file not found");
- * // Throws: Error("Configuration file not found") if file doesn't exist
+ * // Throws: TaskOMaticError with code INVALID_INPUT if file doesn't exist
  * ```
  */
 export function validateFileExists(
@@ -20,7 +24,13 @@ export function validateFileExists(
   customMessage?: string
 ): void {
   if (!existsSync(filePath)) {
-    throw new Error(customMessage || `File not found: ${filePath}`);
+    throw createStandardError(
+      TaskOMaticErrorCodes.INVALID_INPUT,
+      customMessage || `File not found: ${filePath}`,
+      {
+        suggestions: ["Verify the file path is correct."],
+      }
+    );
   }
 }
 
@@ -30,12 +40,12 @@ export function validateFileExists(
  *
  * @param filePath - Path to the file to validate
  * @param customMessage - Optional custom error message
- * @throws Error if file doesn't exist
+ * @throws TaskOMaticError if file doesn't exist
  *
  * @example
  * ```typescript
  * await validateFileExistsAsync("./data.json");
- * // Throws: Error("File not found: ./data.json") if file doesn't exist
+ * // Throws: TaskOMaticError with code INVALID_INPUT if file doesn't exist
  * ```
  */
 export async function validateFileExistsAsync(
@@ -45,7 +55,13 @@ export async function validateFileExistsAsync(
   try {
     await access(filePath, constants.F_OK);
   } catch {
-    throw new Error(customMessage || `File not found: ${filePath}`);
+    throw createStandardError(
+      TaskOMaticErrorCodes.INVALID_INPUT,
+      customMessage || `File not found: ${filePath}`,
+      {
+        suggestions: ["Verify the file path is correct."],
+      }
+    );
   }
 }
 

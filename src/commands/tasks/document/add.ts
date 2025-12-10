@@ -2,6 +2,7 @@ import { Command } from "commander";
 import chalk from "chalk";
 import { taskService } from "../../../services/tasks";
 import { wrapCommandHandler } from "../../../utils/command-error-handler";
+import { formatTaskNotFoundError } from "../../../utils/task-o-matic-error";
 import { AddDocumentationCommandOptions } from "../../../types/cli-options";
 
 export const addDocumentationCommand = new Command("add-documentation")
@@ -12,7 +13,7 @@ export const addDocumentationCommand = new Command("add-documentation")
   .action(wrapCommandHandler("Add documentation", async (options: AddDocumentationCommandOptions) => {
     const task = await taskService.getTask(options.id);
     if (!task) {
-      throw new Error(`Task with ID ${options.id} not found`);
+      throw formatTaskNotFoundError(options.id);
     }
 
     // Check if documentation already exists

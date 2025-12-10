@@ -2,6 +2,7 @@ import { Command } from "commander";
 import { taskService } from "../../services/tasks";
 import { displayTaskDetails } from "../../cli/display/task";
 import { displayError } from "../../cli/display/progress";
+import { formatTaskNotFoundError } from "../../utils/task-o-matic-error";
 
 export const showCommand = new Command("show")
   .description("Show detailed information about a task")
@@ -11,7 +12,7 @@ export const showCommand = new Command("show")
       const task = await taskService.getTask(options.id);
 
       if (!task) {
-        throw new Error(`Task with ID ${options.id} not found`);
+        throw formatTaskNotFoundError(options.id);
       }
 
       await displayTaskDetails(task);

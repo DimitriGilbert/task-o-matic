@@ -3,6 +3,7 @@ import chalk from "chalk";
 import { benchmarkService } from "../services/benchmark";
 import { BenchmarkConfig, BenchmarkModelConfig, WorkflowBenchmarkInput } from "../lib/benchmark/types";
 import { WorkflowAutomationOptions } from "../types/workflow-options";
+import { displayError } from "../cli/display/progress";
 import {
   confirmPrompt,
   selectPrompt,
@@ -15,13 +16,26 @@ export const benchmarkCommand = new Command("benchmark").description(
   "Run and manage AI benchmarks"
 );
 
+import {
+  createStandardError,
+  TaskOMaticErrorCodes,
+} from "../utils/task-o-matic-error";
+
 // Helper to parse model string
 // Format: provider:model[:reasoning=<tokens>]
 function parseModelString(modelStr: string): BenchmarkModelConfig {
   const parts = modelStr.split(":");
   if (parts.length < 2) {
-    throw new Error(
-      `Invalid model format: ${modelStr}. Expected provider:model[:reasoning=<tokens>]`
+    throw createStandardError(
+      TaskOMaticErrorCodes.INVALID_INPUT,
+      `Invalid model format: ${modelStr}. Expected provider:model[:reasoning=<tokens>]`,
+      {
+        suggestions: [
+          "Use the format 'provider:model'",
+          "Example: 'anthropic:claude-3.5-sonnet'",
+          "Optionally add reasoning tokens: 'openai:gpt-4:reasoning=2048'",
+        ],
+      }
     );
   }
 
@@ -221,7 +235,7 @@ benchmarkCommand
         }
       });
     } catch (error: any) {
-      console.error(chalk.red("Benchmark failed:"), error.message);
+      displayError(error);
       process.exit(1);
     }
   });
@@ -435,7 +449,7 @@ benchmarkCommand
     try {
       await runWorkflowBenchmark(options);
     } catch (error: any) {
-      console.error(chalk.red("Workflow benchmark failed:"), error.message);
+      displayError(error);
       process.exit(1);
     }
   });

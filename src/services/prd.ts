@@ -1,4 +1,8 @@
 import {
+  createStandardError,
+  TaskOMaticErrorCodes,
+} from "../utils/task-o-matic-error";
+import {
   readFileSync,
   existsSync,
   copyFileSync,
@@ -71,8 +75,12 @@ export class PRDService {
     // Ensure we're in a task-o-matic project
     const taskOMaticDir = configManager.getTaskOMaticDir();
     if (!existsSync(taskOMaticDir)) {
-      throw new Error(
-        `Not a task-o-matic project. Run 'task-o-matic init init' first.`
+      throw createStandardError(
+        TaskOMaticErrorCodes.CONFIGURATION_ERROR,
+        "Not a task-o-matic project. Run 'task-o-matic init init' first.",
+        {
+          suggestions: ["Run `task-o-matic init init` in your project root."],
+        }
       );
     }
 
@@ -120,7 +128,13 @@ export class PRDService {
       input.aiOptions?.aiProvider &&
       !isValidAIProvider(input.aiOptions.aiProvider)
     ) {
-      throw new Error(`Invalid AI provider: ${input.aiOptions.aiProvider}`);
+      throw createStandardError(
+        TaskOMaticErrorCodes.AI_CONFIGURATION_ERROR,
+        `Invalid AI provider: ${input.aiOptions.aiProvider}`,
+        {
+          suggestions: ["Use a valid AI provider, e.g., 'openai', 'anthropic'"],
+        }
+      );
     }
 
     const aiConfig = buildAIConfig(input.aiOptions);
@@ -280,7 +294,13 @@ export class PRDService {
       input.aiOptions?.aiProvider &&
       !isValidAIProvider(input.aiOptions.aiProvider)
     ) {
-      throw new Error(`Invalid AI provider: ${input.aiOptions.aiProvider}`);
+      throw createStandardError(
+        TaskOMaticErrorCodes.AI_CONFIGURATION_ERROR,
+        `Invalid AI provider: ${input.aiOptions.aiProvider}`,
+        {
+          suggestions: ["Use a valid AI provider, e.g., 'openai', 'anthropic'"],
+        }
+      );
     }
 
     const aiConfig = buildAIConfig(input.aiOptions);
@@ -345,7 +365,13 @@ export class PRDService {
       input.aiOptions?.aiProvider &&
       !isValidAIProvider(input.aiOptions.aiProvider)
     ) {
-      throw new Error(`Invalid AI provider: ${input.aiOptions.aiProvider}`);
+      throw createStandardError(
+        TaskOMaticErrorCodes.AI_CONFIGURATION_ERROR,
+        `Invalid AI provider: ${input.aiOptions.aiProvider}`,
+        {
+          suggestions: ["Use a valid AI provider, e.g., 'openai', 'anthropic'"],
+        }
+      );
     }
 
     const aiConfig = buildAIConfig(input.aiOptions);
@@ -451,7 +477,8 @@ export class PRDService {
       // User mode: return questions for CLI to prompt user
       // Answers should be provided in input.answers
       if (!input.answers || Object.keys(input.answers).length === 0) {
-        throw new Error(
+        throw createStandardError(
+          TaskOMaticErrorCodes.INVALID_INPUT,
           "User mode selected but no answers provided. CLI layer should collect answers."
         );
       }
