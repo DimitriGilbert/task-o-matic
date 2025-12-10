@@ -3,6 +3,7 @@ import { cwd } from "process";
 import { AIConfig, EnvAIConfig, ProviderDefaults, AIProvider } from "../types";
 import { existsSync, readFileSync, writeFileSync, mkdirSync } from "fs";
 import { config as dotenvConfig } from "dotenv";
+import { validateConfig, validatePartialAIConfig } from "./config-validation";
 
 export interface Config {
   ai: AIConfig;
@@ -174,20 +175,27 @@ export class ConfigManager {
 
       if (configData) {
         const fileConfig = JSON.parse(configData);
-        this.config = {
+        const mergedConfig = {
           ...defaultConfig,
           ...fileConfig,
           ai: { ...defaultConfig.ai, ...fileConfig.ai, ...envConfig },
         };
+
+        // Validate the merged configuration
+        const validatedConfig = validateConfig(mergedConfig);
+        this.config = validatedConfig;
+
         if (this.config && this.config.workingDirectory) {
           this.customWorkingDir = this.config.workingDirectory;
         }
       } else {
-        this.config = defaultConfig;
+        // Validate default config too
+        this.config = validateConfig(defaultConfig);
       }
     } catch (error) {
-      console.warn("Failed to read config, using defaults:", error);
-      this.config = defaultConfig;
+      console.warn("Failed to read or validate config, using defaults:", error);
+      // Even defaults should be validated
+      this.config = validateConfig(defaultConfig);
     }
 
     return this.config!;
@@ -229,7 +237,18 @@ export class ConfigManager {
     if (!this.config) {
       await this.load();
     }
-    this.config!.ai = { ...this.config!.ai, ...aiConfig };
+
+    // Validate the partial config before merging
+    const validatedPartial = validatePartialAIConfig(aiConfig);
+
+    // Merge and validate the full config
+    const mergedAIConfig = { ...this.config!.ai, ...validatedPartial };
+    const validatedConfig = validateConfig({
+      ...this.config!,
+      ai: mergedAIConfig,
+    });
+
+    this.config = validatedConfig;
     await this.save();
   }
 

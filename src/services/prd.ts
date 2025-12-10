@@ -17,10 +17,31 @@ import { createMetricsStreamingOptions } from "../utils/streaming-utils";
 import { validateFileExists } from "../utils/file-utils";
 
 /**
+ * Dependencies for PRDService
+ */
+export interface PRDServiceDependencies {
+  storage?: ReturnType<typeof getStorage>;
+  aiOperations?: ReturnType<typeof getAIOperations>;
+}
+
+/**
  * PRDService - Business logic for PRD operations
  * Handles PRD parsing, task extraction, and PRD improvement
  */
 export class PRDService {
+  private storage: ReturnType<typeof getStorage>;
+  private aiOperations: ReturnType<typeof getAIOperations>;
+
+  /**
+   * Create a new PRDService
+   *
+   * @param dependencies - Optional dependencies to inject (for testing)
+   */
+  constructor(dependencies: PRDServiceDependencies = {}) {
+    // Use injected dependencies or fall back to singletons
+    this.storage = dependencies.storage ?? getStorage();
+    this.aiOperations = dependencies.aiOperations ?? getAIOperations();
+  }
   async parsePRD(input: {
     file: string;
     workingDirectory?: string; // Working directory passed from CLI layer
@@ -115,7 +136,7 @@ export class PRDService {
     const { options: metricsStreamingOptions, getMetrics } =
       createMetricsStreamingOptions(input.streamingOptions, stepStart2);
 
-    const result = await getAIOperations().parsePRD(
+    const result = await this.aiOperations.parsePRD(
       prdContent,
       aiConfig,
       input.promptOverride,
@@ -155,7 +176,7 @@ export class PRDService {
         total: result.tasks.length,
       });
 
-      const createdTask = await getStorage().createTask({
+      const createdTask = await this.storage.createTask({
         id: task.id, // Preserve AI-generated ID for dependencies
         title: task.title,
         description: task.description,
@@ -180,7 +201,7 @@ export class PRDService {
         generatedAt: Date.now(),
       };
 
-      await getStorage().saveTaskAIMetadata(aiMetadata);
+      await this.storage.saveTaskAIMetadata(aiMetadata);
     }
 
     steps.push({
@@ -269,7 +290,7 @@ export class PRDService {
       message: "Analyzing PRD with AI...",
     });
 
-    const questions = await getAIOperations().generatePRDQuestions(
+    const questions = await this.aiOperations.generatePRDQuestions(
       prdContent,
       aiConfig,
       input.promptOverride,
@@ -334,7 +355,7 @@ export class PRDService {
       message: "Calling AI to improve PRD...",
     });
 
-    const improvedPRD = await getAIOperations().reworkPRD(
+    const improvedPRD = await this.aiOperations.reworkPRD(
       prdContent,
       input.feedback,
       aiConfig,
@@ -449,7 +470,7 @@ export class PRDService {
         input.questionAIOptions || input.aiOptions
       );
 
-      answers = await getAIOperations().answerPRDQuestions(
+      answers = await this.aiOperations.answerPRDQuestions(
         prdContent,
         questions,
         answeringAIConfig,
@@ -554,7 +575,7 @@ export class PRDService {
 
     const aiConfig = buildAIConfig(input.aiOptions);
 
-    const content = await getAIOperations().generatePRD(
+    const content = await this.aiOperations.generatePRD(
       input.description,
       aiConfig,
       undefined,
@@ -648,7 +669,7 @@ export class PRDService {
 
     const aiConfig = buildAIConfig(input.aiOptions);
 
-    const content = await getAIOperations().combinePRDs(
+    const content = await this.aiOperations.combinePRDs(
       input.prds,
       input.originalDescription,
       aiConfig,

@@ -5,6 +5,12 @@ import {
   StorageCallbacks,
   createFileSystemCallbacks,
 } from "./storage-callbacks";
+import {
+  TaskOMaticError,
+  TaskOMaticErrorCodes,
+  formatStorageError,
+  createStandardError,
+} from "../../utils/task-o-matic-error";
 
 interface TasksData {
   tasks: Task[];
@@ -27,35 +33,87 @@ export class FileSystemStorage implements TaskRepository {
 
   private validateTaskId(taskId: string): void {
     if (!taskId || typeof taskId !== "string" || taskId.trim() === "") {
-      throw new Error("Task ID must be a non-empty string");
+      throw createStandardError(
+        TaskOMaticErrorCodes.INVALID_INPUT,
+        "Task ID must be a non-empty string",
+        {
+          context: "validateTaskId",
+          suggestions: ["Provide a valid task ID string"],
+          metadata: { taskId },
+        }
+      );
     }
   }
 
   private validateTaskRequest(task: CreateTaskRequest): void {
     if (!task || typeof task !== "object") {
-      throw new Error("Task request must be a valid object");
+      throw createStandardError(
+        TaskOMaticErrorCodes.INVALID_INPUT,
+        "Task request must be a valid object",
+        {
+          context: "validateTaskRequest",
+          suggestions: ["Provide a valid task request object"],
+        }
+      );
     }
     if (
       !task.title ||
       typeof task.title !== "string" ||
       task.title.trim() === ""
     ) {
-      throw new Error("Task title is required and must be a non-empty string");
+      throw createStandardError(
+        TaskOMaticErrorCodes.INVALID_INPUT,
+        "Task title is required and must be a non-empty string",
+        {
+          context: "validateTaskRequest - title validation",
+          suggestions: ["Provide a non-empty title for the task"],
+        }
+      );
     }
     if (task.parentId && typeof task.parentId !== "string") {
-      throw new Error("Parent ID must be a string if provided");
+      throw createStandardError(
+        TaskOMaticErrorCodes.INVALID_INPUT,
+        "Parent ID must be a string if provided",
+        {
+          context: "validateTaskRequest - parentId validation",
+          suggestions: ["Provide a valid parent ID string or omit the field"],
+          metadata: { parentId: task.parentId },
+        }
+      );
     }
     if (
       task.estimatedEffort &&
       !["small", "medium", "large"].includes(task.estimatedEffort)
     ) {
-      throw new Error("Estimated effort must be 'small', 'medium', or 'large'");
+      throw createStandardError(
+        TaskOMaticErrorCodes.INVALID_INPUT,
+        "Estimated effort must be 'small', 'medium', or 'large'",
+        {
+          context: "validateTaskRequest - estimatedEffort validation",
+          suggestions: ["Use 'small', 'medium', or 'large' for estimatedEffort"],
+          metadata: { estimatedEffort: task.estimatedEffort },
+        }
+      );
     }
     if (task.dependencies && !Array.isArray(task.dependencies)) {
-      throw new Error("Dependencies must be an array if provided");
+      throw createStandardError(
+        TaskOMaticErrorCodes.INVALID_INPUT,
+        "Dependencies must be an array if provided",
+        {
+          context: "validateTaskRequest - dependencies validation",
+          suggestions: ["Provide dependencies as an array of task IDs"],
+        }
+      );
     }
     if (task.tags && !Array.isArray(task.tags)) {
-      throw new Error("Tags must be an array if provided");
+      throw createStandardError(
+        TaskOMaticErrorCodes.INVALID_INPUT,
+        "Tags must be an array if provided",
+        {
+          context: "validateTaskRequest - tags validation",
+          suggestions: ["Provide tags as an array of strings"],
+        }
+      );
     }
   }
 
@@ -76,10 +134,9 @@ export class FileSystemStorage implements TaskRepository {
     try {
       await this.callbacks.write("tasks.json", JSON.stringify(data, null, 2));
     } catch (error) {
-      throw new Error(
-        `Failed to save tasks data: ${
-          error instanceof Error ? error.message : "Unknown error"
-        }`
+      throw formatStorageError(
+        "write tasks.json",
+        error instanceof Error ? error : undefined
       );
     }
   }
@@ -145,7 +202,19 @@ export class FileSystemStorage implements TaskRepository {
     if (task.parentId) {
       const parentResult = this.findTaskInHierarchy(data.tasks, task.parentId);
       if (!parentResult.task) {
-        throw new Error(`Parent task with ID ${task.parentId} not found`);
+        throw createStandardError(
+          TaskOMaticErrorCodes.TASK_NOT_FOUND,
+          `Parent task with ID ${task.parentId} not found`,
+          {
+            context: "createTask - parent validation",
+            suggestions: [
+              "Create the parent task first",
+              "Check that the parent ID is correct",
+              "List all tasks to see available parent IDs",
+            ],
+            metadata: { parentId: task.parentId },
+          }
+        );
       }
 
       const siblingCount = (parentResult.task.subtasks?.length || 0) + 1;
@@ -163,14 +232,37 @@ export class FileSystemStorage implements TaskRepository {
       for (const depId of task.dependencies) {
         const depExists = this.taskExists(data.tasks, depId);
         if (!depExists) {
-          throw new Error(`Dependency task not found: ${depId}`);
+          throw createStandardError(
+            TaskOMaticErrorCodes.TASK_NOT_FOUND,
+            `Dependency task not found: ${depId}`,
+            {
+              context: "createTask - dependency validation",
+              suggestions: [
+                "Create the dependency task first",
+                "Check that the dependency ID is correct",
+                "Remove the dependency from the task",
+              ],
+              metadata: { dependencyId: depId, taskDependencies: task.dependencies },
+            }
+          );
         }
       }
 
       if (
         this.wouldCreateCircularDependency(data.tasks, id, task.dependencies)
       ) {
-        throw new Error(`Circular dependency detected for task ${id}`);
+        throw createStandardError(
+          TaskOMaticErrorCodes.STORAGE_INTEGRITY_ERROR,
+          `Circular dependency detected for task ${id}`,
+          {
+            context: "createTask - circular dependency check",
+            suggestions: [
+              "Remove circular dependencies from the task",
+              "Review the dependency chain",
+            ],
+            metadata: { taskId: id, dependencies: task.dependencies },
+          }
+        );
       }
     }
 
@@ -227,7 +319,14 @@ export class FileSystemStorage implements TaskRepository {
   async updateTask(id: string, updates: Partial<Task>): Promise<Task | null> {
     this.validateTaskId(id);
     if (!updates || typeof updates !== "object") {
-      throw new Error("Updates must be a valid object");
+      throw createStandardError(
+        TaskOMaticErrorCodes.INVALID_INPUT,
+        "Updates must be a valid object",
+        {
+          context: "updateTask - updates validation",
+          suggestions: ["Provide a valid updates object with task properties"],
+        }
+      );
     }
 
     const data = await this.loadTasksData();
@@ -387,7 +486,14 @@ export class FileSystemStorage implements TaskRepository {
   async saveTaskContent(taskId: string, content: string): Promise<string> {
     this.validateTaskId(taskId);
     if (typeof content !== "string") {
-      throw new Error("Content must be a string");
+      throw createStandardError(
+        TaskOMaticErrorCodes.INVALID_INPUT,
+        "Content must be a string",
+        {
+          context: "Content validation",
+          suggestions: ["Provide content as a string"],
+        }
+      );
     }
 
     const contentFileName = `tasks/${taskId}.md`;
@@ -395,10 +501,9 @@ export class FileSystemStorage implements TaskRepository {
     try {
       await this.callbacks.write(contentFileName, content);
     } catch (error) {
-      throw new Error(
-        `Failed to save task content: ${
-          error instanceof Error ? error.message : "Unknown error"
-        }`
+      throw formatStorageError(
+        "write task content",
+        error instanceof Error ? error : undefined
       );
     }
     return contentFileName;
@@ -410,7 +515,14 @@ export class FileSystemStorage implements TaskRepository {
   ): Promise<string> {
     this.validateTaskId(taskId);
     if (typeof content !== "string") {
-      throw new Error("Content must be a string");
+      throw createStandardError(
+        TaskOMaticErrorCodes.INVALID_INPUT,
+        "Content must be a string",
+        {
+          context: "Content validation",
+          suggestions: ["Provide content as a string"],
+        }
+      );
     }
 
     const contentFileName = `tasks/enhanced/${taskId}.md`;
@@ -418,10 +530,9 @@ export class FileSystemStorage implements TaskRepository {
     try {
       await this.callbacks.write(contentFileName, content);
     } catch (error) {
-      throw new Error(
-        `Failed to save enhanced task content: ${
-          error instanceof Error ? error.message : "Unknown error"
-        }`
+      throw formatStorageError(
+        "write enhanced task content",
+        error instanceof Error ? error : undefined
       );
     }
     return contentFileName;
@@ -628,10 +739,9 @@ export class FileSystemStorage implements TaskRepository {
 
       await this.callbacks.write(planFile, JSON.stringify(planData, null, 2));
     } catch (error) {
-      throw new Error(
-        `Failed to save plan for task ${taskId}: ${
-          error instanceof Error ? error.message : "Unknown error"
-        }`
+      throw formatStorageError(
+        `write plan for task ${taskId}`,
+        error instanceof Error ? error : undefined
       );
     }
   }
@@ -648,10 +758,9 @@ export class FileSystemStorage implements TaskRepository {
       if (!content) return null;
       return JSON.parse(content);
     } catch (error) {
-      throw new Error(
-        `Failed to read plan for task ${taskId}: ${
-          error instanceof Error ? error.message : "Unknown error"
-        }`
+      throw formatStorageError(
+        `read plan for task ${taskId}`,
+        error instanceof Error ? error : undefined
       );
     }
   }
@@ -692,10 +801,9 @@ export class FileSystemStorage implements TaskRepository {
 
       return plans.sort((a, b) => b.updatedAt - a.updatedAt);
     } catch (error) {
-      throw new Error(
-        `Failed to list plans: ${
-          error instanceof Error ? error.message : "Unknown error"
-        }`
+      throw formatStorageError(
+        "list plans",
+        error instanceof Error ? error : undefined
       );
     }
   }
@@ -717,7 +825,14 @@ export class FileSystemStorage implements TaskRepository {
   ): Promise<string> {
     this.validateTaskId(taskId);
     if (typeof documentation !== "string") {
-      throw new Error("Documentation must be a string");
+      throw createStandardError(
+        TaskOMaticErrorCodes.INVALID_INPUT,
+        "Documentation must be a string",
+        {
+          context: "Documentation validation",
+          suggestions: ["Provide documentation as a string"],
+        }
+      );
     }
 
     const documentationFileName = `docs/tasks/${taskId}.md`;
@@ -725,10 +840,9 @@ export class FileSystemStorage implements TaskRepository {
     try {
       await this.callbacks.write(documentationFileName, documentation);
     } catch (error) {
-      throw new Error(
-        `Failed to save task documentation: ${
-          error instanceof Error ? error.message : "Unknown error"
-        }`
+      throw formatStorageError(
+        "write task documentation",
+        error instanceof Error ? error : undefined
       );
     }
     return documentationFileName;

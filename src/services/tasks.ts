@@ -27,6 +27,25 @@ import { createMetricsStreamingOptions } from "../utils/streaming-utils";
 import { getErrorMessage } from "../utils/error-utils";
 import { requireTask } from "../utils/storage-utils";
 import { TaskIDGenerator } from "../utils/id-generator";
+import {
+  TaskOMaticError,
+  TaskOMaticErrorCodes,
+  formatTaskNotFoundError,
+  formatInvalidStatusTransitionError,
+  formatStorageError,
+  createStandardError,
+} from "../utils/task-o-matic-error";
+
+/**
+ * Dependencies for TaskService
+ */
+export interface TaskServiceDependencies {
+  storage?: ReturnType<typeof getStorage>;
+  aiOperations?: ReturnType<typeof getAIOperations>;
+  modelProvider?: ReturnType<typeof getModelProvider>;
+  contextBuilder?: ReturnType<typeof getContextBuilder>;
+  hooks?: typeof hooks;
+}
 
 /**
  * TaskService - Centralized business logic for all task operations
@@ -51,9 +70,34 @@ import { TaskIDGenerator } from "../utils/id-generator";
  *     model: "claude-3-5-sonnet"
  *   }
  * });
+ *
+ * // Or inject dependencies for testing
+ * const taskService = new TaskService({
+ *   storage: mockStorage,
+ *   aiOperations: mockAI,
+ * });
  * ```
  */
 export class TaskService {
+  private storage: ReturnType<typeof getStorage>;
+  private aiOperations: ReturnType<typeof getAIOperations>;
+  private modelProvider: ReturnType<typeof getModelProvider>;
+  private contextBuilder: ReturnType<typeof getContextBuilder>;
+  private hooks: typeof hooks;
+
+  /**
+   * Create a new TaskService
+   *
+   * @param dependencies - Optional dependencies to inject (for testing)
+   */
+  constructor(dependencies: TaskServiceDependencies = {}) {
+    // Use injected dependencies or fall back to singletons
+    this.storage = dependencies.storage ?? getStorage();
+    this.aiOperations = dependencies.aiOperations ?? getAIOperations();
+    this.modelProvider = dependencies.modelProvider ?? getModelProvider();
+    this.contextBuilder = dependencies.contextBuilder ?? getContextBuilder();
+    this.hooks = dependencies.hooks ?? hooks;
+  }
   // ============================================================================
   // CORE CRUD OPERATIONS
   // ============================================================================
@@ -127,7 +171,7 @@ export class TaskService {
     let aiMetadata;
 
     if (input.aiEnhance) {
-      hooks.emit("task:progress", {
+      this.hooks.emit("task:progress", {
         message: "Building context for task...",
         type: "progress",
       });
@@ -135,7 +179,7 @@ export class TaskService {
       // Build context with error handling (Bug fix 2.2)
       let context;
       try {
-        context = await getContextBuilder().buildContextForNewTask(
+        context = await this.contextBuilder.buildContextForNewTask(
           input.title,
           input.content
         );
@@ -153,7 +197,7 @@ export class TaskService {
 
       const enhancementAIConfig = buildAIConfig(input.aiOptions);
 
-      hooks.emit("task:progress", {
+      this.hooks.emit("task:progress", {
         message: "Enhancing task with AI documentation...",
         type: "progress",
       });
@@ -161,7 +205,7 @@ export class TaskService {
       const taskDescription = input.content ?? "";
       // Generate temporary ID for AI operations (Bug fix 2.6)
       const tempTaskId = TaskIDGenerator.generate();
-      content = await getAIOperations().enhanceTaskWithDocumentation(
+      content = await this.aiOperations.enhanceTaskWithDocumentation(
         tempTaskId,
         input.title,
         taskDescription,
@@ -172,7 +216,7 @@ export class TaskService {
         context.existingResearch
       );
 
-      const aiConfig = getModelProvider().getAIConfig();
+      const aiConfig = this.modelProvider.getAIConfig();
 
       aiMetadata = {
         taskId: "",
@@ -186,12 +230,12 @@ export class TaskService {
       };
     }
 
-    hooks.emit("task:progress", {
+    this.hooks.emit("task:progress", {
       message: "Saving task...",
       type: "progress",
     });
 
-    const task = await getStorage().createTask(
+    const task = await this.storage.createTask(
       {
         title: input.title,
         description: input.content ?? "",
@@ -206,13 +250,13 @@ export class TaskService {
       aiMetadata
     );
 
-    hooks.emit("task:progress", {
+    this.hooks.emit("task:progress", {
       type: "completed",
       message: "Task created successfully",
     });
 
     // Emit task:created event
-    await hooks.emit("task:created", { task });
+    await this.hooks.emit("task:created", { task });
 
     return { success: true, task, aiMetadata };
   }
@@ -239,7 +283,7 @@ export class TaskService {
    * ```
    */
   async listTasks(filters: { status?: string; tag?: string }): Promise<Task[]> {
-    const storage = getStorage();
+    const storage = this.storage;
     const topLevelTasks = await storage.getTopLevelTasks();
 
     let filteredTasks = topLevelTasks;
@@ -261,19 +305,19 @@ export class TaskService {
   }
 
   async getTask(id: string): Promise<Task | null> {
-    return await getStorage().getTask(id);
+    return await this.storage.getTask(id);
   }
 
   async getTaskContent(id: string): Promise<string | null> {
-    return await getStorage().getTaskContent(id);
+    return await this.storage.getTaskContent(id);
   }
 
   async getTaskAIMetadata(id: string): Promise<TaskAIMetadata | null> {
-    return await getStorage().getTaskAIMetadata(id);
+    return await this.storage.getTaskAIMetadata(id);
   }
 
   async getSubtasks(id: string): Promise<Task[]> {
-    return await getStorage().getSubtasks(id);
+    return await this.storage.getSubtasks(id);
   }
 
   async updateTask(
@@ -286,11 +330,11 @@ export class TaskService {
       tags?: string | string[];
     }
   ): Promise<Task> {
-    const storage = getStorage();
+    const storage = this.storage;
     const existingTask = await storage.getTask(id);
 
     if (!existingTask) {
-      throw new Error(`Task with ID ${id} not found`);
+      throw formatTaskNotFoundError(id);
     }
 
     // Validate status transitions
@@ -302,8 +346,9 @@ export class TaskService {
       };
 
       if (!validTransitions[existingTask.status].includes(updates.status)) {
-        throw new Error(
-          `Invalid status transition from ${existingTask.status} to ${updates.status}`
+        throw formatInvalidStatusTransitionError(
+          existingTask.status,
+          updates.status
         );
       }
     }
@@ -319,18 +364,18 @@ export class TaskService {
 
     const updatedTask = await storage.updateTask(id, finalUpdates);
     if (!updatedTask) {
-      throw new Error(`Failed to update task ${id}`);
+      throw formatStorageError(`updateTask ${id}`);
     }
 
     // Emit task:updated event
-    await hooks.emit("task:updated", {
+    await this.hooks.emit("task:updated", {
       task: updatedTask,
       changes: finalUpdates,
     });
 
     // Emit task:status-changed event if status changed
     if (updates.status && updates.status !== existingTask.status) {
-      await hooks.emit("task:status-changed", {
+      await this.hooks.emit("task:status-changed", {
         task: updatedTask,
         oldStatus: existingTask.status,
         newStatus: updates.status,
@@ -349,11 +394,11 @@ export class TaskService {
     options: { cascade?: boolean; force?: boolean } = {}
   ): Promise<DeleteTaskResult> {
     const { cascade, force } = options;
-    const storage = getStorage();
+    const storage = this.storage;
     const taskToDelete = await storage.getTask(id);
 
     if (!taskToDelete) {
-      throw new Error(`Task with ID ${id} not found`);
+      throw formatTaskNotFoundError(id);
     }
 
     const deleted: Task[] = [];
@@ -364,8 +409,18 @@ export class TaskService {
 
     if (subtasks.length > 0 && !cascade) {
       if (!force) {
-        throw new Error(
-          `Task has ${subtasks.length} subtasks. Use cascade to delete them or force to orphan them`
+        throw createStandardError(
+          TaskOMaticErrorCodes.TASK_OPERATION_FAILED,
+          `Cannot delete task with ${subtasks.length} subtasks`,
+          {
+            context: `Task ${id} has ${subtasks.length} subtasks`,
+            suggestions: [
+              "Use --cascade flag to delete task and all subtasks",
+              "Use --force flag to delete task and orphan subtasks",
+              "Delete subtasks first, then delete parent task",
+            ],
+            metadata: { taskId: id, subtaskCount: subtasks.length },
+          }
         );
       }
       // Orphan subtasks by removing parent reference
@@ -390,7 +445,7 @@ export class TaskService {
     if (success) {
       deleted.push(taskToDelete);
       // Emit task:deleted event
-      await hooks.emit("task:deleted", { taskId: id });
+      await this.hooks.emit("task:deleted", { taskId: id });
     }
 
     return { success: true, deleted, orphanedSubtasks };
@@ -401,11 +456,11 @@ export class TaskService {
   // ============================================================================
 
   async addTags(id: string, tags: string[]): Promise<Task> {
-    const storage = getStorage();
+    const storage = this.storage;
     const task = await storage.getTask(id);
 
     if (!task) {
-      throw new Error(`Task with ID ${id} not found`);
+      throw formatTaskNotFoundError(id);
     }
 
     const existingTags = task.tags || [];
@@ -419,18 +474,18 @@ export class TaskService {
     const updatedTask = await storage.updateTask(id, { tags: updatedTags });
 
     if (!updatedTask) {
-      throw new Error(`Failed to add tags to task ${id}`);
+      throw formatStorageError(`add tags to task ${id}`);
     }
 
     return updatedTask;
   }
 
   async removeTags(id: string, tags: string[]): Promise<Task> {
-    const storage = getStorage();
+    const storage = this.storage;
     const task = await storage.getTask(id);
 
     if (!task) {
-      throw new Error(`Task with ID ${id} not found`);
+      throw formatTaskNotFoundError(id);
     }
 
     const existingTags = task.tags || [];
@@ -443,7 +498,7 @@ export class TaskService {
     const updatedTask = await storage.updateTask(id, { tags: updatedTags });
 
     if (!updatedTask) {
-      throw new Error(`Failed to remove tags from task ${id}`);
+      throw formatStorageError(`remove tags from task ${id}`);
     }
 
     return updatedTask;
@@ -488,7 +543,7 @@ export class TaskService {
     effort?: string;
     priority?: string;
   }): Promise<Task | null> {
-    const storage = getStorage();
+    const storage = this.storage;
     const allTasks = await storage.getTasks();
 
     // Filter by status and other criteria
@@ -523,13 +578,13 @@ export class TaskService {
   }
 
   async getTaskTree(rootId?: string): Promise<Task[]> {
-    const storage = getStorage();
+    const storage = this.storage;
 
     if (rootId) {
       // Return tree starting from specific task
       const rootTask = await storage.getTask(rootId);
       if (!rootTask) {
-        throw new Error(`Task with ID ${rootId} not found`);
+        throw formatTaskNotFoundError(rootId);
       }
 
       // Get all subtasks recursively
@@ -600,27 +655,27 @@ export class TaskService {
   ): Promise<EnhanceTaskResult> {
     const startTime = Date.now();
 
-    hooks.emit("task:progress", {
+    this.hooks.emit("task:progress", {
       message: "Starting task enhancement...",
       type: "started",
     });
 
-    const task = await getStorage().getTask(taskId);
+    const task = await this.storage.getTask(taskId);
     if (!task) {
-      throw new Error(`Task with ID ${taskId} not found`);
+      throw formatTaskNotFoundError(taskId);
     }
 
-    hooks.emit("task:progress", {
+    this.hooks.emit("task:progress", {
       message: "Building context...",
       type: "progress",
     });
 
-    const context = await getContextBuilder().buildContext(taskId);
+    const context = await this.contextBuilder.buildContext(taskId);
     const stackInfo = formatStackInfo(context.stack);
 
     const enhancementAIConfig = buildAIConfig(aiOptions);
 
-    hooks.emit("task:progress", {
+    this.hooks.emit("task:progress", {
       message: "Calling AI for enhancement...",
       type: "progress",
     });
@@ -631,7 +686,7 @@ export class TaskService {
       createMetricsStreamingOptions(streamingOptions, aiStartTime);
 
     const enhancedContent =
-      await getAIOperations().enhanceTaskWithDocumentation(
+      await this.aiOperations.enhanceTaskWithDocumentation(
         task.id,
         task.title,
         task.description ?? "",
@@ -645,7 +700,7 @@ export class TaskService {
     // Extract metrics after AI call
     const { tokenUsage, timeToFirstToken } = getMetrics();
 
-    hooks.emit("task:progress", {
+    this.hooks.emit("task:progress", {
       message: "Saving enhanced content...",
       type: "progress",
     });
@@ -653,21 +708,21 @@ export class TaskService {
     const originalLength = task.description?.length || 0;
 
     if (enhancedContent.length > 200) {
-      const contentFile = await getStorage().saveEnhancedTaskContent(
+      const contentFile = await this.storage.saveEnhancedTaskContent(
         task.id,
         enhancedContent
       );
-      await getStorage().updateTask(task.id, {
+      await this.storage.updateTask(task.id, {
         contentFile,
         description:
           task.description +
           "\n\n🤖 AI-enhanced with Context7 documentation available.",
       });
     } else {
-      await getStorage().updateTask(task.id, { description: enhancedContent });
+      await this.storage.updateTask(task.id, { description: enhancedContent });
     }
 
-    const aiConfig = getModelProvider().getAIConfig();
+    const aiConfig = this.modelProvider.getAIConfig();
 
     const aiMetadata = {
       taskId: task.id,
@@ -679,11 +734,11 @@ export class TaskService {
       enhancedAt: Date.now(),
     };
 
-    await getStorage().saveTaskAIMetadata(aiMetadata);
+    await this.storage.saveTaskAIMetadata(aiMetadata);
 
     const duration = Date.now() - startTime;
 
-    hooks.emit("task:progress", {
+    this.hooks.emit("task:progress", {
       message: "Task enhancement completed",
       type: "completed",
     });
@@ -764,31 +819,41 @@ export class TaskService {
   ): Promise<SplitTaskResult> {
     const startTime = Date.now();
 
-    hooks.emit("task:progress", {
+    this.hooks.emit("task:progress", {
       message: "Starting task breakdown...",
       type: "started",
     });
 
-    const task = await getStorage().getTask(taskId);
+    const task = await this.storage.getTask(taskId);
     if (!task) {
-      throw new Error(`Task with ID ${taskId} not found`);
+      throw formatTaskNotFoundError(taskId);
     }
 
     // Check if task already has subtasks
-    const existingSubtasks = await getStorage().getSubtasks(taskId);
+    const existingSubtasks = await this.storage.getSubtasks(taskId);
     if (existingSubtasks.length > 0) {
-      throw new Error(
-        `Task ${task.title} already has ${existingSubtasks.length} subtasks. Use existing subtasks or delete them first.`
+      throw createStandardError(
+        TaskOMaticErrorCodes.TASK_OPERATION_FAILED,
+        `Task already has ${existingSubtasks.length} subtasks`,
+        {
+          context: `Task "${task.title}" (${taskId}) already has subtasks`,
+          suggestions: [
+            "Use existing subtasks instead of splitting again",
+            "Delete existing subtasks first if you want to re-split",
+            "Consider editing existing subtasks instead",
+          ],
+          metadata: { taskId, subtaskCount: existingSubtasks.length },
+        }
       );
     }
 
-    hooks.emit("task:progress", {
+    this.hooks.emit("task:progress", {
       message: "Building context...",
       type: "progress",
     });
 
     // Build comprehensive context
-    const context = await getContextBuilder().buildContext(taskId);
+    const context = await this.contextBuilder.buildContext(taskId);
     const stackInfo = formatStackInfo(context.stack);
 
     // Get full task content
@@ -796,7 +861,7 @@ export class TaskService {
 
     const breakdownAIConfig = buildAIConfig(aiOptions);
 
-    hooks.emit("task:progress", {
+    this.hooks.emit("task:progress", {
       message: "Calling AI to break down task...",
       type: "progress",
     });
@@ -807,7 +872,7 @@ export class TaskService {
       createMetricsStreamingOptions(streamingOptions, aiStartTime);
 
     // Use AI service to break down the task with enhanced context
-    const subtaskData = await getAIOperations().breakdownTask(
+    const subtaskData = await this.aiOperations.breakdownTask(
       task,
       breakdownAIConfig,
       promptOverride,
@@ -823,20 +888,20 @@ export class TaskService {
     // Extract metrics after AI call
     const { tokenUsage, timeToFirstToken } = getMetrics();
 
-    hooks.emit("task:progress", {
+    this.hooks.emit("task:progress", {
       message: `Creating ${subtaskData.length} subtasks...`,
       type: "progress",
     });
 
     // Create subtasks and save AI metadata for each (Bug fix 2.3)
     const createdSubtasks = [];
-    const aiConfig = getModelProvider().getAIConfig();
+    const aiConfig = this.modelProvider.getAIConfig();
     const splitTimestamp = Date.now();
 
     for (let i = 0; i < subtaskData.length; i++) {
       const subtask = subtaskData[i];
 
-      hooks.emit("task:progress", {
+      this.hooks.emit("task:progress", {
         message: `Creating subtask ${i + 1}/${subtaskData.length}: ${
           subtask.title
         }`,
@@ -885,7 +950,7 @@ export class TaskService {
 
     const duration = Date.now() - startTime;
 
-    hooks.emit("task:progress", {
+    this.hooks.emit("task:progress", {
       message: `Task split into ${createdSubtasks.length} subtasks`,
       type: "completed",
     });
@@ -955,19 +1020,19 @@ export class TaskService {
   ): Promise<DocumentTaskResult> {
     const startTime = Date.now();
 
-    hooks.emit("task:progress", {
+    this.hooks.emit("task:progress", {
       message: "Analyzing documentation needs...",
       type: "started",
     });
 
-    const task = await getStorage().getTask(taskId);
+    const task = await this.storage.getTask(taskId);
     if (!task) {
-      throw new Error(`Task with ID ${taskId} not found`);
+      throw formatTaskNotFoundError(taskId);
     }
 
     if (task.documentation && !force) {
-      if (getContextBuilder().isDocumentationFresh(task.documentation)) {
-        hooks.emit("task:progress", {
+      if (this.contextBuilder.isDocumentationFresh(task.documentation)) {
+        this.hooks.emit("task:progress", {
           message: "Documentation is fresh, skipping analysis",
           type: "info",
         });
@@ -983,12 +1048,12 @@ export class TaskService {
       }
     }
 
-    hooks.emit("task:progress", {
+    this.hooks.emit("task:progress", {
       message: "Building context...",
       type: "progress",
     });
 
-    const context = await getContextBuilder().buildContext(taskId);
+    const context = await this.contextBuilder.buildContext(taskId);
     const stackInfo = formatStackInfo(context.stack);
 
     const analysisAIConfig = buildAIConfig(aiOptions);
@@ -997,20 +1062,31 @@ export class TaskService {
     const fullContent = context.task.fullContent || task.description;
 
     if (!fullContent) {
-      throw new Error("Task content is empty");
+      throw createStandardError(
+        TaskOMaticErrorCodes.INVALID_INPUT,
+        "Task content is empty",
+        {
+          context: `Task ${taskId} has no content to enhance`,
+          suggestions: [
+            "Add content to the task before enhancing",
+            "Provide task description or details",
+          ],
+          metadata: { taskId },
+        }
+      );
     }
 
     // Get existing documentations from all tasks
-    const tasks = await getStorage().getTasks();
+    const tasks = await this.storage.getTasks();
     const documentations = tasks.map((task) => task.documentation);
 
-    hooks.emit("task:progress", {
+    this.hooks.emit("task:progress", {
       message: "Calling AI to analyze documentation needs...",
       type: "progress",
     });
 
     // First analyze what documentation is needed
-    const analysis = await getAIOperations().analyzeDocumentationNeeds(
+    const analysis = await this.aiOperations.analyzeDocumentationNeeds(
       task.id,
       task.title,
       fullContent,
@@ -1024,7 +1100,7 @@ export class TaskService {
     let documentation: TaskDocumentation | undefined;
 
     if (analysis.libraries.length > 0) {
-      hooks.emit("task:progress", {
+      this.hooks.emit("task:progress", {
         message: `Fetching documentation for ${analysis.libraries.length} libraries...`,
         type: "progress",
       });
@@ -1035,8 +1111,8 @@ export class TaskService {
         Array<{ query: string; doc: string }>
       > = {};
       for (const lib of analysis.libraries) {
-        const sanitizedLibrary = getStorage().sanitizeForFilename(lib.name);
-        const sanitizedQuery = getStorage().sanitizeForFilename(
+        const sanitizedLibrary = this.storage.sanitizeForFilename(lib.name);
+        const sanitizedQuery = this.storage.sanitizeForFilename(
           lib.searchQuery
         );
         const docFile = `docs/${sanitizedLibrary}/${sanitizedQuery}.md`;
@@ -1050,12 +1126,12 @@ export class TaskService {
         });
       }
 
-      hooks.emit("task:progress", {
+      this.hooks.emit("task:progress", {
         message: "Generating documentation recap...",
         type: "progress",
       });
 
-      const recap = await getAIOperations().generateDocumentationRecap(
+      const recap = await this.aiOperations.generateDocumentationRecap(
         analysis.libraries,
         analysis.toolResults?.map((tr) => ({
           library: tr.toolName,
@@ -1074,17 +1150,17 @@ export class TaskService {
         research,
       };
 
-      hooks.emit("task:progress", {
+      this.hooks.emit("task:progress", {
         message: "Saving documentation...",
         type: "progress",
       });
 
-      await getStorage().updateTask(taskId, { documentation });
+      await this.storage.updateTask(taskId, { documentation });
     }
 
     const duration = Date.now() - startTime;
 
-    hooks.emit("task:progress", {
+    this.hooks.emit("task:progress", {
       message: "Documentation analysis completed",
       type: "completed",
     });
@@ -1147,20 +1223,20 @@ export class TaskService {
   ): Promise<PlanTaskResult> {
     const startTime = Date.now();
 
-    hooks.emit("task:progress", {
+    this.hooks.emit("task:progress", {
       message: "Creating implementation plan...",
       type: "started",
     });
 
-    const task = await getStorage().getTask(taskId);
+    const task = await this.storage.getTask(taskId);
     if (!task) {
-      throw new Error(`Task with ID ${taskId} not found`);
+      throw formatTaskNotFoundError(taskId);
     }
 
-    const aiService = getAIOperations();
+    const aiService = this.aiOperations;
     const planAIConfig = buildAIConfig(aiOptions);
 
-    hooks.emit("task:progress", {
+    this.hooks.emit("task:progress", {
       message: "Building task context...",
       type: "progress",
     });
@@ -1190,7 +1266,7 @@ export class TaskService {
       });
     }
 
-    hooks.emit("task:progress", {
+    this.hooks.emit("task:progress", {
       message: "Calling AI to create plan...",
       type: "progress",
     });
@@ -1212,22 +1288,22 @@ export class TaskService {
     // Extract metrics after AI call
     const { tokenUsage, timeToFirstToken } = getMetrics();
 
-    hooks.emit("task:progress", {
+    this.hooks.emit("task:progress", {
       message: "Saving plan...",
       type: "progress",
     });
 
     // Save the plan to storage
-    await getStorage().savePlan(taskId, plan);
+    await this.storage.savePlan(taskId, plan);
 
     const duration = Date.now() - startTime;
 
-    hooks.emit("task:progress", {
+    this.hooks.emit("task:progress", {
       message: "Implementation plan created",
       type: "completed",
     });
 
-    const aiConfig = getModelProvider().getAIConfig();
+    const aiConfig = this.modelProvider.getAIConfig();
 
     return {
       success: true,
@@ -1251,7 +1327,7 @@ export class TaskService {
   // ============================================================================
 
   async getTaskDocumentation(taskId: string): Promise<string | null> {
-    return getStorage().getTaskDocumentation(taskId);
+    return this.storage.getTaskDocumentation(taskId);
   }
 
   async addTaskDocumentationFromFile(
@@ -1260,7 +1336,7 @@ export class TaskService {
   ): Promise<{ filePath: string; task: Task }> {
     const task = await this.getTask(taskId);
     if (!task) {
-      throw new Error(`Task with ID ${taskId} not found`);
+      throw formatTaskNotFoundError(taskId);
     }
 
     try {
@@ -1269,11 +1345,23 @@ export class TaskService {
 
       const resolvedPath = resolve(filePath);
       if (!existsSync(resolvedPath)) {
-        throw new Error(`Documentation file not found: ${filePath}`);
+        throw createStandardError(
+          TaskOMaticErrorCodes.STORAGE_ERROR,
+          `Documentation file not found: ${filePath}`,
+          {
+            context: `Tried to load documentation from ${resolvedPath}`,
+            suggestions: [
+              "Check that the file path is correct",
+              "Ensure the file exists",
+              "Use an absolute path or path relative to current directory",
+            ],
+            metadata: { filePath, resolvedPath },
+          }
+        );
       }
 
       const content = readFileSync(resolvedPath, "utf-8");
-      const savedPath = await getStorage().saveTaskDocumentation(
+      const savedPath = await this.storage.saveTaskDocumentation(
         taskId,
         content
       );
@@ -1283,9 +1371,14 @@ export class TaskService {
         task,
       };
     } catch (error) {
-      // Use utility for error message extraction (DRY fix 1.3)
-      throw new Error(
-        `Failed to add documentation from file: ${getErrorMessage(error)}`
+      // Re-throw if already a TaskOMaticError
+      if (error instanceof TaskOMaticError) {
+        throw error;
+      }
+      // Wrap other errors
+      throw formatStorageError(
+        "saveTaskDocumentation",
+        error instanceof Error ? error : undefined
       );
     }
   }
@@ -1297,7 +1390,7 @@ export class TaskService {
   ): Promise<{ planFile: string; task: Task }> {
     const task = await this.getTask(taskId);
     if (!task) {
-      throw new Error(`Task with ID ${taskId} not found`);
+      throw formatTaskNotFoundError(taskId);
     }
 
     let plan: string;
@@ -1309,21 +1402,51 @@ export class TaskService {
 
         const resolvedPath = resolve(planFilePath);
         if (!existsSync(resolvedPath)) {
-          throw new Error(`Plan file not found: ${planFilePath}`);
+          throw createStandardError(
+            TaskOMaticErrorCodes.STORAGE_ERROR,
+            `Plan file not found: ${planFilePath}`,
+            {
+              context: `Tried to load plan from ${resolvedPath}`,
+              suggestions: [
+                "Check that the file path is correct",
+                "Ensure the file exists",
+                "Use an absolute path or path relative to current directory",
+              ],
+              metadata: { planFilePath, resolvedPath },
+            }
+          );
         }
 
         plan = readFileSync(resolvedPath, "utf-8");
       } catch (error) {
-        // Use utility for error message extraction (DRY fix 1.3)
-        throw new Error(`Failed to read plan file: ${getErrorMessage(error)}`);
+        // Re-throw if already a TaskOMaticError
+        if (error instanceof TaskOMaticError) {
+          throw error;
+        }
+        // Wrap other errors
+        throw formatStorageError(
+          "readFileSync",
+          error instanceof Error ? error : undefined
+        );
       }
     } else if (planText) {
       plan = planText;
     } else {
-      throw new Error("Either planText or planFilePath must be provided");
+      throw createStandardError(
+        TaskOMaticErrorCodes.INVALID_INPUT,
+        "Either planText or planFilePath must be provided",
+        {
+          context: "setTaskPlan requires either planText or planFilePath parameter",
+          suggestions: [
+            "Provide planText parameter with the plan content",
+            "Provide planFilePath parameter with path to plan file",
+          ],
+          metadata: { taskId },
+        }
+      );
     }
 
-    await getStorage().savePlan(taskId, plan);
+    await this.storage.savePlan(taskId, plan);
     const planFile = `plans/${taskId}.md`;
 
     return {
@@ -1339,7 +1462,7 @@ export class TaskService {
   async getTaskPlan(
     taskId: string
   ): Promise<{ plan: string; createdAt: number; updatedAt: number } | null> {
-    return getStorage().getPlan(taskId);
+    return this.storage.getPlan(taskId);
   }
 
   async listTaskPlans(): Promise<
@@ -1350,11 +1473,11 @@ export class TaskService {
       updatedAt: number;
     }>
   > {
-    return getStorage().listPlans();
+    return this.storage.listPlans();
   }
 
   async deleteTaskPlan(taskId: string): Promise<boolean> {
-    return getStorage().deletePlan(taskId);
+    return this.storage.deletePlan(taskId);
   }
 }
 
