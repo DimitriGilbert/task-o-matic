@@ -1,9 +1,11 @@
-import { existsSync } from "fs";
+import { existsSync, writeFileSync, mkdirSync } from "fs";
 import { access, constants } from "fs/promises";
+import { join } from "path";
 import {
   createStandardError,
   TaskOMaticErrorCodes,
 } from "./task-o-matic-error";
+import { configManager } from "../lib/config";
 
 /**
  * Validates that a file exists at the given path (synchronous).
@@ -92,4 +94,44 @@ export async function fileExistsAsync(filePath: string): Promise<boolean> {
   } catch {
     return false;
   }
+}
+
+/**
+ * Saves a file to the PRD directory, ensuring the directory exists.
+ * If no output directory is specified, uses `.task-o-matic/prd/` by default.
+ *
+ * @param content - Content to write to the file
+ * @param filename - Filename (defaults to "prd.md")
+ * @param outputDir - Optional output directory override
+ * @returns Full path to the saved file
+ * @throws TaskOMaticError if file saving fails
+ *
+ * @example
+ * ```typescript
+ * // Save to default location (.task-o-matic/prd/prd.md)
+ * const path = savePRDFile("# My PRD\n...");
+ *
+ * // Save with custom filename
+ * const path = savePRDFile("# My PRD\n...", "custom-prd.md");
+ *
+ * // Save to custom directory
+ * const path = savePRDFile("# My PRD\n...", "prd.md", "./docs");
+ * ```
+ */
+export function savePRDFile(
+  content: string,
+  filename: string = "prd.md",
+  outputDir?: string
+): string {
+  const taskOMaticDir = configManager.getTaskOMaticDir();
+  const prdDir = outputDir || join(taskOMaticDir, "prd");
+
+  if (!existsSync(prdDir)) {
+    mkdirSync(prdDir, { recursive: true });
+  }
+
+  const path = join(prdDir, filename);
+  writeFileSync(path, content);
+
+  return path;
 }

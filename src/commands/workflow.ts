@@ -21,6 +21,10 @@ import type {
   WorkflowAutomationOptions,
 } from "../types/options";
 import type { Task } from "../types";
+import {
+  createStandardError,
+  TaskOMaticErrorCodes,
+} from "../utils/task-o-matic-error";
 
 export const workflowCommand = new Command("workflow")
   .description(
@@ -444,8 +448,16 @@ async function stepDefinePRD(
       multiGenerationModels = modelsInput.split(",").map((m: string) => {
         const parts = m.trim().split(":");
         if (parts.length < 2) {
-          throw new Error(
-            `Invalid model format: ${m}. Expected provider:model`
+          throw createStandardError(
+            TaskOMaticErrorCodes.WORKFLOW_EXECUTION_ERROR,
+            `Invalid model format: ${m}. Expected provider:model`,
+            {
+              context: "Model format validation failed during multi-generation setup",
+              suggestions: [
+                "Use format: provider:model (e.g., anthropic:claude-sonnet-4.5)",
+                "Check for typos in provider or model name",
+              ],
+            }
           );
         }
         return { provider: parts[0], model: parts[1] };
@@ -470,8 +482,16 @@ async function stepDefinePRD(
         if (combineModelInput && combineModelInput.trim()) {
           const parts = combineModelInput.trim().split(":");
           if (parts.length < 2) {
-            throw new Error(
-              `Invalid model format: ${combineModelInput}. Expected provider:model`
+            throw createStandardError(
+              TaskOMaticErrorCodes.WORKFLOW_EXECUTION_ERROR,
+              `Invalid model format: ${combineModelInput}. Expected provider:model`,
+              {
+                context: "Model format validation failed during PRD combine setup",
+                suggestions: [
+                  "Use format: provider:model (e.g., anthropic:claude-sonnet-4.5)",
+                  "Check for typos in provider or model name",
+                ],
+              }
             );
           }
           combineAI = { provider: parts[0], model: parts[1] };

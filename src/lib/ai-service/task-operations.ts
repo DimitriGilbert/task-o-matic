@@ -18,6 +18,10 @@ import { getContextBuilder } from "../../utils/ai-service-factory";
 import { filesystemTools } from "./filesystem-tools";
 import { BaseOperations } from "./base-operations";
 import { AIOperationUtility } from "../../utils/ai-operation-utility";
+import {
+  createStandardError,
+  TaskOMaticErrorCodes,
+} from "../../utils/task-o-matic-error";
 
 export class TaskOperations extends BaseOperations {
   private aiOperationUtility = new AIOperationUtility();
@@ -72,8 +76,16 @@ export class TaskOperations extends BaseOperations {
       });
 
       if (!promptResult.success) {
-        throw new Error(
-          `Failed to build task breakdown prompt: ${promptResult.error}`
+        throw createStandardError(
+          TaskOMaticErrorCodes.AI_OPERATION_FAILED,
+          `Failed to build task breakdown prompt: ${promptResult.error}`,
+          {
+            context: "Prompt building failed during task breakdown operation",
+            suggestions: [
+              "Verify prompt template exists",
+              "Check variable substitution",
+            ],
+          }
         );
       }
 
@@ -108,8 +120,16 @@ Use these tools to understand the project structure, existing code, and dependen
           subtasks: ParsedAITask[];
         }>(response);
         if (!parseResult.success) {
-          throw new Error(
-            parseResult.error || "Failed to parse task breakdown response"
+          throw createStandardError(
+            TaskOMaticErrorCodes.AI_OPERATION_FAILED,
+            parseResult.error || "Failed to parse task breakdown response",
+            {
+              context: "AI response parsing failed during task breakdown",
+              suggestions: [
+                "Check AI response format",
+                "Verify JSON structure",
+              ],
+            }
           );
         }
 
@@ -193,8 +213,16 @@ Use these tools to understand the project structure, existing code, and dependen
       });
 
       if (!promptResult.success) {
-        throw new Error(
-          `Failed to build task enhancement prompt: ${promptResult.error}`
+        throw createStandardError(
+          TaskOMaticErrorCodes.AI_OPERATION_FAILED,
+          `Failed to build task enhancement prompt: ${promptResult.error}`,
+          {
+            context: "Prompt building failed during task enhancement operation",
+            suggestions: [
+              "Verify prompt template exists",
+              "Check variable substitution",
+            ],
+          }
         );
       }
 
@@ -250,8 +278,16 @@ Use these tools to understand the project structure, existing code, and dependen
       });
 
       if (!promptResult.success) {
-        throw new Error(
-          `Failed to build task planning prompt: ${promptResult.error}`
+        throw createStandardError(
+          TaskOMaticErrorCodes.AI_OPERATION_FAILED,
+          `Failed to build task planning prompt: ${promptResult.error}`,
+          {
+            context: "Prompt building failed during task planning operation",
+            suggestions: [
+              "Verify prompt template exists",
+              "Check variable substitution",
+            ],
+          }
         );
       }
 

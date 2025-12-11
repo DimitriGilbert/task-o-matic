@@ -4,6 +4,10 @@ import { AIConfig, EnvAIConfig, ProviderDefaults, AIProvider } from "../types";
 import { existsSync, readFileSync, writeFileSync, mkdirSync } from "fs";
 import { config as dotenvConfig } from "dotenv";
 import { validateConfig, validatePartialAIConfig } from "./config-validation";
+import {
+  createStandardError,
+  TaskOMaticErrorCodes,
+} from "../utils/task-o-matic-error";
 
 export interface Config {
   ai: AIConfig;
@@ -203,7 +207,13 @@ export class ConfigManager {
 
   async save(): Promise<void> {
     if (!this.config) {
-      throw new Error("Config not loaded, cannot save.");
+      throw createStandardError(
+        TaskOMaticErrorCodes.CONFIGURATION_ERROR,
+        "Config not loaded, cannot save.",
+        {
+          suggestions: ["Call await configManager.load() before saving"],
+        }
+      );
     }
     try {
       await this.callbacks.write(
@@ -222,8 +232,16 @@ export class ConfigManager {
       // Since we can't be async here, we must throw or return defaults.
       // Returning defaults might hide issues.
       // Throwing forces users to await load().
-      throw new Error(
-        "Config not loaded. Call await configManager.load() first."
+      throw createStandardError(
+        TaskOMaticErrorCodes.CONFIGURATION_ERROR,
+        "Config not loaded. Call await configManager.load() first.",
+        {
+          context: "Configuration must be loaded before access",
+          suggestions: [
+            "Call await configManager.load() first",
+            "Check initialization order",
+          ],
+        }
       );
     }
     return this.config;

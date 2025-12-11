@@ -273,25 +273,7 @@ export class AIOperationUtility extends BaseOperations {
       onChunk: streamingOptions?.onChunk || streamingOptions?.onReasoning
         ? (event: any) => {
             // Handle Context7 tool results ALWAYS (critical for caching)
-            if (
-              event.chunk?.type === "tool-result" &&
-              event.chunk?.toolName === "get-library-docs"
-            ) {
-              const docs = event.chunk.output;
-              if (docs && typeof docs === "object" && "content" in docs) {
-                this.context7Client.saveContext7Documentation(
-                  event.chunk.input?.context7CompatibleLibraryID || "unknown",
-                  docs.content,
-                  event.chunk.input?.topic || "general"
-                );
-              } else if (docs && typeof docs === "string") {
-                this.context7Client.saveContext7Documentation(
-                  event.chunk.input?.context7CompatibleLibraryID || "unknown",
-                  docs,
-                  event.chunk.input?.topic || "general"
-                );
-              }
-            }
+            this.handleContext7ToolResult(event.chunk);
 
             // Forward text deltas to user callback
             if (event.chunk?.type === "text-delta") {

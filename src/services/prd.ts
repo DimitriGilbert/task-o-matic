@@ -18,7 +18,7 @@ import { configManager, setupWorkingDirectory } from "../lib/config";
 import { isValidAIProvider } from "../lib/validation";
 import { ProgressCallback } from "../types/callbacks";
 import { createMetricsStreamingOptions } from "../utils/streaming-utils";
-import { validateFileExists } from "../utils/file-utils";
+import { validateFileExists, savePRDFile } from "../utils/file-utils";
 
 /**
  * Dependencies for PRDService
@@ -563,42 +563,15 @@ export class PRDService {
     };
   }> {
     const startTime = Date.now();
-    let tokenUsage:
-      | { prompt: number; completion: number; total: number }
-      | undefined;
-    let timeToFirstToken: number | undefined;
-    let cost: number | undefined;
 
     input.callbacks?.onProgress?.({
       type: "started",
       message: "Generating PRD...",
     });
 
-    // Capture metrics
-    const metricsStreamingOptions: StreamingOptions = {
-      ...input.streamingOptions,
-      onFinish: async (result: any) => {
-        if (result.usage) {
-          tokenUsage = {
-            prompt: result.usage.inputTokens || result.usage.promptTokens || 0,
-            completion:
-              result.usage.outputTokens || result.usage.completionTokens || 0,
-            total: result.usage.totalTokens || 0,
-          };
-          // Simple cost estimation placeholder
-          if (tokenUsage.total > 0) {
-            cost = tokenUsage.total * 0.000001;
-          }
-        }
-        await input.streamingOptions?.onFinish?.(result);
-      },
-      onChunk: (chunk: string) => {
-        if (chunk && !timeToFirstToken) {
-          timeToFirstToken = Date.now() - startTime;
-        }
-        input.streamingOptions?.onChunk?.(chunk);
-      },
-    };
+    // Use utility to wrap streaming options and capture metrics
+    const { options: metricsStreamingOptions, getMetrics } =
+      createMetricsStreamingOptions(input.streamingOptions, startTime);
 
     const aiConfig = buildAIConfig(input.aiOptions);
 
@@ -610,17 +583,17 @@ export class PRDService {
       metricsStreamingOptions
     );
 
-    // Save file
-    const taskOMaticDir = configManager.getTaskOMaticDir();
-    const prdDir = input.outputDir || join(taskOMaticDir, "prd");
+    // Get metrics after AI operation
+    const { tokenUsage, timeToFirstToken } = getMetrics();
 
-    if (!existsSync(prdDir)) {
-      mkdirSync(prdDir, { recursive: true });
+    // Calculate cost if needed
+    let cost: number | undefined;
+    if (tokenUsage && tokenUsage.total > 0) {
+      cost = tokenUsage.total * 0.000001; // Placeholder cost calculation
     }
 
-    const filename = input.filename || "prd.md";
-    const path = join(prdDir, filename);
-    writeFileSync(path, content);
+    // Save file using utility
+    const path = savePRDFile(content, input.filename, input.outputDir);
 
     input.callbacks?.onProgress?.({
       type: "completed",
@@ -658,41 +631,15 @@ export class PRDService {
     };
   }> {
     const startTime = Date.now();
-    let tokenUsage:
-      | { prompt: number; completion: number; total: number }
-      | undefined;
-    let timeToFirstToken: number | undefined;
-    let cost: number | undefined;
 
     input.callbacks?.onProgress?.({
       type: "started",
       message: "Combining PRDs...",
     });
 
-    // Capture metrics
-    const metricsStreamingOptions: StreamingOptions = {
-      ...input.streamingOptions,
-      onFinish: async (result: any) => {
-        if (result.usage) {
-          tokenUsage = {
-            prompt: result.usage.inputTokens || result.usage.promptTokens || 0,
-            completion:
-              result.usage.outputTokens || result.usage.completionTokens || 0,
-            total: result.usage.totalTokens || 0,
-          };
-          if (tokenUsage.total > 0) {
-            cost = tokenUsage.total * 0.000001;
-          }
-        }
-        await input.streamingOptions?.onFinish?.(result);
-      },
-      onChunk: (chunk: string) => {
-        if (chunk && !timeToFirstToken) {
-          timeToFirstToken = Date.now() - startTime;
-        }
-        input.streamingOptions?.onChunk?.(chunk);
-      },
-    };
+    // Use utility to wrap streaming options and capture metrics
+    const { options: metricsStreamingOptions, getMetrics } =
+      createMetricsStreamingOptions(input.streamingOptions, startTime);
 
     const aiConfig = buildAIConfig(input.aiOptions);
 
@@ -705,17 +652,21 @@ export class PRDService {
       metricsStreamingOptions
     );
 
-    // Save file
-    const taskOMaticDir = configManager.getTaskOMaticDir();
-    const prdDir = input.outputDir || join(taskOMaticDir, "prd");
+    // Get metrics after AI operation
+    const { tokenUsage, timeToFirstToken } = getMetrics();
 
-    if (!existsSync(prdDir)) {
-      mkdirSync(prdDir, { recursive: true });
+    // Calculate cost if needed
+    let cost: number | undefined;
+    if (tokenUsage && tokenUsage.total > 0) {
+      cost = tokenUsage.total * 0.000001;
     }
 
-    const filename = input.filename || "prd-master.md";
-    const path = join(prdDir, filename);
-    writeFileSync(path, content);
+    // Save file using utility (defaults to "prd.md" if no filename, so we provide the default for combinePRDs)
+    const path = savePRDFile(
+      content,
+      input.filename || "prd-master.md",
+      input.outputDir
+    );
 
     input.callbacks?.onProgress?.({
       type: "completed",

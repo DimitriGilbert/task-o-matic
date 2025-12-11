@@ -15,6 +15,10 @@ import {
   GenerateTasksResult,
   SplitTasksResult,
 } from "../types/workflow-results";
+import {
+  createStandardError,
+  TaskOMaticErrorCodes,
+} from "../utils/task-o-matic-error";
 
 /**
  * WorkflowService - Business logic for workflow operations
@@ -307,7 +311,16 @@ export class WorkflowService {
 
     if (input.method === "upload" && input.prdFile) {
       if (!existsSync(input.prdFile)) {
-        throw new Error(`PRD file not found: ${input.prdFile}`);
+        throw createStandardError(
+          TaskOMaticErrorCodes.INVALID_INPUT,
+          `PRD file not found: ${input.prdFile}`,
+          {
+            suggestions: [
+              "Verify the file path is correct",
+              "Check if file was moved or deleted",
+            ],
+          }
+        );
       }
       prdContent = readFileSync(input.prdFile, "utf-8");
       prdFilename = input.prdFile.split("/").pop() || "prd.md";

@@ -22,6 +22,10 @@ import { RetryHandler } from "./retry-handler";
 import { ModelProvider } from "./model-provider";
 import { filesystemTools } from "./filesystem-tools";
 import { BaseOperations } from "./base-operations";
+import {
+  createStandardError,
+  TaskOMaticErrorCodes,
+} from "../../utils/task-o-matic-error";
 
 export class PRDOperations extends BaseOperations {
   async parsePRD(
@@ -65,8 +69,16 @@ export class PRDOperations extends BaseOperations {
           });
 
           if (!promptResult.success) {
-            throw new Error(
-              `Failed to build PRD parsing prompt: ${promptResult.error}`
+            throw createStandardError(
+              TaskOMaticErrorCodes.PRD_PARSING_ERROR,
+              `Failed to build PRD parsing prompt: ${promptResult.error}`,
+              {
+                context: "Prompt building failed during PRD parsing",
+                suggestions: [
+                  "Verify prompt template exists",
+                  "Check variable substitution",
+                ],
+              }
             );
           }
 
@@ -137,7 +149,17 @@ Use these tools to understand the project structure, existing code patterns, and
         const parseResult =
           this.jsonParser.parseJSONFromResponse<PRDResponse>(response);
         if (!parseResult.success) {
-          throw new Error(parseResult.error || "Failed to parse PRD response");
+          throw createStandardError(
+            TaskOMaticErrorCodes.PRD_PARSING_ERROR,
+            parseResult.error || "Failed to parse PRD response",
+            {
+              context: "AI response parsing failed during PRD parsing",
+              suggestions: [
+                "Check AI response format",
+                "Verify JSON structure",
+              ],
+            }
+          );
         }
 
         const parsed = parseResult.data;
@@ -245,8 +267,16 @@ Use these tools to understand the project structure, existing code patterns, and
           });
 
           if (!promptResult.success) {
-            throw new Error(
-              `Failed to build PRD rework prompt: ${promptResult.error}`
+            throw createStandardError(
+              TaskOMaticErrorCodes.PRD_GENERATION_ERROR,
+              `Failed to build PRD rework prompt: ${promptResult.error}`,
+              {
+                context: "Prompt building failed during PRD rework",
+                suggestions: [
+                  "Verify prompt template exists",
+                  "Check variable substitution",
+                ],
+              }
             );
           }
 
@@ -355,8 +385,16 @@ Use these tools to understand the current project structure, existing code patte
           });
 
           if (!promptResult.success) {
-            throw new Error(
-              `Failed to build PRD question prompt: ${promptResult.error}`
+            throw createStandardError(
+              TaskOMaticErrorCodes.PRD_GENERATION_ERROR,
+              `Failed to build PRD question prompt: ${promptResult.error}`,
+              {
+                context: "Prompt building failed during PRD question generation",
+                suggestions: [
+                  "Verify prompt template exists",
+                  "Check variable substitution",
+                ],
+              }
             );
           }
 
@@ -419,7 +457,17 @@ Use these tools to understand the current project structure, existing code patte
         const parseResult =
           this.jsonParser.parseJSONFromResponse<PRDQuestionResponse>(response);
         if (!parseResult.success) {
-          throw new Error(parseResult.error || "Failed to parse PRD questions");
+          throw createStandardError(
+            TaskOMaticErrorCodes.PRD_GENERATION_ERROR,
+            parseResult.error || "Failed to parse PRD questions",
+            {
+              context: "AI response parsing failed during PRD question generation",
+              suggestions: [
+                "Check AI response format",
+                "Verify JSON structure",
+              ],
+            }
+          );
         }
 
         return parseResult.data?.questions || [];
@@ -469,8 +517,16 @@ Use these tools to understand the current project structure, existing code patte
         });
 
         if (!promptResult.success) {
-          throw new Error(
-            `Failed to build PRD question answer prompt: ${promptResult.error}`
+          throw createStandardError(
+            TaskOMaticErrorCodes.PRD_GENERATION_ERROR,
+            `Failed to build PRD question answer prompt: ${promptResult.error}`,
+            {
+              context: "Prompt building failed during PRD answer generation",
+              suggestions: [
+                "Verify prompt template exists",
+                "Check variable substitution",
+              ],
+            }
           );
         }
 
@@ -494,8 +550,16 @@ Use these tools to understand the current project structure, existing code patte
         }>(response);
 
         if (!parseResult.success) {
-          throw new Error(
-            parseResult.error || "Failed to parse PRD answers response"
+          throw createStandardError(
+            TaskOMaticErrorCodes.PRD_GENERATION_ERROR,
+            parseResult.error || "Failed to parse PRD answers response",
+            {
+              context: "AI response parsing failed during PRD answer generation",
+              suggestions: [
+                "Check AI response format",
+                "Verify JSON structure",
+              ],
+            }
           );
         }
 

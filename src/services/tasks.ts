@@ -35,6 +35,7 @@ import {
   formatStorageError,
   createStandardError,
 } from "../utils/task-o-matic-error";
+import { createBaseAIMetadata } from "../utils/metadata-utils";
 
 /**
  * Dependencies for TaskService
@@ -918,14 +919,13 @@ export class TaskService {
 
       // Save AI metadata for each subtask (Bug fix 2.3)
       const subtaskMetadata = {
-        taskId: result.task.id,
-        aiGenerated: true,
-        aiPrompt:
-          promptOverride ||
+        ...createBaseAIMetadata(
+          result.task.id,
+          aiConfig,
+          promptOverride,
           "Split task into meaningful subtasks with full context and existing subtask awareness",
-        confidence: 0.9,
-        aiProvider: aiConfig.provider,
-        aiModel: aiConfig.model,
+          0.9
+        ),
         splitAt: splitTimestamp,
         parentTaskId: taskId,
         subtaskIndex: i + 1,
@@ -935,14 +935,13 @@ export class TaskService {
 
     // Save AI metadata for parent task as well
     const parentMetadata = {
-      taskId: task.id,
-      aiGenerated: true,
-      aiPrompt:
-        promptOverride ||
+      ...createBaseAIMetadata(
+        task.id,
+        aiConfig,
+        promptOverride,
         "Split task into meaningful subtasks with full context and existing subtask awareness",
-      confidence: 0.9,
-      aiProvider: aiConfig.provider,
-      aiModel: aiConfig.model,
+        0.9
+      ),
       splitAt: splitTimestamp,
       subtasksCreated: createdSubtasks.length,
     };

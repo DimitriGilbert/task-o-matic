@@ -41,6 +41,34 @@ export class BaseOperations {
     return { ...baseConfig, ...config };
   }
 
+  /**
+   * Handles Context7 tool results by caching documentation.
+   * Extracts and saves documentation from get-library-docs tool results.
+   *
+   * @param chunk - The chunk to check for Context7 tool results
+   * @protected
+   */
+  protected handleContext7ToolResult(chunk: any): void {
+    if (
+      chunk.type === "tool-result" &&
+      chunk.toolName === "get-library-docs"
+    ) {
+      const docs = chunk.output;
+      const libraryID = chunk.input?.context7CompatibleLibraryID || "unknown";
+      const topic = chunk.input?.topic || "general";
+
+      if (docs && typeof docs === "object" && "content" in docs) {
+        this.context7Client.saveContext7Documentation(
+          libraryID,
+          docs.content,
+          topic
+        );
+      } else if (docs && typeof docs === "string") {
+        this.context7Client.saveContext7Documentation(libraryID, docs, topic);
+      }
+    }
+  }
+
   async streamText(
     prompt: string,
     config?: Partial<AIConfig>,
@@ -71,25 +99,9 @@ export class BaseOperations {
                   streamingOptions.onChunk!(chunk.text);
                 } else if (chunk.type === "reasoning-delta") {
                   streamingOptions.onReasoning?.(chunk.text);
-                } else if (
-                  chunk.type === "tool-result" &&
-                  chunk.toolName === "get-library-docs"
-                ) {
-                  const docs = chunk.output;
-                  if (docs && typeof docs === "object" && "content" in docs) {
-                    this.context7Client.saveContext7Documentation(
-                      chunk.input?.context7CompatibleLibraryID || "unknown",
-                      docs.content,
-                      chunk.input?.topic || "general"
-                    );
-                  } else if (docs && typeof docs === "string") {
-                    this.context7Client.saveContext7Documentation(
-                      chunk.input?.context7CompatibleLibraryID || "unknown",
-                      docs,
-                      chunk.input?.topic || "general"
-                    );
-                  }
                 }
+                // Handle Context7 tool result caching
+                this.handleContext7ToolResult(chunk);
               }
             : undefined,
           onFinish: streamingOptions?.onFinish

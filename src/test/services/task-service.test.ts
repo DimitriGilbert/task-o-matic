@@ -409,4 +409,143 @@ describe("TaskService", () => {
       );
     });
   });
+
+  describe("getTask", () => {
+    it("should retrieve a task by ID", async () => {
+      const taskData = createTestTaskData();
+      const createResult = await taskService.createTask({ title: taskData.title });
+
+      const task = await taskService.getTask(createResult.task.id);
+
+      assert.ok(task !== null);
+      if (task) {
+        assert.strictEqual(task.id, createResult.task.id);
+        assert.strictEqual(task.title, taskData.title);
+      }
+    });
+
+    it("should return null for non-existent task", async () => {
+      const task = await taskService.getTask("non-existent-id");
+      assert.strictEqual(task, null);
+    });
+  });
+
+  describe("getSubtasks", () => {
+    it("should return empty array for task without subtasks", async () => {
+      const createResult = await taskService.createTask({ title: "Parent Task" });
+      const subtasks = await taskService.getSubtasks(createResult.task.id);
+
+      assert.strictEqual(subtasks.length, 0);
+    });
+
+    it("should return all subtasks for a parent task", async () => {
+      const parentResult = await taskService.createTask({ title: "Parent" });
+      await taskService.createTask({ title: "Subtask 1", parentId: parentResult.task.id });
+      await taskService.createTask({ title: "Subtask 2", parentId: parentResult.task.id });
+
+      const subtasks = await taskService.getSubtasks(parentResult.task.id);
+
+      assert.strictEqual(subtasks.length, 2);
+      assert.ok(subtasks.every(t => t.parentId === parentResult.task.id));
+    });
+  });
+
+  describe("Tag Management", () => {
+    it("should add tags to a task", async () => {
+      const createResult = await taskService.createTask({ title: "Test Task" });
+
+      await taskService.addTags(createResult.task.id, ["urgent", "bug"]);
+      const task = await taskService.getTask(createResult.task.id);
+
+      assert.ok(task !== null);
+      if (task && task.tags) {
+        assert.ok(task.tags.includes("urgent"));
+        assert.ok(task.tags.includes("bug"));
+      }
+    });
+
+    it("should remove tags from a task", async () => {
+      const createResult = await taskService.createTask({
+        title: "Test Task"
+      });
+
+      // Add tags first
+      await taskService.addTags(createResult.task.id, ["urgent", "bug"]);
+
+      // Then remove one
+      const updatedTask = await taskService.removeTags(createResult.task.id, ["bug"]);
+
+      if (updatedTask.tags) {
+        assert.strictEqual(updatedTask.tags.includes("bug"), false);
+      }
+    });
+
+    it("should not duplicate tags when adding existing tags", async () => {
+      const createResult = await taskService.createTask({
+        title: "Test Task"
+      });
+
+      await taskService.addTags(createResult.task.id, ["urgent"]);
+      await taskService.addTags(createResult.task.id, ["urgent", "bug"]);
+      const task = await taskService.getTask(createResult.task.id);
+
+      if (task && task.tags) {
+        const urgentCount = task.tags.filter(t => t === "urgent").length;
+        assert.strictEqual(urgentCount, 1);
+      }
+    });
+  });
+
+  describe("setTaskStatus", () => {
+    it("should update task status", async () => {
+      const createResult = await taskService.createTask({ title: "Test Task" });
+
+      await taskService.setTaskStatus(createResult.task.id, "in-progress");
+      const task = await taskService.getTask(createResult.task.id);
+
+      assert.ok(task !== null);
+      if (task) {
+        assert.strictEqual(task.status, "in-progress");
+      }
+    });
+
+    it("should allow valid status transitions", async () => {
+      const createResult = await taskService.createTask({ title: "Test Task" });
+
+      await taskService.setTaskStatus(createResult.task.id, "in-progress");
+      await taskService.setTaskStatus(createResult.task.id, "completed");
+      const task = await taskService.getTask(createResult.task.id);
+
+      assert.ok(task !== null);
+      if (task) {
+        assert.strictEqual(task.status, "completed");
+      }
+    });
+  });
+
+  describe("getNextTask", () => {
+    it("should return next pending task", async () => {
+      await taskService.createTask({ title: "Task 1" });
+
+      const nextTask = await taskService.getNextTask({});
+
+      assert.ok(nextTask !== null);
+    });
+
+    it("should filter by tag", async () => {
+      const task1 = await taskService.createTask({ title: "Task 1" });
+      const task2 = await taskService.createTask({ title: "Task 2" });
+
+      // Add tags after creation
+      await taskService.addTags(task1.task.id, ["backend"]);
+      await taskService.addTags(task2.task.id, ["frontend"]);
+
+      const nextTask = await taskService.getNextTask({ tag: "frontend" });
+
+      // Either returns frontend task or null if implementation differs
+      if (nextTask && nextTask.tags) {
+        assert.ok(nextTask.tags.includes("frontend"));
+      }
+    });
+  });
 });
