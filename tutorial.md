@@ -1,12 +1,12 @@
 # Task-o-Matic: Because Your Todo List Wasn't Pretentious Enough
 
-*Or: How I learned to stop worrying and love the AI-powered task manager*
+_Or: How I learned to stop worrying and love the AI-powered task manager_
 
 ---
 
 You know what the world needs? Another task management tool. I know, I know—between Notion, Todoist, Asana, Monday.com, and that crumpled sticky note on your monitor, you're spoiled for choice. But hear me out: what if your task manager lived in your terminal, talked to AI, and judged your life choices in TypeScript?
 
-Welcome to **task-o-matic**, the CLI tool that makes you feel productive while simultaneously exposing your complete inability to estimate how long anything takes. *Chef's kiss*.
+Welcome to **task-o-matic**, the CLI tool that makes you feel productive while simultaneously exposing your complete inability to estimate how long anything takes. _Chef's kiss_.
 
 ## Why This Exists (A Philosophical Interlude)
 
@@ -29,7 +29,7 @@ Enter task-o-matic: the tool that's too smart for its own good and knows it.
 
 ```bash
 # Clone the repository (obviously)
-git clone https://github.com/yourusername/task-o-matic.git
+git clone https://github.com/DimitriGilbert/task-o-matic.git
 cd task-o-matic
 
 # Install dependencies with bun (because npm is so 2023)
@@ -65,7 +65,7 @@ When you add `--ai-enhance`, task-o-matic calls an AI model (OpenAI, Anthropic, 
 3. Saved it in `.task-o-matic/tasks/` as JSON
 4. Made you feel like you've done work today
 
-*Magnifique*.
+_Magnifique_.
 
 ---
 
@@ -73,7 +73,7 @@ When you add `--ai-enhance`, task-o-matic calls an AI model (OpenAI, Anthropic, 
 
 ### Understanding AI Enhancement
 
-Here's where task-o-matic differentiates itself from your garden-variety todo app. It doesn't just store your tasks—it *understands* them. Well, as much as an AI can understand anything, which is to say: barely, but impressively.
+Here's where task-o-matic differentiates itself from your garden-variety todo app. It doesn't just store your tasks—it _understands_ them. Well, as much as an AI can understand anything, which is to say: barely, but impressively.
 
 **Example time:**
 
@@ -121,7 +121,7 @@ const context = await contextBuilder.buildContextForNewTask(
 // - Your tech stack (Next.js? Express? Vue? React? All of the above because you can't make decisions?)
 ```
 
-The AI then uses this context to generate tasks that actually make sense for *your* project. Not generic boilerplate, but "Oh, I see you're using Prisma and Express, let me suggest an implementation that works with those."
+The AI then uses this context to generate tasks that actually make sense for _your_ project. Not generic boilerplate, but "Oh, I see you're using Prisma and Express, let me suggest an implementation that works with those."
 
 It's like having a tech lead who's actually read your codebase. Rare, I know.
 
@@ -131,7 +131,7 @@ It's like having a tech lead who's actually read your codebase. Rare, I know.
 
 ### Splitting Tasks Like a Pro
 
-You know that one task that seemed simple when you wrote it? "Implement auth"—how hard could it be? (Narrator: *It was hard.*)
+You know that one task that seemed simple when you wrote it? "Implement auth"—how hard could it be? (Narrator: _It was hard._)
 
 Task-o-matic can split tasks into subtasks automatically:
 
@@ -157,6 +157,7 @@ Parent: Implement Authentication System (task-123)
 ```
 
 Each subtask gets:
+
 - A clear scope (no more "implement everything")
 - Proper dependencies (can't do subtask 4 without subtask 2)
 - Context from the parent task
@@ -178,7 +179,8 @@ task-o-matic update task-999 --status completed
 ```
 
 Task-o-matic validates dependencies to prevent you from:
-1. Creating circular dependencies (task A depends on task B which depends on task A—*très philosophique*)
+
+1. Creating circular dependencies (task A depends on task B which depends on task A—_très philosophique_)
 2. Marking tasks complete before their dependencies
 3. Living in denial about how much work is actually left
 
@@ -190,7 +192,7 @@ It's like having a project manager who actually understands critical paths. Anno
 
 ### The Product Requirements Document
 
-Ah, the PRD. That sacred document written by product managers who have *strong opinions* about button colors but couldn't tell you what an API is if their quarterly bonus depended on it.
+Ah, the PRD. That sacred document written by product managers who have _strong opinions_ about button colors but couldn't tell you what an API is if their quarterly bonus depended on it.
 
 Task-o-matic can parse PRDs and turn them into actionable tasks. Watch:
 
@@ -216,10 +218,13 @@ task-o-matic prd parse requirements.md --ai-enhance --create-tasks
 
 ```markdown
 # Input PRD (requirements.md)
+
 ## User Authentication
+
 Users should be able to log in securely. We need social login (Google, GitHub) and traditional email/password. Passwords must be secure. Add 2FA because security is important.
 
 ## User Profile
+
 Users need profiles with avatar, bio, and preferences. They should be able to edit their information. Make it look nice.
 ```
 
@@ -257,13 +262,13 @@ Dependencies:
 - Task 4 depends on Task 1 and 2 (need auth before profiles)
 ```
 
-The AI doesn't just extract text—it *understands* the requirements and creates a coherent implementation plan. It's like having a tech lead who reads PRDs instead of skimming them during standup.
+The AI doesn't just extract text—it _understands_ the requirements and creates a coherent implementation plan. It's like having a tech lead who reads PRDs instead of skimming them during standup.
 
 ### Reworking PRDs (Because Requirements Change)
 
 Your PM just Slacked you: "Actually, we need to support passwordless login too."
 
-*Sigh.*
+_Sigh._
 
 ```bash
 # Update the PRD with new requirements
@@ -305,17 +310,20 @@ task-o-matic document --all --output-dir docs/
 # Authentication System Implementation
 
 ## Overview
+
 JWT-based authentication with refresh tokens and 2FA support.
 
 ## Architecture Decisions
 
 ### Why JWT?
+
 - Stateless authentication (no session storage)
 - Easy to scale horizontally
 - Works well with microservices
 - Industry standard (for better or worse)
 
 ### Security Measures
+
 1. **Token Storage**: HttpOnly cookies (not localStorage, because XSS is a thing)
 2. **Password Hashing**: bcrypt with cost factor 12
 3. **Rate Limiting**: 5 failed attempts = 15-minute lockout
@@ -324,38 +332,40 @@ JWT-based authentication with refresh tokens and 2FA support.
 ## Implementation
 
 ### Login Endpoint
+
 \`\`\`typescript
 router.post('/api/auth/login', async (req, res) => {
-  const { email, password } = req.body;
+const { email, password } = req.body;
 
-  // Rate limiting check
-  if (await rateLimiter.isLocked(email)) {
-    return res.status(429).json({ error: 'Too many attempts' });
-  }
+// Rate limiting check
+if (await rateLimiter.isLocked(email)) {
+return res.status(429).json({ error: 'Too many attempts' });
+}
 
-  // Verify credentials
-  const user = await User.findByEmail(email);
-  if (!user || !(await bcrypt.compare(password, user.passwordHash))) {
-    await rateLimiter.recordFailure(email);
-    return res.status(401).json({ error: 'Invalid credentials' });
-  }
+// Verify credentials
+const user = await User.findByEmail(email);
+if (!user || !(await bcrypt.compare(password, user.passwordHash))) {
+await rateLimiter.recordFailure(email);
+return res.status(401).json({ error: 'Invalid credentials' });
+}
 
-  // Generate tokens
-  const accessToken = jwt.sign({ userId: user.id }, SECRET, { expiresIn: '15m' });
-  const refreshToken = jwt.sign({ userId: user.id }, REFRESH_SECRET, { expiresIn: '7d' });
+// Generate tokens
+const accessToken = jwt.sign({ userId: user.id }, SECRET, { expiresIn: '15m' });
+const refreshToken = jwt.sign({ userId: user.id }, REFRESH_SECRET, { expiresIn: '7d' });
 
-  // Set HttpOnly cookie
-  res.cookie('refreshToken', refreshToken, {
-    httpOnly: true,
-    secure: true,
-    sameSite: 'strict',
-  });
+// Set HttpOnly cookie
+res.cookie('refreshToken', refreshToken, {
+httpOnly: true,
+secure: true,
+sameSite: 'strict',
+});
 
-  res.json({ accessToken });
+res.json({ accessToken });
 });
 \`\`\`
 
 ## Testing
+
 \`\`\`bash
 npm test -- auth.test.ts
 \`\`\`
@@ -364,6 +374,7 @@ Test coverage: 94% (the missing 6% is error cases we're pretending don't exist)
 ```
 
 The AI generates this by:
+
 1. Reading your task description
 2. Analyzing related code (if it exists)
 3. Understanding your tech stack
@@ -394,6 +405,7 @@ task-o-matic workflow init \
 ```
 
 The workflow system orchestrates multiple AI calls to:
+
 - Generate a complete PRD from your description
 - Break it into features and tasks
 - Set up your project structure
@@ -419,6 +431,7 @@ task-o-matic workflow benchmark \
 ```
 
 The benchmark evaluates:
+
 - **Speed**: Time to first token (because waiting is suffering)
 - **Quality**: Task comprehensiveness (subjective, but we try)
 - **Cost**: How much your OpenAI bill will hurt
@@ -430,7 +443,7 @@ The benchmark evaluates:
 
 ### Setting Up AI Providers
 
-Task-o-matic supports multiple AI providers because vendor lock-in is *so* enterprise:
+Task-o-matic supports multiple AI providers because vendor lock-in is _so_ enterprise:
 
 ```bash
 # Configure OpenAI
@@ -493,7 +506,7 @@ Edit manually or use CLI commands. Task-o-matic doesn't judge (much).
 Task-o-matic isn't just a CLI—it's a library you can integrate into your own tools:
 
 ```typescript
-import { TaskService, createTaskService } from 'task-o-matic/lib';
+import { TaskService, createTaskService } from "task-o-matic/lib";
 
 // Initialize the service
 const taskService = createTaskService();
@@ -520,24 +533,24 @@ console.log(`Cost: $${estimateCost(result.metadata)}`);
 
 ```typescript
 // Generate tasks from GitHub issues
-import { Octokit } from '@octokit/rest';
-import { TaskService } from 'task-o-matic/lib';
+import { Octokit } from "@octokit/rest";
+import { TaskService } from "task-o-matic/lib";
 
 const octokit = new Octokit({ auth: process.env.GITHUB_TOKEN });
 const taskService = createTaskService();
 
 async function syncGitHubIssues() {
   const { data: issues } = await octokit.issues.listForRepo({
-    owner: 'yourorg',
-    repo: 'yourrepo',
-    state: 'open',
+    owner: "yourorg",
+    repo: "yourrepo",
+    state: "open",
   });
 
   for (const issue of issues) {
     await taskService.createTask({
       title: issue.title,
-      content: issue.body || '',
-      tags: issue.labels.map(l => l.name),
+      content: issue.body || "",
+      tags: issue.labels.map((l) => l.name),
       metadata: {
         githubIssueId: issue.number,
         githubUrl: issue.html_url,
@@ -551,17 +564,17 @@ async function syncGitHubIssues() {
 
 ```typescript
 // Auto-create tasks from Slack messages
-import express from 'express';
-import { TaskService } from 'task-o-matic/lib';
+import express from "express";
+import { TaskService } from "task-o-matic/lib";
 
 const app = express();
 const taskService = createTaskService();
 
-app.post('/slack/events', async (req, res) => {
+app.post("/slack/events", async (req, res) => {
   const { event } = req.body;
 
-  if (event.type === 'app_mention') {
-    const taskContent = event.text.replace(/<@[A-Z0-9]+>/g, '').trim();
+  if (event.type === "app_mention") {
+    const taskContent = event.text.replace(/<@[A-Z0-9]+>/g, "").trim();
 
     const result = await taskService.createTask({
       title: `Task from Slack: ${event.user}`,
@@ -584,12 +597,12 @@ app.post('/slack/events', async (req, res) => {
 
 ```typescript
 // Create tasks from TODO comments
-import * as vscode from 'vscode';
-import { TaskService } from 'task-o-matic/lib';
+import * as vscode from "vscode";
+import { TaskService } from "task-o-matic/lib";
 
 async function extractTodosFromWorkspace() {
   const taskService = createTaskService();
-  const files = await vscode.workspace.findFiles('**/*.{ts,js,tsx,jsx}');
+  const files = await vscode.workspace.findFiles("**/*.{ts,js,tsx,jsx}");
 
   for (const file of files) {
     const content = await vscode.workspace.fs.readFile(file);
@@ -602,12 +615,12 @@ async function extractTodosFromWorkspace() {
       await taskService.createTask({
         title: match[1],
         content: `Found in ${file.fsPath}`,
-        tags: ['todo', 'code-comment'],
+        tags: ["todo", "code-comment"],
       });
     }
   }
 
-  vscode.window.showInformationMessage('Todos extracted!');
+  vscode.window.showInformationMessage("Todos extracted!");
 }
 ```
 
@@ -645,6 +658,7 @@ It's like having an AI assistant with actual access to your project management s
 ### The Do's
 
 **DO: Use meaningful task titles**
+
 ```bash
 # Good
 task-o-matic create --title "Implement JWT refresh token rotation"
@@ -654,6 +668,7 @@ task-o-matic create --title "Fix stuff"
 ```
 
 **DO: Add context to tasks**
+
 ```bash
 # The more context, the better AI suggestions
 task-o-matic create \
@@ -664,12 +679,14 @@ task-o-matic create \
 ```
 
 **DO: Tag your tasks**
+
 ```bash
 # Tags help with organization and filtering
 task-o-matic create --title "Fix auth bug" --tags backend,urgent,security
 ```
 
 **DO: Use dependencies**
+
 ```bash
 # Express relationships between tasks
 task-o-matic create \
@@ -680,6 +697,7 @@ task-o-matic create \
 ### The Don'ts
 
 **DON'T: Create circular dependencies**
+
 ```bash
 # This will fail (as it should)
 task-o-matic update task-1 --dependencies task-2
@@ -688,6 +706,7 @@ task-o-matic update task-2 --dependencies task-1
 ```
 
 **DON'T: Ignore AI suggestions blindly**
+
 ```bash
 # AI output should be reviewed, not blindly accepted
 # Sometimes AI suggests overly complex solutions
@@ -696,6 +715,7 @@ task-o-matic update task-2 --dependencies task-1
 ```
 
 **DON'T: Store secrets in task content**
+
 ```bash
 # Bad idea
 task-o-matic create --title "Fix prod" --content "DB password: hunter2"
@@ -705,6 +725,7 @@ task-o-matic create --title "Fix prod" --content "DB password: hunter2"
 ```
 
 **DON'T: Forget to commit your tasks**
+
 ```bash
 # Tasks are stored in .task-o-matic/
 # Add to git if you want to share with team
@@ -753,7 +774,7 @@ task-o-matic create --title "Task 1"
 task-o-matic create --title "Task 2"
 ```
 
-*(Note: This is a known issue. See code_review.md section 2.1 for details)*
+_(Note: This is a known issue. See code_review.md section 2.1 for details)_
 
 ---
 
@@ -774,6 +795,7 @@ task-o-matic create \
 ```
 
 **AI Output:**
+
 ```
 Task: Implement Stripe Payment Integration
 
@@ -852,7 +874,7 @@ task-o-matic plan task-789.1 --output plans/stripe-setup.md
 
 **AI generates detailed plan:**
 
-```markdown
+````markdown
 # Implementation Plan: Stripe SDK Setup
 
 ## Step 1: Install Dependencies
@@ -867,9 +889,9 @@ npm install -D @types/stripe
 Create `.env.local`:
 
 \`\`\`env
-STRIPE_SECRET_KEY=sk_test_...
-STRIPE_PUBLISHABLE_KEY=pk_test_...
-STRIPE_WEBHOOK_SECRET=whsec_...
+STRIPE*SECRET_KEY=sk_test*...
+STRIPE*PUBLISHABLE_KEY=pk_test*...
+STRIPE*WEBHOOK_SECRET=whsec*...
 \`\`\`
 
 ## Step 3: Create Stripe Client
@@ -879,12 +901,12 @@ STRIPE_WEBHOOK_SECRET=whsec_...
 import Stripe from 'stripe';
 
 if (!process.env.STRIPE_SECRET_KEY) {
-  throw new Error('STRIPE_SECRET_KEY is required');
+throw new Error('STRIPE_SECRET_KEY is required');
 }
 
 export const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
-  apiVersion: '2023-10-16',
-  typescript: true,
+apiVersion: '2023-10-16',
+typescript: true,
 });
 \`\`\`
 
@@ -897,6 +919,7 @@ console.log('Stripe account:', account.id);
 \`\`\`
 
 ## Verification Checklist
+
 - [ ] Dependencies installed
 - [ ] Environment variables configured
 - [ ] Client initialized successfully
@@ -917,6 +940,7 @@ task-o-matic update task-789.1 --status in-progress
 # Mark complete when done
 task-o-matic update task-789.1 --status completed
 ```
+````
 
 **Step 5: Generate documentation**
 
@@ -930,58 +954,64 @@ task-o-matic document task-789 --output docs/stripe-integration.md
 # Stripe Payment Integration Documentation
 
 ## Overview
+
 Full Stripe subscription billing system with webhook handling and subscription management.
 
 ## Architecture
 
 ### Components
+
 1. **Stripe Client** (`lib/stripe.ts`): Singleton Stripe instance
 2. **Webhook Handler** (`api/webhooks/stripe.ts`): Processes Stripe events
 3. **Subscription Service** (`lib/subscription-service.ts`): Business logic layer
 4. **Database Models** (`prisma/schema.prisma`): Data persistence
 
 ### Data Flow
+
 \`\`\`
 User clicks "Subscribe"
-  ↓
+↓
 Frontend calls /api/checkout
-  ↓
+↓
 Backend creates Stripe checkout session
-  ↓
+↓
 User completes payment on Stripe
-  ↓
+↓
 Stripe sends webhook to /api/webhooks/stripe
-  ↓
+↓
 Webhook handler updates database
-  ↓
+↓
 User subscription activated
 \`\`\`
 
 ## API Endpoints
 
 ### POST /api/checkout
+
 Creates a Stripe checkout session.
 
 **Request:**
 \`\`\`json
 {
-  "priceId": "price_1234567890",
-  "userId": "user_123"
+"priceId": "price_1234567890",
+"userId": "user_123"
 }
 \`\`\`
 
 **Response:**
 \`\`\`json
 {
-  "sessionId": "cs_test_1234567890",
-  "url": "https://checkout.stripe.com/..."
+"sessionId": "cs_test_1234567890",
+"url": "https://checkout.stripe.com/..."
 }
 \`\`\`
 
 ### POST /api/webhooks/stripe
+
 Handles Stripe webhook events.
 
 **Supported Events:**
+
 - `customer.subscription.created`
 - `customer.subscription.updated`
 - `customer.subscription.deleted`
@@ -998,11 +1028,13 @@ Handles Stripe webhook events.
 ## Testing
 
 ### Unit Tests
+
 \`\`\`bash
 npm test -- stripe.test.ts
 \`\`\`
 
 ### Integration Tests
+
 Use Stripe test mode and mock webhooks:
 \`\`\`bash
 stripe trigger customer.subscription.created
@@ -1011,16 +1043,19 @@ stripe trigger customer.subscription.created
 ## Troubleshooting
 
 **Issue: Webhook not receiving events**
+
 - Verify webhook endpoint is publicly accessible
 - Check webhook secret matches Stripe dashboard
 - Inspect Stripe dashboard webhook logs
 
 **Issue: Payment fails silently**
+
 - Check Stripe dashboard for error details
 - Verify card is valid test card
 - Ensure test mode keys are used
 
 ## Cost Estimation
+
 - Stripe fee: 2.9% + $0.30 per transaction
 - Average subscription: $10/month
 - Cost per transaction: $0.59
@@ -1028,7 +1063,7 @@ stripe trigger customer.subscription.created
 
 ---
 
-*Generated by task-o-matic on 2025-12-09*
+_Generated by task-o-matic on 2025-12-09_
 ```
 
 **Step 6: Repeat for remaining subtasks**
@@ -1070,13 +1105,14 @@ task-o-matic document task-789 --output docs/stripe-final.md
 ```
 
 **Result:** You've implemented a complex feature with:
+
 - ✅ Clear task breakdown
 - ✅ Detailed implementation plans
 - ✅ Comprehensive documentation
 - ✅ Tracked progress
 - ✅ Historical record of decisions
 
-And you didn't have to attend a single standup meeting. *Chef's kiss*.
+And you didn't have to attend a single standup meeting. _Chef's kiss_.
 
 ---
 
@@ -1084,23 +1120,25 @@ And you didn't have to attend a single standup meeting. *Chef's kiss*.
 
 Look, I'll be honest with you (because I'm French, and we don't do fake enthusiasm). Task-o-matic isn't going to revolutionize your life. You'll still procrastinate, still underestimate tasks, still have that one bug that takes three days to find and one line to fix.
 
-But here's what it *will* do:
+But here's what it _will_ do:
 
 1. **Reduce cognitive load**: Offload task planning to AI while you focus on actual work
 2. **Maintain context**: Keep track of why you made decisions (useful when you forget three weeks later)
 3. **Improve consistency**: Generate tasks and docs that follow patterns and best practices
 4. **Speed up onboarding**: New team members can read task history and understand the project
-5. **Make you look organized**: Even if you're screaming internally, your task list will be *immaculate*
+5. **Make you look organized**: Even if you're screaming internally, your task list will be _immaculate_
 
 ### When to Use Task-o-Matic
 
 **Good fit:**
+
 - Complex projects with lots of moving parts
 - Teams that need clear task breakdown and planning
 - Projects where documentation actually matters
 - When you want AI assistance without leaving the terminal
 
 **Bad fit:**
+
 - Simple todo lists ("buy milk", "call mom")
 - Projects where AI costs outweigh benefits
 - Teams that prefer visual tools (sorry, no Kanban board here)
@@ -1109,6 +1147,7 @@ But here's what it *will* do:
 ### The Bottom Line
 
 Task-o-matic is a tool for developers who:
+
 - Live in the terminal
 - Want AI assistance that's actually useful
 - Care about documentation (rare breed, I know)
@@ -1182,10 +1221,10 @@ OPENROUTER_API_KEY    # OpenRouter API key
 
 ---
 
-*Written by a human, enhanced by AI, reviewed by caffeine.*
+_Written by a human, enhanced by AI, reviewed by caffeine._
 
-*Last updated: 2025-12-09*
+_Last updated: 2025-12-09_
 
-*Questions? Complaints? Existential crises? Open an issue on GitHub.*
+_Questions? Complaints? Existential crises? Open an issue on GitHub._
 
 **Now go forth and manage those tasks like the organized developer you're pretending to be.** 🎭
