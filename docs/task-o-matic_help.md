@@ -31,7 +31,7 @@ Commands:
   prompt [options] [name]  Build AI service prompts with variable replacement
                            for external tools
   init                     Initialize task-o-matic project and bootstrap
-                           Better-T-Stack
+                           projects (web/native/cli/tui)
   workflow [options]       Interactive workflow for complete project setup and
                            task management
   benchmark                Run and manage AI benchmarks
@@ -703,7 +703,7 @@ Commands:
 ```
 Usage: task-o-matic init [options] [command]
 
-Initialize task-o-matic project and bootstrap Better-T-Stack
+Initialize task-o-matic project and bootstrap projects (web/native/cli/tui)
 
 Options:
   -h, --help                  display help for command
@@ -711,7 +711,7 @@ Options:
 Commands:
   init [options]              Initialize a new task-o-matic project in the
                               current directory
-  bootstrap [options] <name>  Bootstrap a new project using Better-T-Stack
+  bootstrap [options] <name>  Bootstrap a new project (web/native/cli/tui)
 ```
 
 ### init init --help
@@ -721,26 +721,34 @@ Usage: task-o-matic init init [options]
 Initialize a new task-o-matic project in the current directory
 
 Options:
-  --ai-provider <provider>  AI provider (openrouter/anthropic/openai/custom)
-                            (default: "openrouter")
-  --ai-model <model>        AI model (default: "z-ai/glm-4.6")
-  --ai-key <key>            AI API key
-  --ai-provider-url <url>   AI provider URL
-  --max-tokens <tokens>     Max tokens for AI (min 32768 for 2025) (default:
-                            "32768")
-  --temperature <temp>      AI temperature (default: "0.5")
-  --no-bootstrap            Skip bootstrap after initialization
-  --project-name <name>     Project name for bootstrap
-  --frontend <frontend>     Frontend framework for bootstrap (default: "next")
-  --backend <backend>       Backend framework for bootstrap (default: "convex")
-  --database <database>     Database for bootstrap
-  --auth <auth>             Authentication for bootstrap (default:
-                            "better-auth")
-  --context7-api-key <key>  Context7 API key
-  --directory <dir>         Working directory for the project
-  --package-manager <pm>    Package manager (npm/pnpm/bun) (default: "npm")
-  --runtime <runtime>       Runtime (bun/node) (default: "node")
-  --payment <payment>       Payment provider (none/polar) (default: "none")
-  -h, --help                display help for command
+  --ai-provider <provider>     AI provider (openrouter/anthropic/openai/custom)
+                               (default: "openrouter")
+  --ai-model <model>           AI model (default: "z-ai/glm-4.6")
+  --ai-key <key>               AI API key
+  --ai-provider-url <url>      AI provider URL
+  --max-tokens <tokens>        Max tokens for AI (min 32768 for 2025) (default:
+                               "32768")
+  --temperature <temp>         AI temperature (default: "0.5")
+  --no-bootstrap               Skip bootstrap after initialization
+  --project-name <name>        Project name for bootstrap
+  --frontend <frontends...>    Frontend framework(s) - space/comma-separated
+                               (next, native-bare, cli, tui, etc.) (default:
+                               "next")
+  --backend <backend>          Backend framework for bootstrap (default:
+                               "convex")
+  --database <database>        Database for bootstrap
+  --auth <auth>                Authentication for bootstrap (default:
+                               "better-auth")
+  --context7-api-key <key>     Context7 API key
+  --directory <dir>            Working directory for the project
+  --package-manager <pm>       Package manager (npm/pnpm/bun) (default: "npm")
+  --runtime <runtime>          Runtime (bun/node) (default: "node")
+  --payment <payment>          Payment provider (none/polar) (default: "none")
+  --cli-deps <level>           CLI dependency level
+                               (minimal/standard/full/task-o-matic) (default:
+                               "standard")
+  --tui-framework <framework>  TUI framework (solid/vue/react) (default:
+                               "solid")
+  -h, --help                   display help for command
 ```
 

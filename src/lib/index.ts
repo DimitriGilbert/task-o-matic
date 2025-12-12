@@ -99,6 +99,7 @@ export {
   getStorage,
   getContextBuilder,
   resetServiceInstances,
+  initializeServices,
 } from "../utils/ai-service-factory";
 
 /**
