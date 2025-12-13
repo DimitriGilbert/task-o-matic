@@ -17,9 +17,16 @@ import { DocumentationOperations } from "./documentation-operations";
  * This provides a unified API for all AI operations while keeping the implementation modular.
  */
 export class AIOperations extends BaseOperations {
-  private prdOps = new PRDOperations();
-  private taskOps = new TaskOperations();
-  private docOps = new DocumentationOperations();
+  private prdOps: PRDOperations;
+  private taskOps: TaskOperations;
+  private docOps: DocumentationOperations;
+
+  constructor(tools?: any) {
+    super(tools);
+    this.prdOps = new PRDOperations(tools);
+    this.taskOps = new TaskOperations(tools);
+    this.docOps = new DocumentationOperations(tools);
+  }
 
   // PRD Operations - Delegated to PRDOperations
 
@@ -212,7 +219,8 @@ export class AIOperations extends BaseOperations {
     streamingOptions?: StreamingOptions,
     retryConfig?: Partial<RetryConfig>,
     config?: Partial<AIConfig>,
-    existingResearch?: Record<string, Array<{ query: string; doc: string }>>
+    existingResearch?: Record<string, Array<{ query: string; doc: string }>>,
+    enableFilesystemTools?: boolean
   ): Promise<string> {
     return this.docOps.enhanceTaskWithDocumentation(
       taskId,
@@ -222,7 +230,8 @@ export class AIOperations extends BaseOperations {
       streamingOptions,
       retryConfig,
       config,
-      existingResearch
+      existingResearch,
+      enableFilesystemTools
     );
   }
 
@@ -234,7 +243,8 @@ export class AIOperations extends BaseOperations {
     streamingOptions?: StreamingOptions,
     retryConfig?: Partial<RetryConfig>,
     config?: Partial<AIConfig>,
-    existingResearch?: (TaskDocumentation | undefined)[]
+    existingResearch?: (TaskDocumentation | undefined)[],
+    enableFilesystemTools?: boolean
   ): Promise<DocumentationDetection> {
     return this.docOps.analyzeDocumentationNeeds(
       taskId,
@@ -244,7 +254,8 @@ export class AIOperations extends BaseOperations {
       streamingOptions,
       retryConfig,
       config,
-      existingResearch
+      existingResearch,
+      enableFilesystemTools
     );
   }
 

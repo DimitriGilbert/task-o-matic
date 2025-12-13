@@ -20,7 +20,6 @@ import {
 import { JSONParser } from "./json-parser";
 import { RetryHandler } from "./retry-handler";
 import { ModelProvider } from "./model-provider";
-import { filesystemTools } from "./filesystem-tools";
 import { BaseOperations } from "./base-operations";
 import {
   createStandardError,
@@ -94,7 +93,7 @@ export class PRDOperations extends BaseOperations {
           });
 
           const allTools = {
-            ...filesystemTools,
+            ...this.tools,
           };
 
           const result = await streamText({
@@ -290,7 +289,7 @@ Use these tools to understand the project structure, existing code patterns, and
           });
 
           const allTools = {
-            ...filesystemTools,
+            ...this.tools,
           };
 
           const result = await streamText({
@@ -389,7 +388,8 @@ Use these tools to understand the current project structure, existing code patte
               TaskOMaticErrorCodes.PRD_GENERATION_ERROR,
               `Failed to build PRD question prompt: ${promptResult.error}`,
               {
-                context: "Prompt building failed during PRD question generation",
+                context:
+                  "Prompt building failed during PRD question generation",
                 suggestions: [
                   "Verify prompt template exists",
                   "Check variable substitution",
@@ -411,7 +411,7 @@ Use these tools to understand the current project structure, existing code patte
             ...config,
           });
 
-          const allTools = { ...filesystemTools };
+          const allTools = { ...this.tools };
 
           const result = await streamText({
             model,
@@ -461,7 +461,8 @@ Use these tools to understand the current project structure, existing code patte
             TaskOMaticErrorCodes.PRD_GENERATION_ERROR,
             parseResult.error || "Failed to parse PRD questions",
             {
-              context: "AI response parsing failed during PRD question generation",
+              context:
+                "AI response parsing failed during PRD question generation",
               suggestions: [
                 "Check AI response format",
                 "Verify JSON structure",
@@ -554,7 +555,8 @@ Use these tools to understand the current project structure, existing code patte
             TaskOMaticErrorCodes.PRD_GENERATION_ERROR,
             parseResult.error || "Failed to parse PRD answers response",
             {
-              context: "AI response parsing failed during PRD answer generation",
+              context:
+                "AI response parsing failed during PRD answer generation",
               suggestions: [
                 "Check AI response format",
                 "Verify JSON structure",

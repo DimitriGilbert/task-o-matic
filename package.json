@@ -1,6 +1,6 @@
 {
   "name": "task-o-matic",
-  "version": "0.0.16",
+  "version": "0.0.18",
   "description": "AI-powered task management CLI",
   "keywords": [
     "task-management",
@@ -34,11 +34,6 @@
       "types": "./dist/types/index.d.ts",
       "require": "./dist/types/index.js",
       "default": "./dist/types/index.js"
-    },
-    "./cli": {
-      "types": "./dist/index.d.ts",
-      "require": "./dist/index.js",
-      "default": "./dist/index.js"
     }
   },
   "files": [

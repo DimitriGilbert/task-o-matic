@@ -11,6 +11,11 @@ export class BaseOperations {
   protected context7Client = new Context7Client();
   protected retryHandler = new RetryHandler();
   protected modelProvider = new ModelProvider();
+  protected tools: any = {}; // Tools to be injected
+
+  constructor(tools?: any) {
+    this.tools = tools || {};
+  }
 
   /**
    * Merges AI configuration with proper precedence.
@@ -49,10 +54,7 @@ export class BaseOperations {
    * @protected
    */
   protected handleContext7ToolResult(chunk: any): void {
-    if (
-      chunk.type === "tool-result" &&
-      chunk.toolName === "get-library-docs"
-    ) {
+    if (chunk.type === "tool-result" && chunk.toolName === "get-library-docs") {
       const docs = chunk.output;
       const libraryID = chunk.input?.context7CompatibleLibraryID || "unknown";
       const topic = chunk.input?.topic || "general";

@@ -10,7 +10,6 @@ import {
 import { PromptBuilder } from "../prompt-builder";
 import { TASK_ENHANCEMENT_SYSTEM_PROMPT } from "../../prompts";
 import { getContextBuilder, getStorage } from "../../utils/ai-service-factory";
-import { filesystemTools } from "./filesystem-tools";
 import { BaseOperations } from "./base-operations";
 
 export class DocumentationOperations extends BaseOperations {
@@ -22,7 +21,8 @@ export class DocumentationOperations extends BaseOperations {
     streamingOptions?: StreamingOptions,
     retryConfig?: Partial<RetryConfig>,
     config?: Partial<AIConfig>,
-    existingResearch?: Record<string, Array<{ query: string; doc: string }>>
+    existingResearch?: Record<string, Array<{ query: string; doc: string }>>,
+    enableFilesystemTools?: boolean
   ): Promise<string> {
     return this.retryHandler
       .executeWithRetry(
@@ -71,7 +71,7 @@ export class DocumentationOperations extends BaseOperations {
 
           const allTools = {
             ...(mcpTools as ToolSet),
-            ...filesystemTools,
+            ...(enableFilesystemTools ? this.tools : {}),
           };
 
           const result = await streamText({
@@ -80,18 +80,30 @@ export class DocumentationOperations extends BaseOperations {
             system:
               TASK_ENHANCEMENT_SYSTEM_PROMPT +
               `
-
-You have access to Context7 documentation tools and filesystem tools.
+              
+You have access to Context7 documentation tools${
+                enableFilesystemTools ? " and filesystem tools" : ""
+              }.
 
 ## Available Tools:
 - Context7 MCP tools (context7_resolve_library_id, context7_get_library_docs) for library documentation
-- readFile: Read the contents of any file in the project
-- listDirectory: List contents of directories
+${
+  enableFilesystemTools
+    ? `- readFile: Read the contents of any file in the project
+- listDirectory: List contents of directories`
+    : ""
+}
 
 ## Research Strategy:
 1. Use Context7 MCP tools for library documentation research
-2. Use filesystem tools to understand project structure, existing code, and dependencies
-3. Synthesize information from all sources to enhance the task
+${
+  enableFilesystemTools
+    ? `2. Use filesystem tools to understand project structure, existing code, and dependencies`
+    : ""
+}
+${
+  enableFilesystemTools ? "3" : "2"
+}. Synthesize information from all sources to enhance the task
 
 Technology stack context: ${stackInfo || "Not specified"}
 
@@ -176,7 +188,8 @@ ${existingResearchContext}`,
     streamingOptions?: StreamingOptions,
     retryConfig?: Partial<RetryConfig>,
     config?: Partial<AIConfig>,
-    existingResearch?: (TaskDocumentation | undefined)[]
+    existingResearch?: (TaskDocumentation | undefined)[],
+    enableFilesystemTools?: boolean
   ): Promise<DocumentationDetection> {
     return this.retryHandler
       .executeWithRetry(
@@ -230,6 +243,7 @@ ${existingResearchContext}`,
 
           const allTools = {
             ...(mcpTools as ToolSet),
+            ...(enableFilesystemTools ? this.tools : {}),
           };
 
           const result = await streamText({

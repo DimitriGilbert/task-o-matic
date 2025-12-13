@@ -100,6 +100,11 @@ describe("TaskOperations Integration Tests", () => {
     it("should handle filesystem tools when enabled", async () => {
       let toolsPassed = false;
 
+      // Inject mock tools to simulate filesystem tools availability
+      (taskOps as any).tools = {
+        mockFilesystemTool: {},
+      };
+
       // Override streamTextWithTools to capture tools parameter
       mockAIOperationUtility.streamTextWithTools = async (
         _systemPrompt: string,
@@ -170,7 +175,10 @@ describe("TaskOperations Integration Tests", () => {
         assert.fail("Should have thrown TaskOMaticError");
       } catch (error) {
         assert.ok(error instanceof TaskOMaticError);
-        assert.strictEqual((error as TaskOMaticError).code, "AI_OPERATION_FAILED");
+        assert.strictEqual(
+          (error as TaskOMaticError).code,
+          "AI_OPERATION_FAILED"
+        );
         assert.ok(
           (error as TaskOMaticError).message.includes("Task breakdown")
         );
@@ -219,10 +227,7 @@ describe("TaskOperations Integration Tests", () => {
         return "Mock implementation plan:\n1. Step 1\n2. Step 2\n3. Step 3";
       };
 
-      const result = await taskOps.planTask(
-        "Project context",
-        "Task details"
-      );
+      const result = await taskOps.planTask("Project context", "Task details");
 
       // Verify result
       assert.strictEqual(typeof result, "string");
@@ -281,9 +286,7 @@ describe("TaskOperations Integration Tests", () => {
         assert.fail("Should have thrown TaskOMaticError");
       } catch (error) {
         assert.ok(error instanceof TaskOMaticError);
-        assert.ok(
-          (error as TaskOMaticError).message.includes("Task planning")
-        );
+        assert.ok((error as TaskOMaticError).message.includes("Task planning"));
       }
     });
   });
@@ -304,7 +307,10 @@ describe("TaskOperations Integration Tests", () => {
       // Verify we got the result, not the AIOperationResult wrapper
       assert.ok(Array.isArray(result));
       assert.ok(!("metrics" in result), "Should not expose metrics in result");
-      assert.ok(!("result" in result), "Should not expose AIOperationResult structure");
+      assert.ok(
+        !("result" in result),
+        "Should not expose AIOperationResult structure"
+      );
     });
   });
 
