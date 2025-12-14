@@ -100,11 +100,6 @@ describe("TaskOperations Integration Tests", () => {
     it("should handle filesystem tools when enabled", async () => {
       let toolsPassed = false;
 
-      // Inject mock tools to simulate filesystem tools availability
-      (taskOps as any).tools = {
-        mockFilesystemTool: {},
-      };
-
       // Override streamTextWithTools to capture tools parameter
       mockAIOperationUtility.streamTextWithTools = async (
         _systemPrompt: string,

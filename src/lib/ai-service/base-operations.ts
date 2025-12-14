@@ -11,11 +11,6 @@ export class BaseOperations {
   protected context7Client = new Context7Client();
   protected retryHandler = new RetryHandler();
   protected modelProvider = new ModelProvider();
-  protected tools: any = {}; // Tools to be injected
-
-  constructor(tools?: any) {
-    this.tools = tools || {};
-  }
 
   /**
    * Merges AI configuration with proper precedence.

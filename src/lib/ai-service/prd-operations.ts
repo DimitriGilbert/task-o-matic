@@ -20,6 +20,7 @@ import {
 import { JSONParser } from "./json-parser";
 import { RetryHandler } from "./retry-handler";
 import { ModelProvider } from "./model-provider";
+import { filesystemTools } from "./filesystem-tools";
 import { BaseOperations } from "./base-operations";
 import {
   createStandardError,
@@ -37,6 +38,10 @@ export class PRDOperations extends BaseOperations {
     workingDirectory?: string,
     enableFilesystemTools?: boolean
   ): Promise<AIPRDParseResult> {
+    // console.log(
+    //   `[Library Debug] parsePRD called. Config arg has key: ${!!config?.apiKey} Provider internal key: ${!!this.modelProvider.getAIConfig()
+    //     ?.apiKey}`
+    // );
     return this.retryHandler.executeWithRetry(
       async () => {
         let stackInfo = "";
@@ -93,7 +98,7 @@ export class PRDOperations extends BaseOperations {
           });
 
           const allTools = {
-            ...this.tools,
+            ...filesystemTools,
           };
 
           const result = await streamText({
@@ -289,7 +294,7 @@ Use these tools to understand the project structure, existing code patterns, and
           });
 
           const allTools = {
-            ...this.tools,
+            ...filesystemTools,
           };
 
           const result = await streamText({
@@ -411,7 +416,7 @@ Use these tools to understand the current project structure, existing code patte
             ...config,
           });
 
-          const allTools = { ...this.tools };
+          const allTools = { ...filesystemTools };
 
           const result = await streamText({
             model,

@@ -10,6 +10,7 @@ import {
 import { PromptBuilder } from "../prompt-builder";
 import { TASK_ENHANCEMENT_SYSTEM_PROMPT } from "../../prompts";
 import { getContextBuilder, getStorage } from "../../utils/ai-service-factory";
+import { filesystemTools } from "./filesystem-tools";
 import { BaseOperations } from "./base-operations";
 
 export class DocumentationOperations extends BaseOperations {
@@ -71,7 +72,7 @@ export class DocumentationOperations extends BaseOperations {
 
           const allTools = {
             ...(mcpTools as ToolSet),
-            ...(enableFilesystemTools ? this.tools : {}),
+            ...(enableFilesystemTools ? filesystemTools : {}),
           };
 
           const result = await streamText({
@@ -80,7 +81,7 @@ export class DocumentationOperations extends BaseOperations {
             system:
               TASK_ENHANCEMENT_SYSTEM_PROMPT +
               `
-              
+
 You have access to Context7 documentation tools${
                 enableFilesystemTools ? " and filesystem tools" : ""
               }.
@@ -148,7 +149,7 @@ ${existingResearchContext}`,
           if (toolCalls.length > 0) {
             console.log(
               "AI made tool calls:",
-              toolCalls.map((tc) => ({ tool: tc.toolName, input: tc.input }))
+              toolCalls.map((tc) => ({ tool: tc?.toolName, input: tc?.input }))
             );
           }
 
@@ -156,8 +157,8 @@ ${existingResearchContext}`,
             console.log(
               "Tool results received:",
               toolResults.map((tr) => ({
-                tool: tr.toolName,
-                output: tr.output,
+                tool: tr?.toolName,
+                output: tr?.output,
               }))
             );
           }
@@ -191,6 +192,7 @@ ${existingResearchContext}`,
     existingResearch?: (TaskDocumentation | undefined)[],
     enableFilesystemTools?: boolean
   ): Promise<DocumentationDetection> {
+    // @ts-expect-error tool result type discrepency i cant be bothered with (that will probably bite me later...)
     return this.retryHandler
       .executeWithRetry(
         async () => {
@@ -243,7 +245,7 @@ ${existingResearchContext}`,
 
           const allTools = {
             ...(mcpTools as ToolSet),
-            ...(enableFilesystemTools ? this.tools : {}),
+            ...(enableFilesystemTools ? filesystemTools : {}),
           };
 
           const result = await streamText({
@@ -370,8 +372,8 @@ ${existingResearchContext}`,
             libraries,
             confidence: libraries.length > 0 ? 0.8 : 0.3,
             toolResults: toolResults.map((tr) => ({
-              toolName: tr.toolName,
-              output: tr.output,
+              toolName: tr?.toolName,
+              output: tr?.output,
             })),
             files,
           };

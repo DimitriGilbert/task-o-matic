@@ -17,19 +17,6 @@ export interface ServiceOptions {
   contextCallbacks?: ContextCallbacks;
   workingDirectory?: string;
 }
-import {
-  FileSystem,
-  nodeFileSystem,
-  createFilesystemTools,
-} from "../lib/ai-service/filesystem-tools";
-
-export interface ServiceOptions {
-  storageCallbacks?: StorageCallbacks;
-  configCallbacks?: ConfigCallbacks;
-  contextCallbacks?: ContextCallbacks;
-  workingDirectory?: string;
-  filesystem?: FileSystem;
-}
 
 let aiOperations: AIOperations | null = null;
 let modelProvider: ModelProvider | null = null;
@@ -63,20 +50,14 @@ export async function initializeServices(
   // Initialize context builder
   contextBuilder = new ContextBuilder(storage, options.contextCallbacks);
 
-  // Initialize AI Operations with specific filesystem if provided
-  // If filesystem is provided, we create the tools with it
-  const fsImpl = options.filesystem || nodeFileSystem;
-  const tools = createFilesystemTools(fsImpl);
-
-  aiOperations = new AIOperations(tools);
+  // Reset other services to ensure they use fresh dependencies if needed
+  aiOperations = null;
   modelProvider = null;
 }
 
 export function getAIOperations(): AIOperations {
   if (!aiOperations) {
-    // If accessed before initialize, use defaults
-    const tools = createFilesystemTools(nodeFileSystem);
-    aiOperations = new AIOperations(tools);
+    aiOperations = new AIOperations();
   }
   return aiOperations;
 }

@@ -15,6 +15,7 @@ import {
   TASK_PLANNING_SYSTEM_PROMPT,
 } from "../../prompts";
 import { getContextBuilder } from "../../utils/ai-service-factory";
+import { filesystemTools } from "./filesystem-tools";
 import { BaseOperations } from "./base-operations";
 import { AIOperationUtility } from "../../utils/ai-operation-utility";
 import {
@@ -96,11 +97,11 @@ export class TaskOperations extends BaseOperations {
       "Task breakdown",
       async () => {
         // Prepare tools if filesystem tools are enabled
-        const tools = enableFilesystemTools ? this.tools : undefined;
+        const tools = enableFilesystemTools ? filesystemTools : undefined;
 
         const response = await this.aiOperationUtility.streamTextWithTools(
           TASK_BREAKDOWN_SYSTEM_PROMPT +
-            (enableFilesystemTools && this.tools
+            (enableFilesystemTools
               ? `
 
 You have access to filesystem tools that allow you to:
@@ -260,8 +261,7 @@ Use these tools to understand the project structure, existing code, and dependen
     promptOverride?: string,
     userMessage?: string,
     streamingOptions?: StreamingOptions,
-    retryConfig?: Partial<RetryConfig>,
-    enableFilesystemTools?: boolean
+    retryConfig?: Partial<RetryConfig>
   ): Promise<string> {
     // Build prompt
     let prompt: string;
@@ -301,20 +301,18 @@ Use these tools to understand the project structure, existing code, and dependen
         const mcpTools = await this.context7Client.getMCPTools();
         const allTools = {
           ...(mcpTools as ToolSet),
-          ...(enableFilesystemTools ? this.tools : {}),
+          ...filesystemTools,
         };
 
         return await this.aiOperationUtility.streamTextWithTools(
           TASK_PLANNING_SYSTEM_PROMPT +
-            (enableFilesystemTools && this.tools
-              ? `
+            `
 
 You have access to filesystem tools that allow you to:
 - readFile: Read the contents of any file in the project
 - listDirectory: List contents of directories
 
-Use these tools to understand the project structure, existing code, and dependencies when creating implementation plans.`
-              : ""),
+Use these tools to understand the project structure, existing code, and dependencies when creating implementation plans.`,
           userMessage || prompt,
           config,
           streamingOptions,
