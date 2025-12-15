@@ -1,4 +1,4 @@
-import chalk from "chalk";
+import { logger } from "./logger";
 import { ExecutorTool, Task } from "../types";
 import { getAIOperations } from "../utils/ai-service-factory";
 import { exec } from "child_process";
@@ -38,10 +38,10 @@ export async function executeReviewPhase(
 ): Promise<ReviewResult> {
   const { reviewModel, planContent, dry } = config;
 
-  console.log(chalk.blue.bold("\n🕵️  Starting AI Review Phase..."));
+  logger.info("\n🕵️  Starting AI Review Phase...");
 
   if (dry) {
-    console.log(chalk.yellow("🔍 DRY RUN - Review phase skipped"));
+    logger.warn("🔍 DRY RUN - Review phase skipped");
     return {
       approved: true,
       feedback: "Dry run - review skipped",
@@ -54,7 +54,7 @@ export async function executeReviewPhase(
     const { stdout: diff } = await execFn("git diff HEAD");
 
     if (!diff.trim()) {
-      console.log(chalk.yellow("⚠️  No changes detected to review."));
+      logger.warn("⚠️  No changes detected to review.");
       return {
         approved: true,
         feedback: "No changes to review",
@@ -69,13 +69,11 @@ export async function executeReviewPhase(
     const reviewModelName = reviewModel ? reviewModel.split(":")[1] : undefined;
 
     if (reviewExecutor && reviewModelName) {
-      console.log(
-        chalk.cyan(
-          `   Using executor for review: ${reviewExecutor} (${reviewModelName})`
-        )
+      logger.progress(
+        `   Using executor for review: ${reviewExecutor} (${reviewModelName})`
       );
     } else {
-      console.log(chalk.cyan("   Using default AI provider for review"));
+      logger.progress("   Using default AI provider for review");
     }
 
     const reviewPrompt = `You are a strict code reviewer. Review the following changes for the task.
@@ -107,13 +105,9 @@ Return a JSON object:
       const reviewResult = JSON.parse(jsonMatch[0]);
 
       if (!reviewResult.approved) {
-        console.log(
-          chalk.red(`❌ AI Review Rejected Changes: ${reviewResult.feedback}`)
-        );
+        logger.error(`❌ AI Review Rejected Changes: ${reviewResult.feedback}`);
       } else {
-        console.log(
-          chalk.green(`✅ AI Review Approved: ${reviewResult.feedback}`)
-        );
+        logger.success(`✅ AI Review Approved: ${reviewResult.feedback}`);
       }
 
       return {
@@ -122,11 +116,7 @@ Return a JSON object:
         success: true,
       };
     } else {
-      console.warn(
-        chalk.yellow(
-          "⚠️  Could not parse AI review response. Assuming approval."
-        )
-      );
+      logger.warn("⚠️  Could not parse AI review response. Assuming approval.");
       return {
         approved: true,
         feedback: "Could not parse review response, assuming approval",
@@ -134,9 +124,8 @@ Return a JSON object:
       };
     }
   } catch (error) {
-    const errorMessage =
-      error instanceof Error ? error.message : String(error);
-    console.error(chalk.red(`❌ AI Review failed: ${errorMessage}`));
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    logger.error(`❌ AI Review failed: ${errorMessage}`);
 
     // If review crashes, warn but don't fail the task
     return {

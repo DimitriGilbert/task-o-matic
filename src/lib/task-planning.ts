@@ -1,4 +1,4 @@
-import chalk from "chalk";
+import { logger } from "./logger";
 import { ExecutorFactory } from "./executors/executor-factory";
 import { ExecutorConfig, ExecutorTool, Task } from "../types";
 import { existsSync, readFileSync } from "fs";
@@ -43,9 +43,7 @@ export async function executePlanningPhase(
 ): Promise<PlanningResult> {
   const { planModel, reviewPlan, autoCommit, dry } = config;
 
-  console.log(
-    chalk.blue.bold(`\n🧠 Starting Planning Phase for Task: ${task.title}`)
-  );
+  logger.info(`\n🧠 Starting Planning Phase for Task: ${task.title}`);
 
   const planFileName = `task-${task.id}-plan.md`;
 
@@ -69,12 +67,10 @@ Requirements:
 
 Please create the "${planFileName}" file now.`;
 
-  console.log(
-    chalk.cyan(
-      `   Using executor for planning: ${planExecutor}${
-        planModelName ? ` (${planModelName})` : ""
-      }`
-    )
+  logger.progress(
+    `   Using executor for planning: ${planExecutor}${
+      planModelName ? ` (${planModelName})` : ""
+    }`
   );
 
   // Create executor for planning
@@ -96,18 +92,14 @@ Please create the "${planFileName}" file now.`;
         // Verify plan file exists and read it
         if (existsSync(planFileName)) {
           planContent = readFileSync(planFileName, "utf-8");
-          console.log(
-            chalk.green(`✅ Plan created successfully: ${planFileName}`)
-          );
+          logger.success(`✅ Plan created successfully: ${planFileName}`);
 
           // Human Review Loop
           if (reviewPlan) {
-            console.log(
-              chalk.yellow(
-                `\n👀 Pausing for Human Review of the Plan: ${planFileName}`
-              )
+            logger.warn(
+              `\n👀 Pausing for Human Review of the Plan: ${planFileName}`
             );
-            console.log(chalk.cyan("You can edit the file now."));
+            logger.progress("You can edit the file now.");
 
             const { feedback } = await inquirer.prompt([
               {
@@ -119,7 +111,7 @@ Please create the "${planFileName}" file now.`;
             ]);
 
             if (feedback && feedback.trim() !== "") {
-              console.log(chalk.blue("🔄 Refining plan based on feedback..."));
+              logger.info("🔄 Refining plan based on feedback...");
               planningPrompt = `The user provided the following feedback on the plan you just created:
 
 "${feedback}"
@@ -141,10 +133,8 @@ Please update the plan file "${planFileName}" to incorporate this feedback.`;
 
           planningComplete = true;
         } else {
-          console.warn(
-            chalk.yellow(
-              `⚠️  Plan file ${planFileName} was not created by the executor.`
-            )
+          logger.warn(
+            `⚠️  Plan file ${planFileName} was not created by the executor.`
           );
           planningComplete = true; // Exit loop to avoid infinite retry if file not created
         }
@@ -159,9 +149,8 @@ Please update the plan file "${planFileName}" to incorporate this feedback.`;
       success: true,
     };
   } catch (error) {
-    const errorMessage =
-      error instanceof Error ? error.message : String(error);
-    console.error(chalk.red(`❌ Planning phase failed: ${errorMessage}`));
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    logger.error(`❌ Planning phase failed: ${errorMessage}`);
 
     return {
       success: false,

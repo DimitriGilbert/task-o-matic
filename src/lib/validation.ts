@@ -1,6 +1,6 @@
 import { exec } from "child_process";
 import { promisify } from "util";
-import chalk from "chalk";
+import { logger } from "./logger";
 import { AIConfig } from "../types";
 
 const execAsync = promisify(exec);
@@ -40,13 +40,11 @@ export async function runValidations(
   }
 
   if (dry) {
-    console.log(
-      chalk.yellow(
-        "🔍 DRY RUN - Validation/verification commands that would run:"
-      )
+    logger.warn(
+      "🔍 DRY RUN - Validation/verification commands that would run:"
     );
     validations.forEach((cmd) => {
-      console.log(chalk.cyan(`  ${cmd}`));
+      logger.progress(`  ${cmd}`);
       results.push({
         command: cmd,
         success: true,
@@ -56,29 +54,25 @@ export async function runValidations(
     return results;
   }
 
-  console.log(
-    chalk.blue(
-      `🧪 Running ${validations.length} validation/verification command${
-        validations.length > 1 ? "s" : ""
-      }...`
-    )
+  logger.info(
+    `🧪 Running ${validations.length} validation/verification command${
+      validations.length > 1 ? "s" : ""
+    }...`
   );
 
   for (let i = 0; i < validations.length; i++) {
     const validation = validations[i];
-    console.log(
-      chalk.blue(
-        `🧪 Running validation [${i + 1}/${validations.length}]: ${validation}`
-      )
+    logger.info(
+      `🧪 Running validation [${i + 1}/${validations.length}]: ${validation}`
     );
 
     try {
       const { stdout, stderr } = await execFn(validation);
-      console.log(chalk.green(`✅ Validation passed: ${validation}`));
+      logger.success(`✅ Validation passed: ${validation}`);
 
       // Show stdout if there's any output
       if (stdout && stdout.trim()) {
-        console.log(chalk.gray(`   Output: ${stdout.trim()}`));
+        logger.progress(`   Output: ${stdout.trim()}`);
       }
 
       results.push({
@@ -87,19 +81,19 @@ export async function runValidations(
         output: stdout.trim(),
       });
     } catch (error: any) {
-      console.error(chalk.red(`❌ Validation failed: ${validation}`));
+      logger.error(`❌ Validation failed: ${validation}`);
 
       const errorOutput = error.stderr || error.stdout || error.message;
 
       // Show error details
       if (error.stdout && error.stdout.trim()) {
-        console.error(chalk.yellow(`   stdout: ${error.stdout.trim()}`));
+        logger.warn(`   stdout: ${error.stdout.trim()}`);
       }
       if (error.stderr && error.stderr.trim()) {
-        console.error(chalk.red(`   stderr: ${error.stderr.trim()}`));
+        logger.error(`   stderr: ${error.stderr.trim()}`);
       }
       if (error.message) {
-        console.error(chalk.red(`   Error: ${error.message}`));
+        logger.error(`   Error: ${error.message}`);
       }
 
       results.push({
@@ -115,12 +109,10 @@ export async function runValidations(
 
   const allPassed = results.every((r) => r.success);
   if (allPassed) {
-    console.log(
-      chalk.green(
-        `🎉 All ${validations.length} validation${
-          validations.length > 1 ? "s" : ""
-        } passed!`
-      )
+    logger.success(
+      `🎉 All ${validations.length} validation${
+        validations.length > 1 ? "s" : ""
+      } passed!`
     );
   }
 

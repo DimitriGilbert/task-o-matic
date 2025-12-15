@@ -21,28 +21,8 @@ export interface ConfigCallbacks {
 }
 
 // Provider-specific sensible defaults for 2025
-const PROVIDER_DEFAULTS: ProviderDefaults = {
-  openrouter: {
-    model: "z-ai/glm-4.6",
-    maxTokens: 32768,
-    temperature: 0.5,
-  },
-  anthropic: {
-    model: "claude-sonnet-4.5",
-    maxTokens: 32768,
-    temperature: 0.5,
-  },
-  openai: {
-    model: "gpt-5",
-    maxTokens: 32768,
-    temperature: 0.5,
-  },
-  custom: {
-    model: "llama-3.3-70b",
-    maxTokens: 32768,
-    temperature: 0.5,
-  },
-};
+// Externalized to JSON for easy updates
+import PROVIDER_DEFAULTS from "./provider-defaults.json";
 
 function getApiKeyFromEnv(
   provider: AIProvider,
@@ -277,6 +257,79 @@ export class ConfigManager {
   // Helper for legacy code that might need path (deprecated for direct use)
   getConfigFilePath(): string {
     return join(this.getTaskOMaticDir(), "config.json");
+  }
+
+  /**
+   * Validate configuration independently of load().
+   * Can be used to validate config before applying changes.
+   */
+  validate(configToValidate?: Partial<Config>): {
+    valid: boolean;
+    errors: string[];
+  } {
+    const errors: string[] = [];
+
+    const config = configToValidate || this.config;
+    if (!config) {
+      return {
+        valid: false,
+        errors: [
+          "No configuration to validate. Either provide a config or call load() first.",
+        ],
+      };
+    }
+
+    // Validate AI config
+    if (config.ai) {
+      const { provider, model, apiKey, maxTokens, temperature } = config.ai;
+
+      // Validate provider
+      if (
+        provider &&
+        !["openrouter", "anthropic", "openai", "custom"].includes(provider)
+      ) {
+        errors.push(
+          `Invalid provider: ${provider}. Must be one of: openrouter, anthropic, openai, custom`
+        );
+      }
+
+      // Validate model
+      if (model !== undefined && typeof model !== "string") {
+        errors.push("Model must be a string");
+      }
+
+      // Validate maxTokens
+      if (maxTokens !== undefined) {
+        if (
+          typeof maxTokens !== "number" ||
+          maxTokens < 1 ||
+          maxTokens > 200000
+        ) {
+          errors.push("maxTokens must be a number between 1 and 200000");
+        }
+      }
+
+      // Validate temperature
+      if (temperature !== undefined) {
+        if (
+          typeof temperature !== "number" ||
+          temperature < 0 ||
+          temperature > 2
+        ) {
+          errors.push("temperature must be a number between 0 and 2");
+        }
+      }
+
+      // Warn about missing API key (not an error, just a warning)
+      if (!apiKey && provider !== "custom") {
+        // This is a soft validation - API key can be set via env vars
+      }
+    }
+
+    return {
+      valid: errors.length === 0,
+      errors,
+    };
   }
 }
 

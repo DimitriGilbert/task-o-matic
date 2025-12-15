@@ -15,6 +15,7 @@ import { promptCommand } from "./commands/prompt";
 import { workflowCommand } from "./commands/workflow";
 import { benchmarkCommand } from "./commands/benchmark";
 import { configManager } from "./lib/config";
+import { registerLoggerHooks } from "./lib/hooks/logger";
 
 const program = new Command();
 
@@ -69,6 +70,9 @@ program.on("command:*", (operands) => {
  */
 export const runCLI = async () => {
   try {
+    // Initialize logger hooks
+    registerLoggerHooks();
+
     // Ensure config is loaded before running any commands
     await configManager.load();
 

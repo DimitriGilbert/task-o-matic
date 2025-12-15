@@ -19,8 +19,13 @@ import { hooks } from "./hooks";
 import { PromptBuilder } from "./prompt-builder";
 import { executePlanningPhase } from "./task-planning";
 import { executeReviewPhase } from "./task-review";
-import { captureGitState, extractCommitInfo, autoCommit, GitState } from "./git-utils";
-import chalk from "chalk";
+import {
+  captureGitState,
+  extractCommitInfo,
+  autoCommit,
+  GitState,
+} from "./git-utils";
+import { logger } from "./logger";
 
 /**
  * Execute a single task with all features (retry, planning, review, etc.)
@@ -90,7 +95,14 @@ export async function executeTaskCore(
     return await executeTaskWithRetry(task, config, attempts, planContent);
   } else {
     // Execute once without retry (simpler path for execute command)
-    return await executeSingleAttempt(task, config, attempts, planContent, 1, maxRetries);
+    return await executeSingleAttempt(
+      task,
+      config,
+      attempts,
+      planContent,
+      1,
+      maxRetries
+    );
   }
 }
 
@@ -104,10 +116,8 @@ async function executeTaskWithSubtasks(
 ): Promise<TaskExecutionResult> {
   const { dry } = config;
 
-  console.log(
-    chalk.blue(
-      `📋 Task has ${subtasks.length} subtasks, executing recursively...`
-    )
+  logger.info(
+    `📋 Task has ${subtasks.length} subtasks, executing recursively...`
   );
 
   const subtaskResults: TaskExecutionResult[] = [];
@@ -116,12 +126,10 @@ async function executeTaskWithSubtasks(
   // Execute subtasks one by one
   for (let i = 0; i < subtasks.length; i++) {
     const subtask = subtasks[i];
-    console.log(
-      chalk.cyan(
-        `\n[${i + 1}/${subtasks.length}] Executing subtask: ${subtask.title} (${
-          subtask.id
-        })`
-      )
+    logger.progress(
+      `\n[${i + 1}/${subtasks.length}] Executing subtask: ${subtask.title} (${
+        subtask.id
+      })`
     );
 
     try {
@@ -130,21 +138,17 @@ async function executeTaskWithSubtasks(
 
       if (!result.success) {
         allSuccess = false;
-        console.error(
-          chalk.red(
-            `❌ Failed to execute subtask ${subtask.id}: ${subtask.title}`
-          )
+        logger.error(
+          `❌ Failed to execute subtask ${subtask.id}: ${subtask.title}`
         );
         break; // Stop on first failure
       }
     } catch (error) {
       allSuccess = false;
-      console.error(
-        chalk.red(
-          `❌ Failed to execute subtask ${subtask.id}: ${
-            error instanceof Error ? error.message : "Unknown error"
-          }`
-        )
+      logger.error(
+        `❌ Failed to execute subtask ${subtask.id}: ${
+          error instanceof Error ? error.message : "Unknown error"
+        }`
       );
       break;
     }
@@ -154,15 +158,11 @@ async function executeTaskWithSubtasks(
   if (!dry) {
     if (allSuccess) {
       await taskService.setTaskStatus(task.id, "completed");
-      console.log(
-        chalk.green(`✅ Main task ${task.title} completed after all subtasks`)
-      );
+      logger.success(`✅ Main task ${task.title} completed after all subtasks`);
     } else {
       await taskService.setTaskStatus(task.id, "todo");
-      console.log(
-        chalk.red(
-          `❌ Main task ${task.title} failed due to subtask failure, status reset to todo`
-        )
+      logger.error(
+        `❌ Main task ${task.title} failed due to subtask failure, status reset to todo`
       );
     }
   }
@@ -217,20 +217,16 @@ async function executeTaskWithRetry(
       }
     }
 
-    console.log(
-      chalk.blue(
-        `\n🎯 Attempt ${currentAttempt}/${maxRetries} for task: ${task.title} (${task.id})`
-      )
+    logger.info(
+      `\n🎯 Attempt ${currentAttempt}/${maxRetries} for task: ${task.title} (${task.id})`
     );
 
     if (currentModel) {
-      console.log(
-        chalk.cyan(
-          `   Using executor: ${currentExecutor} with model: ${currentModel}`
-        )
+      logger.progress(
+        `   Using executor: ${currentExecutor} with model: ${currentModel}`
       );
     } else {
-      console.log(chalk.cyan(`   Using executor: ${currentExecutor}`));
+      logger.progress(`   Using executor: ${currentExecutor}`);
     }
 
     // Build retry context if this is a retry attempt
@@ -285,12 +281,15 @@ async function executeTaskWithRetry(
       );
 
       // Check if all verifications passed
-      const allVerificationsPassed = result.attempts[result.attempts.length - 1]
-        ?.verificationResults?.every((r) => r.success) ?? true;
+      const allVerificationsPassed =
+        result.attempts[result.attempts.length - 1]?.verificationResults?.every(
+          (r) => r.success
+        ) ?? true;
 
       if (!allVerificationsPassed) {
-        const failedVerification = result.attempts[result.attempts.length - 1]
-          ?.verificationResults?.find((r) => !r.success);
+        const failedVerification = result.attempts[
+          result.attempts.length - 1
+        ]?.verificationResults?.find((r) => !r.success);
         lastError = `Verification command "${failedVerification?.command}" failed:\n${failedVerification?.error}`;
         currentAttempt++;
         continue;
@@ -308,15 +307,13 @@ async function executeTaskWithRetry(
 
         if (!reviewResult.approved) {
           lastError = `AI Review Failed:\n${reviewResult.feedback}`;
-          console.log(
-            chalk.red(`❌ AI Review Rejected Changes: ${reviewResult.feedback}`)
+          logger.error(
+            `❌ AI Review Rejected Changes: ${reviewResult.feedback}`
           );
           currentAttempt++;
           continue;
         } else {
-          console.log(
-            chalk.green(`✅ AI Review Approved: ${reviewResult.feedback}`)
-          );
+          logger.success(`✅ AI Review Approved: ${reviewResult.feedback}`);
           result.reviewFeedback = reviewResult.feedback;
         }
       }
@@ -325,15 +322,13 @@ async function executeTaskWithRetry(
       return result;
     } catch (error) {
       lastError = error instanceof Error ? error.message : String(error);
-      console.log(
-        chalk.red(
-          `❌ Task execution failed on attempt ${currentAttempt}: ${lastError}`
-        )
+      logger.error(
+        `❌ Task execution failed on attempt ${currentAttempt}: ${lastError}`
       );
 
       if (!dry && currentAttempt < maxRetries) {
         await taskService.setTaskStatus(task.id, "todo");
-        console.log(chalk.yellow("⏸  Task status reset to todo for retry"));
+        logger.warn("⏸  Task status reset to todo for retry");
       }
 
       currentAttempt++;
@@ -343,9 +338,7 @@ async function executeTaskWithRetry(
   // All retries exhausted
   if (!dry) {
     await taskService.setTaskStatus(task.id, "todo");
-    console.log(
-      chalk.red("❌ All retry attempts exhausted, task status reset to todo")
-    );
+    logger.error("❌ All retry attempts exhausted, task status reset to todo");
   }
 
   return {
@@ -377,10 +370,8 @@ async function executeSingleAttempt(
 
   const attemptStartTime = Date.now();
 
-  console.log(
-    chalk.blue(
-      `🎯 ${dry ? "DRY RUN" : "Executing"} task: ${task.title} (${task.id})`
-    )
+  logger.info(
+    `🎯 ${dry ? "DRY RUN" : "Executing"} task: ${task.title} (${task.id})`
   );
 
   // Capture git state before execution
@@ -392,7 +383,7 @@ async function executeSingleAttempt(
   if (customMessage) {
     // Use custom message override
     executionMessage = customMessage;
-    console.log(chalk.cyan("📝 Using custom execution message"));
+    logger.progress("📝 Using custom execution message");
   } else {
     // Build comprehensive execution message with full context
     const contextBuilder = getContextBuilder();
@@ -430,7 +421,7 @@ async function executeSingleAttempt(
   // Update task status to in-progress
   if (!dry) {
     await taskService.setTaskStatus(task.id, "in-progress");
-    console.log(chalk.yellow("⏳ Task status updated to in-progress"));
+    logger.warn("⏳ Task status updated to in-progress");
   }
 
   // Emit execution:start event
@@ -442,20 +433,15 @@ async function executeSingleAttempt(
 
     // Log session resumption if applicable
     if (executorConfig?.continueLastSession && attemptNumber > 1) {
-      console.log(
-        chalk.cyan(
-          "🔄 Resuming previous session to provide error feedback to AI"
-        )
+      logger.progress(
+        "🔄 Resuming previous session to provide error feedback to AI"
       );
     }
 
     await executor.execute(executionMessage, dry, executorConfig);
 
     // Run verification commands
-    const verificationResults = await runValidations(
-      verificationCommands,
-      dry
-    );
+    const verificationResults = await runValidations(verificationCommands, dry);
 
     const allVerificationsPassed = verificationResults.every((r) => r.success);
 
@@ -473,10 +459,8 @@ async function executeSingleAttempt(
         timestamp: Date.now() - attemptStartTime,
       });
 
-      console.log(
-        chalk.red(
-          `❌ Task execution failed verification on attempt ${attemptNumber}`
-        )
+      logger.error(
+        `❌ Task execution failed verification on attempt ${attemptNumber}`
       );
 
       throw new Error(error);
@@ -486,7 +470,7 @@ async function executeSingleAttempt(
     let commitInfo: { message: string; files: string[] } | undefined;
 
     if (enableAutoCommit && !dry) {
-      console.log(chalk.blue("📝 Extracting commit information..."));
+      logger.info("📝 Extracting commit information...");
 
       const gitStateAfter = await captureGitState();
       const gitState: GitState = {
@@ -502,11 +486,9 @@ async function executeSingleAttempt(
         gitState
       );
 
-      console.log(chalk.green(`✅ Commit message: ${commitInfo.message}`));
+      logger.success(`✅ Commit message: ${commitInfo.message}`);
       if (commitInfo.files.length > 0) {
-        console.log(
-          chalk.green(`📁 Changed files: ${commitInfo.files.join(", ")}`)
-        );
+        logger.success(`📁 Changed files: ${commitInfo.files.join(", ")}`);
       }
 
       // Auto-commit the changes
@@ -516,7 +498,7 @@ async function executeSingleAttempt(
     // Update task status to completed
     if (!dry) {
       await taskService.setTaskStatus(task.id, "completed");
-      console.log(chalk.green("✅ Task execution completed successfully"));
+      logger.success("✅ Task execution completed successfully");
     }
 
     // Record successful attempt
@@ -543,7 +525,10 @@ async function executeSingleAttempt(
     const errorMessage = error instanceof Error ? error.message : String(error);
 
     // Record failed attempt if not already recorded
-    if (attempts.length === 0 || attempts[attempts.length - 1].attemptNumber !== attemptNumber) {
+    if (
+      attempts.length === 0 ||
+      attempts[attempts.length - 1].attemptNumber !== attemptNumber
+    ) {
       attempts.push({
         attemptNumber,
         success: false,
@@ -562,7 +547,7 @@ async function executeSingleAttempt(
 
     if (!dry) {
       await taskService.setTaskStatus(task.id, "todo");
-      console.log(chalk.red("❌ Task execution failed, status reset to todo"));
+      logger.error("❌ Task execution failed, status reset to todo");
     }
 
     throw error;

@@ -200,11 +200,7 @@ Use these tools to understand the project structure, existing code patterns, and
             return {
               id: taskId,
               title: task.title,
-              description:
-                (task.description || task.content || "").substring(0, 200) +
-                ((task.description || task.content || "").length > 200
-                  ? "..."
-                  : ""),
+              description: task.description || task.content || "",
               content: fullContent,
               status: "todo" as const,
               createdAt: Date.now(),

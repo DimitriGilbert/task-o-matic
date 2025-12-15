@@ -1,0 +1,22 @@
+{
+  "openrouter": {
+    "model": "z-ai/glm-4.6",
+    "maxTokens": 32768,
+    "temperature": 0.5
+  },
+  "anthropic": {
+    "model": "claude-sonnet-4.5",
+    "maxTokens": 32768,
+    "temperature": 0.5
+  },
+  "openai": {
+    "model": "gpt-5",
+    "maxTokens": 32768,
+    "temperature": 0.5
+  },
+  "custom": {
+    "model": "llama-3.3-70b",
+    "maxTokens": 32768,
+    "temperature": 0.5
+  }
+}

@@ -1,6 +1,6 @@
 import { exec } from "child_process";
 import { promisify } from "util";
-import chalk from "chalk";
+import { logger } from "./logger";
 import { getAIOperations } from "../utils/ai-service-factory";
 
 const execAsync = promisify(exec);
@@ -62,9 +62,7 @@ export async function extractCommitInfo(
   try {
     // Case 1: Executor created a commit
     if (gitState.beforeHead !== gitState.afterHead) {
-      console.log(
-        chalk.blue("📝 Executor created a commit, extracting info...")
-      );
+      logger.info("📝 Executor created a commit, extracting info...");
       const { stdout } = await execFn(
         `git show --stat --format="%s%n%b" ${gitState.afterHead}`
       );
@@ -85,10 +83,8 @@ export async function extractCommitInfo(
 
     // Case 2: Executor left uncommitted changes
     if (gitState.hasUncommittedChanges) {
-      console.log(
-        chalk.blue(
-          "📝 Uncommitted changes detected, generating commit message..."
-        )
+      logger.info(
+        "📝 Uncommitted changes detected, generating commit message..."
       );
 
       // Get the diff to send to AI
@@ -154,12 +150,10 @@ The commit message should:
       files: [],
     };
   } catch (error) {
-    console.warn(
-      chalk.yellow(
-        `⚠️  Failed to extract commit info: ${
-          error instanceof Error ? error.message : "Unknown error"
-        }`
-      )
+    logger.warn(
+      `⚠️  Failed to extract commit info: ${
+        error instanceof Error ? error.message : "Unknown error"
+      }`
     );
     // Fallback commit info
     return {
@@ -184,27 +178,25 @@ export async function autoCommit(
     if (files.length > 0) {
       // Stage specific files
       const gitAdd = `git add ${files.join(" ")}`;
-      console.log(chalk.blue(`📦 Staging files: ${gitAdd}`));
+      logger.info(`📦 Staging files: ${gitAdd}`);
       await execFn(gitAdd);
     } else {
       // Stage all changes
-      console.log(chalk.blue("📦 Staging all changes"));
+      logger.info("📦 Staging all changes");
       await execFn("git add .");
     }
 
     // Commit
     const gitCommit = `git commit -m "${message}"`;
-    console.log(chalk.blue(`💾 Committing: ${message}`));
+    logger.info(`💾 Committing: ${message}`);
     await execFn(gitCommit);
 
-    console.log(chalk.green("✅ Changes committed successfully\n"));
+    logger.success("✅ Changes committed successfully\n");
   } catch (error) {
-    console.warn(
-      chalk.yellow(
-        `⚠️  Auto-commit failed: ${
-          error instanceof Error ? error.message : "Unknown error"
-        }\n`
-      )
+    logger.warn(
+      `⚠️  Auto-commit failed: ${
+        error instanceof Error ? error.message : "Unknown error"
+      }\n`
     );
   }
 }
@@ -220,17 +212,15 @@ export async function commitFile(
   ) => Promise<{ stdout: string; stderr: string }> = execAsync
 ): Promise<void> {
   try {
-    console.log(chalk.blue(`📦 Staging file: ${filePath}`));
+    logger.info(`📦 Staging file: ${filePath}`);
     await execFn(`git add ${filePath}`);
     await execFn(`git commit -m "${message}"`);
-    console.log(chalk.green("✅ File committed successfully"));
+    logger.success("✅ File committed successfully");
   } catch (e) {
-    console.warn(
-      chalk.yellow(
-        `⚠️  Failed to commit file: ${
-          e instanceof Error ? e.message : "Unknown error"
-        }`
-      )
+    logger.warn(
+      `⚠️  Failed to commit file: ${
+        e instanceof Error ? e.message : "Unknown error"
+      }`
     );
   }
 }

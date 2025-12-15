@@ -31,4 +31,25 @@ export function registerLoggerHooks() {
     const status = success ? chalk.green("Success") : chalk.red("Failed");
     console.log(chalk.blue(`[Hook] Execution ended for ${taskId}: ${status}`));
   });
+
+  // Log event handlers - chalk-styled console output
+  hooks.on("log:info", ({ message }) => {
+    console.log(chalk.blue(message));
+  });
+
+  hooks.on("log:warn", ({ message }) => {
+    console.log(chalk.yellow(message));
+  });
+
+  hooks.on("log:error", ({ message }) => {
+    console.log(chalk.red(message));
+  });
+
+  hooks.on("log:success", ({ message }) => {
+    console.log(chalk.green(message));
+  });
+
+  hooks.on("log:progress", ({ message }) => {
+    console.log(chalk.cyan(message));
+  });
 }

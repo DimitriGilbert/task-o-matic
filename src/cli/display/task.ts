@@ -1,7 +1,5 @@
-
 import chalk from "chalk";
 import { Task, TaskAIMetadata } from "../../types";
-import { taskService } from "../../services/tasks";
 
 export interface TaskDisplayOptions {
   indent?: string;
@@ -9,9 +7,29 @@ export interface TaskDisplayOptions {
   showMetadata?: boolean;
 }
 
+/**
+ * Data object for displayTaskDetails - makes the function pure
+ */
+export interface TaskDetailsData {
+  task: Task;
+  content?: string;
+  aiMetadata?: TaskAIMetadata;
+  subtasks?: Task[];
+  subtaskMetadata?: Map<string, TaskAIMetadata>;
+}
+
+/**
+ * Data object for displayTaskTree - makes the function pure
+ */
+export interface TaskTreeData {
+  tasks: Task[];
+  subtasksMap: Map<string, Task[]>;
+  rootId?: string;
+}
+
 export async function displayTask(
   task: Task,
-  options: TaskDisplayOptions = {},
+  options: TaskDisplayOptions = {}
 ): Promise<void> {
   const { indent = "", showSubtasks = true, showMetadata = false } = options;
 
@@ -19,11 +37,13 @@ export async function displayTask(
     task.status === "completed"
       ? chalk.green
       : task.status === "in-progress"
-        ? chalk.yellow
-        : chalk.gray;
+      ? chalk.yellow
+      : chalk.gray;
 
   console.log(
-    `${indent}${statusColor(`[${task.status}]`)} ${chalk.bold(task.title)} ${chalk.gray(`(${task.id})`)}`,
+    `${indent}${statusColor(`[${task.status}]`)} ${chalk.bold(
+      task.title
+    )} ${chalk.gray(`(${task.id})`)}`
   );
 
   if (showSubtasks && task.subtasks && task.subtasks.length > 0) {
@@ -36,7 +56,13 @@ export async function displayTask(
   }
 }
 
-export async function displayTaskDetails(task: Task): Promise<void> {
+/**
+ * Display detailed task information.
+ * Pure function - accepts all data as arguments, no internal service calls.
+ */
+export function displayTaskDetails(data: TaskDetailsData): void {
+  const { task, content, aiMetadata, subtasks = [], subtaskMetadata } = data;
+
   console.log(chalk.blue("Task Details:"));
   console.log(`${chalk.cyan("ID:")} ${task.id}`);
   console.log(`${chalk.cyan("Title:")} ${chalk.bold(task.title)}`);
@@ -46,12 +72,9 @@ export async function displayTaskDetails(task: Task): Promise<void> {
     console.log(`${chalk.cyan("Description:")} ${task.description}`);
   }
 
-  if (task.contentFile) {
-    const fullContent = await taskService.getTaskContent(task.id);
-    if (fullContent) {
-      console.log(`${chalk.cyan("Full Content:")}`);
-      console.log(fullContent);
-    }
+  if (content) {
+    console.log(`${chalk.cyan("Full Content:")}`);
+    console.log(content);
   }
 
   if (task.estimatedEffort) {
@@ -62,7 +85,6 @@ export async function displayTaskDetails(task: Task): Promise<void> {
     console.log(`${chalk.cyan("Tags:")} ${task.tags.join(", ")}`);
   }
 
-  const aiMetadata = await taskService.getTaskAIMetadata(task.id);
   if (aiMetadata?.aiGenerated) {
     console.log(`${chalk.magenta("🤖 AI-generated")}`);
     if (aiMetadata.aiProvider) {
@@ -74,10 +96,10 @@ export async function displayTaskDetails(task: Task): Promise<void> {
   }
 
   console.log(
-    `${chalk.cyan("Created:")} ${new Date(task.createdAt).toLocaleString()}`,
+    `${chalk.cyan("Created:")} ${new Date(task.createdAt).toLocaleString()}`
   );
   console.log(
-    `${chalk.cyan("Updated:")} ${new Date(task.updatedAt).toLocaleString()}`,
+    `${chalk.cyan("Updated:")} ${new Date(task.updatedAt).toLocaleString()}`
   );
 
   if (task.documentation?.research) {
@@ -89,11 +111,10 @@ export async function displayTaskDetails(task: Task): Promise<void> {
           console.log(chalk.gray(`    Query: "${entry.query}"`));
           console.log(chalk.gray(`    Cache: ${entry.cache}`));
         });
-      },
+      }
     );
   }
 
-  const subtasks = await taskService.getSubtasks(task.id);
   if (subtasks.length > 0) {
     console.log(chalk.blue(`\n📋 Subtasks (${subtasks.length}):`));
     for (let i = 0; i < subtasks.length; i++) {
@@ -102,18 +123,22 @@ export async function displayTaskDetails(task: Task): Promise<void> {
         subtask.status === "completed"
           ? chalk.green
           : subtask.status === "in-progress"
-            ? chalk.yellow
-            : chalk.gray;
+          ? chalk.yellow
+          : chalk.gray;
 
       console.log(
-        `  ${i + 1}. ${statusColor(`[${subtask.status}]`)} ${chalk.bold(subtask.title)}`,
+        `  ${i + 1}. ${statusColor(`[${subtask.status}]`)} ${chalk.bold(
+          subtask.title
+        )}`
       );
 
       if (subtask.description) {
         console.log(
           chalk.gray(
-            `     ${subtask.description.substring(0, 80)}${subtask.description.length > 80 ? "..." : ""}`,
-          ),
+            `     ${subtask.description.substring(0, 80)}${
+              subtask.description.length > 80 ? "..." : ""
+            }`
+          )
         );
       }
 
@@ -121,8 +146,8 @@ export async function displayTaskDetails(task: Task): Promise<void> {
         console.log(chalk.cyan(`     Effort: ${subtask.estimatedEffort}`));
       }
 
-      const subtaskAiMetadata = await taskService.getTaskAIMetadata(subtask.id);
-      if (subtaskAiMetadata?.aiGenerated) {
+      const subtaskAiMeta = subtaskMetadata?.get(subtask.id);
+      if (subtaskAiMeta?.aiGenerated) {
         console.log(chalk.magenta(`     🤖 AI-generated`));
       }
 
@@ -140,7 +165,7 @@ export function displayTaskList(tasks: Task[]): void {
 
 export function displayCreatedTask(
   task: Task,
-  aiMetadata?: TaskAIMetadata,
+  aiMetadata?: TaskAIMetadata
 ): void {
   console.log(chalk.green(`\n✓ Created task: ${task.title} (${task.id})`));
 
@@ -177,8 +202,8 @@ export function displayTaskUpdate(task: Task, updates: any): void {
       updates.status === "completed"
         ? chalk.green
         : updates.status === "in-progress"
-          ? chalk.yellow
-          : chalk.gray;
+        ? chalk.yellow
+        : chalk.gray;
     console.log(statusColor(`  Status: ${updates.status}`));
   }
 
@@ -193,7 +218,7 @@ export function displayTaskUpdate(task: Task, updates: any): void {
 
 export function displayTaskDelete(
   deleted: Task[],
-  orphanedSubtasks: Task[],
+  orphanedSubtasks: Task[]
 ): void {
   console.log(chalk.green(`\n✓ Deleted ${deleted.length} task(s):`));
 
@@ -203,7 +228,7 @@ export function displayTaskDelete(
 
   if (orphanedSubtasks.length > 0) {
     console.log(
-      chalk.yellow(`\n⚠️  Orphaned ${orphanedSubtasks.length} subtask(s):`),
+      chalk.yellow(`\n⚠️  Orphaned ${orphanedSubtasks.length} subtask(s):`)
     );
     for (const subtask of orphanedSubtasks) {
       console.log(chalk.yellow(`  • ${subtask.title} (${subtask.id})`));
@@ -214,17 +239,17 @@ export function displayTaskDelete(
 export function displayTaskStatusChange(
   task: Task,
   oldStatus: string,
-  newStatus: string,
+  newStatus: string
 ): void {
   const newStatusColor =
     newStatus === "completed"
       ? chalk.green
       : newStatus === "in-progress"
-        ? chalk.yellow
-        : chalk.gray;
+      ? chalk.yellow
+      : chalk.gray;
 
   console.log(
-    chalk.green(`\n✓ Status changed for task: ${task.title} (${task.id})`),
+    chalk.green(`\n✓ Status changed for task: ${task.title} (${task.id})`)
   );
   console.log(chalk.gray(`  From: ${oldStatus}`));
   console.log(newStatusColor(`  To: ${newStatus}`));
@@ -233,10 +258,10 @@ export function displayTaskStatusChange(
 export function displayTagsUpdate(
   task: Task,
   addedTags: string[],
-  removedTags: string[],
+  removedTags: string[]
 ): void {
   console.log(
-    chalk.green(`\n✓ Updated tags for task: ${task.title} (${task.id})`),
+    chalk.green(`\n✓ Updated tags for task: ${task.title} (${task.id})`)
   );
 
   if (addedTags.length > 0) {
@@ -255,33 +280,46 @@ export function displayTagsUpdate(
 export function displayNextTask(task: Task, criteria: string): void {
   console.log(chalk.blue(`\n🎯 Next task (${criteria}):`));
   console.log(chalk.green(`✓ ${task.title} (${task.id})`));
-  
-  const statusColor = 
-    task.status === "completed" ? chalk.green :
-    task.status === "in-progress" ? chalk.yellow :
-    chalk.gray;
-  
+
+  const statusColor =
+    task.status === "completed"
+      ? chalk.green
+      : task.status === "in-progress"
+      ? chalk.yellow
+      : chalk.gray;
+
   console.log(statusColor(`  Status: ${task.status}`));
-  
+
   if (task.description) {
-    console.log(chalk.cyan(`  Description: ${task.description.substring(0, 100)}${task.description.length > 100 ? "..." : ""}`));
+    console.log(
+      chalk.cyan(
+        `  Description: ${task.description.substring(0, 100)}${
+          task.description.length > 100 ? "..." : ""
+        }`
+      )
+    );
   }
-  
+
   if (task.estimatedEffort) {
     console.log(chalk.cyan(`  Effort: ${task.estimatedEffort}`));
   }
-  
+
   if (task.tags && task.tags.length > 0) {
     console.log(chalk.cyan(`  Tags: ${task.tags.join(", ")}`));
   }
-  
-  console.log(chalk.gray(`  Created: ${new Date(task.createdAt).toLocaleString()}`));
+
+  console.log(
+    chalk.gray(`  Created: ${new Date(task.createdAt).toLocaleString()}`)
+  );
 }
 
-export async function displayTaskTree(
-  tasks: Task[],
-  rootId?: string,
-): Promise<void> {
+/**
+ * Display hierarchical task tree.
+ * Pure function - accepts all data as arguments, no internal service calls.
+ */
+export function displayTaskTree(data: TaskTreeData): void {
+  const { tasks, subtasksMap, rootId } = data;
+
   if (tasks.length === 0) {
     console.log(chalk.yellow("No tasks found."));
     return;
@@ -293,29 +331,33 @@ export async function displayTaskTree(
     console.log(chalk.blue(`\n🌳 Complete Task Tree:`));
   }
 
-  const displayTaskWithIndent = async (
+  const displayTaskWithIndent = (
     task: Task,
     indent: string = "",
-    isLast: boolean = false,
+    isLast: boolean = false
   ) => {
     const statusColor =
       task.status === "completed"
         ? chalk.green
         : task.status === "in-progress"
-          ? chalk.yellow
-          : chalk.gray;
+        ? chalk.yellow
+        : chalk.gray;
 
     const connector = isLast ? "└── " : "├── ";
-    const subtasks = await taskService.getSubtasks(task.id);
+    const subtasks = subtasksMap.get(task.id) || [];
     const hasSubtasks = subtasks.length > 0;
 
     console.log(
-      `${indent}${connector}${statusColor(`[${task.status}]`)} ${chalk.bold(task.title)} ${chalk.gray(`(${task.id})`)}`,
+      `${indent}${connector}${statusColor(`[${task.status}]`)} ${chalk.bold(
+        task.title
+      )} ${chalk.gray(`(${task.id})`)}`
     );
 
     if (task.tags && task.tags.length > 0) {
       console.log(
-        `${indent}${isLast ? "    " : "│   "}${chalk.cyan(`🏷️  ${task.tags.join(", ")}`)}`,
+        `${indent}${isLast ? "    " : "│   "}${chalk.cyan(
+          `🏷️  ${task.tags.join(", ")}`
+        )}`
       );
     }
 
@@ -323,7 +365,7 @@ export async function displayTaskTree(
       const subtaskIndent = indent + (isLast ? "    " : "│   ");
       for (let i = 0; i < subtasks.length; i++) {
         const isLastSubtask = i === subtasks.length - 1;
-        await displayTaskWithIndent(subtasks[i], subtaskIndent, isLastSubtask);
+        displayTaskWithIndent(subtasks[i], subtaskIndent, isLastSubtask);
       }
     }
   };
@@ -332,14 +374,14 @@ export async function displayTaskTree(
   if (rootId) {
     const rootTask = tasks.find((t) => t.id === rootId);
     if (rootTask) {
-      await displayTaskWithIndent(rootTask, "", true);
+      displayTaskWithIndent(rootTask, "", true);
     }
   } else {
     // Display only top-level tasks (those without parentId)
     const topLevelTasks = tasks.filter((task) => !task.parentId);
     for (let i = 0; i < topLevelTasks.length; i++) {
       const isLast = i === topLevelTasks.length - 1;
-      await displayTaskWithIndent(topLevelTasks[i], "", isLast);
+      displayTaskWithIndent(topLevelTasks[i], "", isLast);
     }
   }
 }

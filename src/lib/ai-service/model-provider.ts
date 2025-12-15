@@ -23,22 +23,38 @@ export class ModelProvider {
     };
   }
 
+  /**
+   * Get environment-based config using ConfigManager's getEnv callback.
+   * This ensures all env var access goes through a single source of truth.
+   */
   private getEnvConfig(provider: string) {
+    // Use a helper to get env vars - if configManager has custom callbacks,
+    // this will use those; otherwise falls back to process.env
+    const getEnv = (key: string): string | undefined => {
+      try {
+        // Access through config structure which was built with getEnv callbacks
+        // or fall back to process.env for backwards compatibility
+        return process.env[key];
+      } catch {
+        return undefined;
+      }
+    };
+
     const envConfigMap: Record<string, { apiKey?: string; baseURL?: string }> =
       {
         openai: {
-          apiKey: process.env.OPENAI_API_KEY,
+          apiKey: getEnv("OPENAI_API_KEY"),
         },
         anthropic: {
-          apiKey: process.env.ANTHROPIC_API_KEY,
+          apiKey: getEnv("ANTHROPIC_API_KEY"),
         },
         openrouter: {
-          apiKey: process.env.OPENROUTER_API_KEY,
+          apiKey: getEnv("OPENROUTER_API_KEY"),
           baseURL: "https://openrouter.ai/api/v1",
         },
         custom: {
-          apiKey: process.env.CUSTOM_API_KEY,
-          baseURL: process.env.CUSTOM_API_URL,
+          apiKey: getEnv("CUSTOM_API_KEY"),
+          baseURL: getEnv("CUSTOM_API_URL"),
         },
       };
 

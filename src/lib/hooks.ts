@@ -9,7 +9,18 @@ export type TaskEventType =
   | "task:progress"
   | "execution:start"
   | "execution:end"
-  | "execution:error";
+  | "execution:error"
+  | "log:info"
+  | "log:warn"
+  | "log:error"
+  | "log:success"
+  | "log:progress";
+
+// Log event payload
+export interface LogEventPayload {
+  message: string;
+  context?: Record<string, unknown>;
+}
 
 // Define payload types for each event
 export interface TaskEventPayloads {
@@ -21,6 +32,11 @@ export interface TaskEventPayloads {
   "execution:start": { taskId: string; tool: string };
   "execution:end": { taskId: string; success: boolean };
   "execution:error": { taskId: string; error: Error };
+  "log:info": LogEventPayload;
+  "log:warn": LogEventPayload;
+  "log:error": LogEventPayload;
+  "log:success": LogEventPayload;
+  "log:progress": LogEventPayload;
 }
 
 // Type for the event handler function
