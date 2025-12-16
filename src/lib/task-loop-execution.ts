@@ -31,10 +31,12 @@ export async function executeTaskLoop(
     reviewModel,
     customMessage,
     continueSession,
+    model, // NEW: Extract model from config
   } = config;
 
   console.log(chalk.blue.bold("\n🔄 Starting Task Loop Execution\n"));
   console.log(chalk.cyan(`Executor Tool: ${tool}`));
+  if (model) console.log(chalk.cyan(`Executor Model: ${model}`));
   console.log(chalk.cyan(`Max Retries per Task: ${maxRetries}`));
   console.log(
     chalk.cyan(
@@ -106,6 +108,7 @@ export async function executeTaskLoop(
       customMessage, // NEW: Support custom message override
       executorConfig: {
         continueLastSession: continueSession, // NEW: Support session continuation
+        model, // NEW: Pass model to executor
       },
       verificationCommands,
       enableRetry: true, // Always enable retry in loop

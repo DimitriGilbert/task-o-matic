@@ -67,4 +67,36 @@ export interface WorkflowAutomationOptions extends StreamingAIOptions {
   splitAll?: boolean; // Split all tasks
   splitMethod?: "interactive" | "standard" | "custom"; // Split method
   splitInstructions?: string; // Custom instructions for splitting
+
+  // Step 6: Execute Tasks
+  execute?: boolean; // Execute generated tasks immediately
+  executeTasks?: boolean; // Alias for execute
+  executeConcurrency?: number; // Number of concurrent tasks
+  autoCommit?: boolean; // Auto-commit changes during execution
+  executeTool?: string; // Executor tool (opencode, claude, etc.)
+  executeModel?: string; // Model override for execution
+  executeMaxRetries?: number; // Maximum retries per task
+  executePlan?: boolean; // Enable planning phase
+  executePlanModel?: string; // Model for planning
+  executeReview?: boolean; // Enable review phase
+  executeReviewModel?: string; // Model for review
+}
+
+export interface WorkflowState {
+  initialized: boolean;
+  currentStep:
+    | "initialize"
+    | "define-prd"
+    | "question-refine-prd"
+    | "refine-prd"
+    | "generate-tasks"
+    | "split-tasks"
+    | "execute-tasks"
+    | "complete";
+  projectName?: string;
+  projectDir?: string;
+  aiConfig?: any;
+  prdFile?: string;
+  prdContent?: string;
+  tasks?: Array<{ id: string; title: string; description?: string }>;
 }

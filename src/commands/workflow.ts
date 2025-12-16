@@ -20,7 +20,7 @@ import type {
   WorkflowState,
   WorkflowAutomationOptions,
 } from "../types/options";
-import type { Task } from "../types";
+import type { Task, ExecuteLoopOptions, ExecuteLoopConfig, ExecutorTool } from "../types";
 import {
   createStandardError,
   TaskOMaticErrorCodes,
@@ -123,6 +123,18 @@ export const workflowCommand = new Command("workflow")
     "Split method: interactive, standard, custom"
   )
   .option("--split-instructions <instructions>", "Custom split instructions")
+
+  // Step 6: Execute Tasks
+  .option("--execute", "Execute generated tasks immediately")
+  .option("--execute-concurrency <number>", "Number of concurrent tasks (default: 1)")
+  .option("--no-auto-commit", "Disable auto-commit during execution")
+  .option("--execute-tool <tool>", "Executor tool (opencode/claude/gemini/codex)")
+  .option("--execute-model <model>", "Model override for execution")
+  .option("--execute-max-retries <number>", "Max retries per task")
+  .option("--execute-plan", "Enable planning phase")
+  .option("--execute-plan-model <model>", "Model for planning")
+  .option("--execute-review", "Enable review phase")
+  .option("--execute-review-model <model>", "Model for review")
   .action(async (cliOptions) => {
     try {
       // Load and merge options from config file if specified
@@ -177,6 +189,65 @@ export const workflowCommand = new Command("workflow")
 
       // Step 5: Split Tasks
       await stepSplitTasks(state, options, streamingOptions);
+
+      // Step 6: Execute Tasks
+      if (options.execute) {
+        console.log(chalk.blue.bold("\n⚡ Step 6: Execute Tasks\n"));
+        
+        // Confirm execution if not auto-accepting
+        const shouldExecute = await getOrPrompt(
+          options.autoAccept ? true : undefined,
+          () => confirmPrompt("Execute all generated tasks now?", true)
+        );
+
+        if (shouldExecute) {
+          // Build config purposefully to avoid passing undefined values
+          const config: ExecuteLoopConfig = {
+            maxRetries: options.executeMaxRetries
+              ? parseInt(String(options.executeMaxRetries))
+              : 3,
+            autoCommit: options.autoCommit !== false, // Default to true
+          };
+
+          // Only set optional properties if they are explicitly provided
+          if (options.executePlan) {
+            config.plan = true;
+            if (options.executePlanModel) {
+              config.planModel = options.executePlanModel;
+            }
+          }
+
+          if (options.executeReview) {
+            config.review = true;
+            if (options.executeReviewModel) {
+              config.reviewModel = options.executeReviewModel;
+            }
+          }
+
+          if (options.executeModel) {
+            config.model = options.executeModel;
+          }
+
+          const executeOptions: ExecuteLoopOptions = {
+            filters: {}, // Execute all tasks
+            tool: (options.executeTool as ExecutorTool) || "opencode",
+            config,
+            dry: false,
+          };
+
+          await workflowService.executeTasks({
+            options: executeOptions,
+            callbacks: {
+              onProgress: displayProgress,
+              onError: displayError,
+            }
+          });
+          
+          console.log(chalk.green("\n✓ Execution complete"));
+        } else {
+           console.log(chalk.gray("  Skipping execution"));
+        }
+      }
 
       // Complete
       state.currentStep = "complete";

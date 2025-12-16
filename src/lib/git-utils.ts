@@ -224,3 +224,92 @@ export async function commitFile(
     );
   }
 }
+
+// ============================================================================
+// Benchmarking Git Utilities
+// ============================================================================
+
+/**
+ * Check if the working directory is clean
+ */
+export async function isClean(
+  execFn: (
+    command: string
+  ) => Promise<{ stdout: string; stderr: string }> = execAsync
+): Promise<boolean> {
+  try {
+    const { stdout } = await execFn("git status --porcelain");
+    return stdout.trim().length === 0;
+  } catch (error) {
+    logger.warn("Could not check git status");
+    return false;
+  }
+}
+
+/**
+ * Get the current branch name
+ */
+export async function getCurrentBranch(
+  execFn: (
+    command: string
+  ) => Promise<{ stdout: string; stderr: string }> = execAsync
+): Promise<string> {
+  try {
+    const { stdout } = await execFn("git rev-parse --abbrev-ref HEAD");
+    return stdout.trim();
+  } catch (error) {
+    throw new Error("Failed to get current branch");
+  }
+}
+
+/**
+ * Create a new branch for benchmarking
+ */
+export async function createBenchmarkBranch(
+  name: string,
+  baseBranch: string = "HEAD",
+  execFn: (
+    command: string
+  ) => Promise<{ stdout: string; stderr: string }> = execAsync
+): Promise<void> {
+  try {
+    logger.info(`🌿 Creating benchmark branch: ${name} from ${baseBranch}`);
+    await execFn(`git checkout -b ${name} ${baseBranch}`);
+  } catch (error) {
+    throw new Error(`Failed to create benchmark branch ${name}: ${error}`);
+  }
+}
+
+/**
+ * Checkout an existing branch
+ */
+export async function checkoutBranch(
+  name: string,
+  execFn: (
+    command: string
+  ) => Promise<{ stdout: string; stderr: string }> = execAsync
+): Promise<void> {
+  try {
+    logger.info(`🌿 Checking out branch: ${name}`);
+    await execFn(`git checkout ${name}`);
+  } catch (error) {
+    throw new Error(`Failed to checkout branch ${name}: ${error}`);
+  }
+}
+
+/**
+ * Delete a benchmark branch (force delete)
+ */
+export async function cleanupBenchmarkBranch(
+  name: string,
+  execFn: (
+    command: string
+  ) => Promise<{ stdout: string; stderr: string }> = execAsync
+): Promise<void> {
+  try {
+    logger.info(`🗑️  Deleting benchmark branch: ${name}`);
+    await execFn(`git branch -D ${name}`);
+  } catch (error) {
+    logger.warn(`Failed to delete branch ${name}: ${error}`);
+  }
+}

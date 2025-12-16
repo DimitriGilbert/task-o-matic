@@ -19,6 +19,8 @@ import {
   createStandardError,
   TaskOMaticErrorCodes,
 } from "../utils/task-o-matic-error";
+import { executeTaskLoop } from "../lib/task-loop-execution";
+import { ExecuteLoopOptions, ExecuteLoopResult } from "../types";
 
 /**
  * WorkflowService - Business logic for workflow operations
@@ -743,6 +745,32 @@ export class WorkflowService {
     return {
       success: true,
       results,
+    };
+  }
+
+  /**
+   * Step 6: Execute Tasks
+   * Executes the generated tasks using the task loop executor
+   */
+  async executeTasks(input: {
+    options: ExecuteLoopOptions;
+    callbacks?: ProgressCallback;
+  }): Promise<{ success: boolean; result: ExecuteLoopResult }> {
+    input.callbacks?.onProgress?.({
+      type: "started",
+      message: "Executing tasks...",
+    });
+
+    const result = await executeTaskLoop(input.options);
+
+    input.callbacks?.onProgress?.({
+      type: "completed",
+      message: `Execution complete: ${result.completedTasks} completed, ${result.failedTasks} failed`,
+    });
+
+    return {
+      success: result.failedTasks === 0,
+      result,
     };
   }
 }

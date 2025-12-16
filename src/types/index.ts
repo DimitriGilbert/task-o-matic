@@ -421,6 +421,7 @@ export interface ModelAttemptConfig {
 
 // Execute Loop Configuration
 export interface ExecuteLoopConfig {
+  model?: string; // Default model for the executor
   maxRetries?: number; // Maximum retries per task (default: 3)
   verificationCommands?: string[]; // Commands to run after each task
   autoCommit?: boolean; // Auto-commit after successful task execution
