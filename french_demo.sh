@@ -99,8 +99,8 @@ cd le-croissant-magique
 # Step 5: Parse ze PRD
 echo "Step 5: Ze moment of truth! We give ze PRD to ze AI."
 echo "Let's see if ze machine understands 'l'art du croissant'."
-../../dist/cli/bin.js prd parse --file ../prd_croissant.md --stream
-# ../dist/cli/bin.js prd parse --file prd_croissant.md --stream --ai-reasoning 4000
+# ../../dist/cli/bin.js prd parse --file ../prd_croissant.md --stream
+../../dist/cli/bin.js prd parse --file ../prd_croissant.md --stream --ai-reasoning 4000
 echo ""
 
 echo "---"
@@ -130,8 +130,8 @@ echo ""
 echo "Step 8: Now we split ALL ze tasks into smaller, bite-sized pieces!"
 echo "Because big tasks are like... how you say... 'intimidating', non?"
 echo "Ze AI will break down every task into manageable subtasks!"
-../../dist/cli/bin.js tasks split --all --stream
-# ../dist/cli/bin.js tasks split --all --stream --reasoning 4000
+# ../../dist/cli/bin.js tasks split --all --stream
+../../dist/cli/bin.js tasks split --all --stream --reasoning 4000
 echo ""
 echo "Magnifique! Now we have many small tasks to conquer. Like eating a croissant one flaky layer at a time!"
 echo "Let us see ze final result..."

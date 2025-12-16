@@ -73,6 +73,10 @@ export function createMetricsStreamingOptions(
       // Pass through error callback
       streamingOptions?.onError?.(error);
     },
+    onReasoning: (text: string) => {
+      // Pass through reasoning callback
+      streamingOptions?.onReasoning?.(text);
+    },
   };
 
   return {
