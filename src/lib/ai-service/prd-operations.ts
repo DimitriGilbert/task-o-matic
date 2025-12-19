@@ -627,9 +627,11 @@ Use these tools to understand the current project structure, existing code patte
         let userContent = userMessage;
         if (!userContent) {
           userContent = `Original Description:\n${originalDescription}\n\n`;
+          userContent += `<generated_prds>\n`;
           prds.forEach((prd, index) => {
-            userContent += `--- PRD ${index + 1} ---\n${prd}\n\n`;
+            userContent += `  <prd id="${index + 1}">\n${prd}\n  </prd>\n`;
           });
+          userContent += `</generated_prds>\n`;
         }
 
         return this.streamText(

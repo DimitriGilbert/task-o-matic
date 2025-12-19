@@ -1,6 +1,7 @@
 import { BTSConfig, BTSFrontend, InitOptions } from "../types";
 import { configManager } from "./config";
-import { writeFileSync, mkdirSync } from "fs";
+import { writeFileSync, mkdirSync, readFileSync } from "fs";
+import { glob } from "glob";
 import { join } from "path";
 
 export class BetterTStackService {
@@ -146,8 +147,8 @@ export class BetterTStackService {
   }
 
   private async addCheckTypesScript(projectDir: string): Promise<void> {
-    const { glob } = await import("glob");
-    const { readFileSync, writeFileSync } = await import("fs");
+    // const { glob } = await import("glob");
+    // const { readFileSync, writeFileSync } = await import("fs");
 
     console.log("🔍 Adding check-types scripts to packages...");
 

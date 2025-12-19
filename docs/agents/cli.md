@@ -1,10 +1,10 @@
-# Task-O-Matic Agent Guide
+## Task-O-Matic Agent Guide
 
 Concise reference for AI agents using Task-O-Matic in autonomous workflows.
 
-## Core Workflow Commands
+### Core Workflow Commands
 
-### Task Management
+#### Task Management
 
 ```bash
 # List tasks (filter by status or tag)
@@ -20,7 +20,7 @@ task-o-matic tasks status -i <task-id> -s <todo|in-progress|completed>
 task-o-matic tasks add-documentation -i <task-id> --doc-file <path>
 ```
 
-## Typical Agent Workflow
+### Typical Agent Workflow
 
 ```bash
 # 1. Get next task
@@ -41,14 +41,16 @@ task-o-matic tasks status -i $TASK_ID -s completed
 # 6. Repeat
 ```
 
-## Bootstrap Options
+### Bootstrap Options
 
-### Web Projects
+#### Web Projects
+
 ```bash
 task-o-matic init init --project-name my-app --frontend next --backend hono
 ```
 
-### Multi-Frontend Monorepo
+#### Multi-Frontend Monorepo
+
 ```bash
 # Web + Native + CLI + TUI
 task-o-matic init init --project-name my-app --frontend "next native-uniwind cli tui" --backend hono
@@ -60,7 +62,8 @@ task-o-matic init init --project-name my-app --frontend "next native-bare" --bac
 task-o-matic init init --project-name my-app --frontend "next cli" --backend hono
 ```
 
-### Single Frontend Projects
+#### Single Frontend Projects
+
 ```bash
 # CLI only
 task-o-matic init init --project-name my-cli --frontend cli --cli-deps full
@@ -72,25 +75,29 @@ task-o-matic init init --project-name my-tui --frontend tui --tui-framework soli
 task-o-matic init init --project-name my-mobile --frontend native-uniwind --backend hono
 ```
 
-### Frontend Options
+#### Frontend Options
+
 - **Web**: next, tanstack-router, react-router, nuxt, svelte, solid
 - **Native**: native-bare, native-uniwind, native-unistyles
 - **Custom**: cli, tui
 
-### CLI Dependency Levels
+#### CLI Dependency Levels
+
 - **minimal**: commander + chalk only
 - **standard**: + inquirer + dotenv (default)
 - **full**: + mocha + tsx (testing)
 - **task-o-matic**: + AI SDK (Vercel AI)
 
-### TUI Framework Options
+#### TUI Framework Options
+
 - **solid**: Solid.js (default, recommended)
 - **vue**: Vue.js
 - **react**: React
 
-## Getting Help
+### Getting Help
 
 All commands support `--help`:
+
 ```bash
 task-o-matic --help
 task-o-matic tasks --help

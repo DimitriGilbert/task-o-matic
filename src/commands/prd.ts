@@ -3,10 +3,16 @@
 import { Command } from "commander";
 import chalk from "chalk";
 import inquirer from "inquirer";
-import { readFileSync } from "fs";
+import { readFileSync, writeFileSync, existsSync, mkdirSync } from "fs";
 import { prdService } from "../services/prd";
 import { createStreamingOptions } from "../utils/streaming-options";
 import { displayProgress, displayError } from "../cli/display/progress";
+import {
+  runAIParallel,
+  combinePRDs,
+  combineParsedTasks,
+} from "./utils/ai-parallel";
+import { Task } from "../types";
 
 export const prdCommand = new Command("prd").description(
   "Manage PRDs and generate tasks"
@@ -16,26 +22,65 @@ import {
   createStandardError,
   TaskOMaticErrorCodes,
 } from "../utils/task-o-matic-error";
+import { isValidAIProvider } from "../lib/validation";
+import { configManager } from "../lib/config";
+import path from "path";
 
-// Helper to parse model string (provider:model)
-function parseModelString(modelStr: string): {
-  provider: string;
+// Helper to parse model string ([provider:]model[;reasoning[=budget]])
+export function parseModelString(modelStr: string): {
+  provider?: string;
   model: string;
+  reasoning?: string;
 } {
-  const parts = modelStr.split(":");
-  if (parts.length < 2) {
-    throw createStandardError(
-      TaskOMaticErrorCodes.INVALID_INPUT,
-      `Invalid model format: ${modelStr}. Expected provider:model`,
-      {
-        suggestions: [
-          "Use the format 'provider:model'",
-          "Example: 'anthropic:claude-3.5-sonnet'",
-        ],
-      }
-    );
+  let processingStr = modelStr;
+  let reasoning: string | undefined;
+
+  // 1. Extract reasoning
+  // Format: ;reasoning or ;reasoning=1000
+  const reasoningMatch = processingStr.match(/;reasoning(?:=(\d+))?$/);
+  if (reasoningMatch) {
+    // If specific budget provided (group 1), use it.
+    // Otherwise default to "2000" as requested.
+    reasoning = reasoningMatch[1] ? reasoningMatch[1] : "2000";
+
+    // Remove the reasoning suffix from the string
+    processingStr = processingStr.substring(0, reasoningMatch.index);
   }
-  return { provider: parts[0], model: parts[1] };
+
+  // 2. Extract provider and model
+  // We look for the first colon.
+  const firstColonIndex = processingStr.indexOf(":");
+
+  if (firstColonIndex === -1) {
+    // No colon -> It's just a model name (provider inferred from env/defaults later)
+    return {
+      provider: undefined,
+      model: processingStr,
+      reasoning,
+    };
+  }
+
+  // Has colon. Check if the part before is a valid provider.
+  const potentialProvider = processingStr.substring(0, firstColonIndex);
+  const potentialModel = processingStr.substring(firstColonIndex + 1);
+
+  if (isValidAIProvider(potentialProvider)) {
+    // It is a known provider
+    return {
+      provider: potentialProvider,
+      model: potentialModel,
+      reasoning,
+    };
+  }
+
+  // Not a known provider. Treat the whole thing as the model name.
+  // This handles cases like "google/gemini...:free" where "google/gemini..." isn't a provider key.
+  // Or just "model:with:colons".
+  return {
+    provider: undefined,
+    model: processingStr,
+    reasoning,
+  };
 }
 
 // Create PRD command
@@ -44,22 +89,49 @@ prdCommand
   .description("Generate PRD(s) from a product description")
   .argument("<description>", "Product description")
   .option(
-    "--ai <provider:model...>",
-    "AI model(s) to use for generation (can specify multiple)"
+    "--ai <models...>",
+    "AI model(s) to use. Format: [provider:]model[;reasoning[=budget]]. Example: openrouter:openai/gpt-5;reasoning=2000"
   )
   .option(
     "--combine-ai <provider:model>",
     "AI model to combine multiple PRDs into master PRD"
   )
   .option("--output-dir <path>", "Directory to save PRDs", ".task-o-matic/prd")
+  .option(
+    "--ai-reasoning <tokens>",
+    "Enable reasoning for OpenRouter models (max reasoning tokens)"
+  )
   .option("--stream", "Enable streaming output (only for single AI)")
   .action(async (description, options) => {
     try {
-      const aiModels = options.ai || ["openrouter:anthropic/claude-3.5-sonnet"];
+      // Load configuration to get defaults
+      await configManager.load();
+      const aiConfig = configManager.getAIConfig();
+      let defaultModelStr = `${aiConfig.provider}:${aiConfig.model}`;
+
+      // Handle default reasoning configuration
+      if (aiConfig.reasoning) {
+        defaultModelStr += ";reasoning";
+        if (aiConfig.reasoning.maxTokens) {
+          defaultModelStr += `=${aiConfig.reasoning.maxTokens}`;
+        }
+      }
+
+      const cliModels = Array.isArray(options.ai)
+        ? options.ai
+        : options.ai
+        ? [options.ai]
+        : [];
+
+      // If CLI models provided, append them to default. If not, just use default.
+      // Logic: Default is ALWAYS included unless explicitly disabled (feature for later?)
+      // Current requirement: "I WANT BOTH"
+      const aiModels = [...new Set([defaultModelStr, ...cliModels])];
+
       const isSingleModel = aiModels.length === 1;
 
       // For single model, support streaming
-      if (isSingleModel) {
+      if (isSingleModel && !options.combineAi) {
         const modelConfig = parseModelString(aiModels[0]);
         const streamingOptions = createStreamingOptions(
           options.stream,
@@ -69,13 +141,14 @@ prdCommand
         const result = await prdService.generatePRD({
           description,
           outputDir: options.outputDir,
-          filename: `prd-${modelConfig.provider}-${modelConfig.model.replace(
-            /\//g,
-            "-"
-          )}.md`,
+          filename: `prd-${
+            modelConfig.provider ? `${modelConfig.provider}-` : ""
+          }${modelConfig.model.replace(/[:/]/g, "-")}.md`,
           aiOptions: {
             aiProvider: modelConfig.provider,
             aiModel: modelConfig.model,
+            // CLI flag overrides model string config
+            aiReasoning: options.aiReasoning || modelConfig.reasoning,
           },
           streamingOptions,
           callbacks: {
@@ -94,160 +167,74 @@ prdCommand
           console.log(chalk.cyan(`  TTFT: ${result.stats.timeToFirstToken}ms`));
         }
       } else {
-        // Multiple models - use benchmark-style display
-        console.log(
-          chalk.blue(`\nGenerating ${aiModels.length} PRDs concurrently...\n`)
-        );
-
-        const modelMap = new Map<string, number>();
-        const modelStatus = new Map<string, string>();
-        const results: Array<{
-          modelId: string;
-          path: string;
-          stats: any;
-        }> = [];
-
-        // Print initial lines
-        aiModels.forEach((m: string, i: number) => {
-          modelMap.set(m, i);
-          modelStatus.set(m, "Waiting...");
-          console.log(chalk.dim(`- ${m}: Waiting...`));
-        });
-        const totalModels = aiModels.length;
-
-        // Generate PRDs concurrently
-        const promises = aiModels.map(async (modelStr: string) => {
-          const modelConfig = parseModelString(modelStr);
-          const index = modelMap.get(modelStr)!;
-
-          // Update status: Starting
-          const up = totalModels - index;
-          process.stdout.write(`\x1B[${up}A`);
-          process.stdout.write(`\x1B[2K`);
-          process.stdout.write(
-            `- ${chalk.bold(modelStr)}: ${chalk.yellow("Starting...")}\r`
-          );
-          process.stdout.write(`\x1B[${up}B`);
-
-          try {
+        // Multiple models or combine request - use parallel utility
+        const results = await runAIParallel(
+          aiModels,
+          async (modelConfig, streamingOptions) => {
             const result = await prdService.generatePRD({
               description,
               outputDir: options.outputDir,
               filename: `prd-${
-                modelConfig.provider
-              }-${modelConfig.model.replace(/\//g, "-")}.md`,
+                modelConfig.provider ? `${modelConfig.provider}-` : ""
+              }${modelConfig.model.replace(/[:/]/g, "-")}.md`,
               aiOptions: {
                 aiProvider: modelConfig.provider,
                 aiModel: modelConfig.model,
+                aiReasoning: options.aiReasoning || modelConfig.reasoning,
               },
+              streamingOptions,
               callbacks: {
                 onProgress: (event) => {
-                  if (event.type === "progress") {
-                    const up = totalModels - index;
-                    process.stdout.write(`\x1B[${up}A`);
-                    process.stdout.write(`\x1B[2K`);
-                    process.stdout.write(
-                      `- ${chalk.bold(modelStr)}: ${chalk.blue(
-                        event.message
-                      )}\r`
-                    );
-                    process.stdout.write(`\x1B[${up}B`);
-                  }
+                  /* handled by parallel util mostly, but could hook here */
                 },
               },
             });
-
-            // Update status: Completed
-            const up2 = totalModels - index;
-            process.stdout.write(`\x1B[${up2}A`);
-            process.stdout.write(`\x1B[2K`);
-            process.stdout.write(
-              `- ${chalk.bold(modelStr)}: ${chalk.green(
-                `Completed (${result.stats.duration}ms)`
-              )}\r`
-            );
-            process.stdout.write(`\x1B[${up2}B`);
-
-            results.push({
-              modelId: modelStr,
-              path: result.path,
+            // Wrap in expected structure
+            return {
+              data: result,
               stats: result.stats,
-            });
-
-            return result;
-          } catch (error) {
-            const up2 = totalModels - index;
-            process.stdout.write(`\x1B[${up2}A`);
-            process.stdout.write(`\x1B[2K`);
-            process.stdout.write(
-              `- ${chalk.bold(modelStr)}: ${chalk.red(
-                `Failed: ${
-                  error instanceof Error ? error.message : String(error)
-                }`
-              )}\r`
-            );
-            process.stdout.write(`\x1B[${up2}B`);
-            throw error;
+            };
+          },
+          {
+            description: "Generating PRDs",
+            showSummary: true,
           }
-        });
-
-        await Promise.all(promises);
-
-        // Display summary
-        console.log(chalk.green(`\n✓ Generated ${results.length} PRDs\n`));
-        console.log(
-          chalk.bold(
-            `${"Model".padEnd(40)} | ${"Duration".padEnd(10)} | ${"TTFT".padEnd(
-              10
-            )} | ${"Tokens".padEnd(10)}`
-          )
         );
-        console.log("-".repeat(80));
-
-        results.forEach((r) => {
-          const duration = `${r.stats.duration}ms`;
-          const ttft = r.stats.timeToFirstToken
-            ? `${r.stats.timeToFirstToken}ms`
-            : "N/A";
-          const tokens = r.stats.tokenUsage
-            ? r.stats.tokenUsage.total.toString()
-            : "N/A";
-
-          console.log(
-            `${r.modelId.padEnd(40)} | ${duration.padEnd(10)} | ${ttft.padEnd(
-              10
-            )} | ${tokens.padEnd(10)}`
-          );
-        });
 
         // Combine if requested
         if (options.combineAi) {
-          console.log(chalk.blue("\nCombining PRDs into master PRD..."));
+          const prdContents = results.map((r) => r.data.content);
 
+          // Helper to get reasoning from combine string if present
           const combineModelConfig = parseModelString(options.combineAi);
-          const prdContents = results.map((r) => readFileSync(r.path, "utf-8"));
+          const reasoning = options.aiReasoning || combineModelConfig.reasoning;
 
-          const masterResult = await prdService.combinePRDs({
-            prds: prdContents,
-            originalDescription: description,
-            outputDir: options.outputDir,
-            filename: "prd-master.md",
-            aiOptions: {
-              aiProvider: combineModelConfig.provider,
-              aiModel: combineModelConfig.model,
-            },
-            callbacks: {
-              onProgress: displayProgress,
-              onError: displayError,
-            },
-          });
+          const masterPath = await combinePRDs(
+            prdContents,
+            description,
+            options.combineAi,
+            options.stream,
+            reasoning
+          );
 
-          console.log(
-            chalk.green(`\n✓ Master PRD created: ${masterResult.path}`)
-          );
-          console.log(
-            chalk.cyan(`  Duration: ${masterResult.stats.duration}ms`)
-          );
+          // Need to manually save since combinePRDs utility returns content string or path?
+          // Wait, the utility I wrote returns string (content).
+          // Actually, let's correct the utility usage or the utility itself.
+          // Looking at the utility: it calls `aiOperations.combinePRDs` which returns string (content).
+          // But `prdService.combinePRDs` (old code) saved the file.
+          // I should probably use `prdService.combinePRDs` INSIDE the utility or here?
+          // The utility uses `aiOperations`. So I get content back. I need to save it.
+          const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
+          const filename = "prd-master.md"; // Force master name or unique? Default to prd-master.md as per old code.
+          const savePath = path.join(options.outputDir, filename);
+
+          // Ensure dir exists
+          if (!existsSync(options.outputDir)) {
+            mkdirSync(options.outputDir, { recursive: true });
+          }
+          writeFileSync(savePath, masterPath); // masterPath is actually content here based on my utility return type
+
+          console.log(chalk.green(`\n✓ Master PRD created: ${savePath}`));
         }
       }
     } catch (error) {
@@ -264,6 +251,10 @@ prdCommand
   .requiredOption("--description <text>", "Original product description")
   .requiredOption("--ai <provider:model>", "AI model to use for combining")
   .option("--output <path>", "Output file path", "prd-master.md")
+  .option(
+    "--ai-reasoning <tokens>",
+    "Enable reasoning for OpenRouter models (max reasoning tokens)"
+  )
   .option("--stream", "Enable streaming output")
   .action(async (options) => {
     try {
@@ -285,6 +276,7 @@ prdCommand
         aiOptions: {
           aiProvider: modelConfig.provider,
           aiModel: modelConfig.model,
+          aiReasoning: options.aiReasoning || modelConfig.reasoning,
         },
         streamingOptions,
         callbacks: {
@@ -310,6 +302,14 @@ prdCommand
   .command("parse")
   .description("Parse a PRD file into structured tasks")
   .requiredOption("--file <path>", "Path to PRD file")
+  .option(
+    "--ai <models...>",
+    "AI model(s) to use. Format: [provider:]model[;reasoning[=budget]]"
+  )
+  .option(
+    "--combine-ai <provider:model>",
+    "AI model to combine multiple parsed results"
+  )
   .option("--prompt <prompt>", "Override prompt")
   .option("--message <message>", "User message")
   .option("--ai-provider <provider>", "AI provider override")
@@ -328,64 +328,170 @@ prdCommand
       // Service layer should receive this explicitly, not use process.cwd()
       const workingDirectory = process.cwd();
 
-      const streamingOptions = createStreamingOptions(
-        options.stream,
-        "Parsing"
-      );
+      // Support multi-model if array of models provided in options.ai (added to command option below)
+      const cliModels = Array.isArray(options.ai)
+        ? options.ai
+        : options.ai
+        ? [options.ai]
+        : [];
 
-      const result = await prdService.parsePRD({
-        file: options.file,
-        workingDirectory, // Pass working directory explicitly to service
-        enableFilesystemTools: options.tools,
-        aiOptions: {
-          aiProvider: options.aiProvider,
-          aiModel: options.aiModel,
-          aiKey: options.aiKey,
-          aiProviderUrl: options.aiProviderUrl,
-          aiReasoning: options.aiReasoning,
-        },
-        promptOverride: options.prompt,
-        messageOverride: options.message,
-        streamingOptions,
-        callbacks: {
-          onProgress: displayProgress,
-          onError: displayError,
-        },
-      });
+      // If just single model or no model specified (uses service default), use old flow OR simple parallel entry
+      // But wait, the parse command options define --ai-provider, --ai-model separately in old code.
+      // I need to update the command definition to support --ai like create/split.
 
-      console.log("");
-      console.log(chalk.blue(`📊 PRD Parsing Summary:`));
-      console.log(chalk.cyan(`  Tasks created: ${result.stats.tasksCreated}`));
-      console.log(chalk.cyan(`  Duration: ${result.stats.duration}ms`));
-      console.log(chalk.cyan(`  AI Model: ${result.stats.aiModel}`));
+      // Let's assume I updated the options in the definition (will do in next chunk).
+      // If we have "ai" models list, we use parallel.
 
-      console.log(chalk.blue("\n📋 Processing Steps:"));
-      result.steps.forEach((step) => {
-        const icon = step.status === "completed" ? "✓" : "✗";
-        console.log(`  ${icon} ${step.step} (${step.duration}ms)`);
-        if (step.details) {
-          console.log(chalk.gray(`     ${JSON.stringify(step.details)}`));
-        }
-      });
+      if (cliModels.length > 0 || options.combineAi) {
+        // Parallel execution
 
-      // Show created tasks
-      console.log(chalk.blue("\n✨ Created Tasks:"));
-      result.tasks.forEach((task, index) => {
-        console.log(`${index + 1}. ${chalk.bold(task.title)} (${task.id})`);
-        if (task.description) {
-          console.log(
-            chalk.gray(
-              `   ${task.description.substring(0, 100)}${
-                task.description.length > 100 ? "..." : ""
-              }`
-            )
+        const modelsToUse =
+          cliModels.length > 0
+            ? cliModels
+            : [`${options.aiProvider}:${options.aiModel}`];
+
+        const results = await runAIParallel(
+          modelsToUse,
+          async (modelConfig, streamingOptions) => {
+            const result = await prdService.parsePRD({
+              file: options.file,
+              workingDirectory,
+              enableFilesystemTools: options.tools,
+              aiOptions: {
+                aiProvider: modelConfig.provider,
+                aiModel: modelConfig.model,
+                aiReasoning: options.aiReasoning || modelConfig.reasoning,
+              },
+              promptOverride: options.prompt,
+              messageOverride: options.message,
+              streamingOptions,
+              callbacks: {
+                onProgress: (event) => {},
+              },
+            });
+
+            // Save intermediate result
+            const safeModel = (modelConfig.model || "")
+              .replace(/[^a-z0-9]/gi, "-")
+              .toLowerCase();
+            const filename = `tasks-${modelConfig.provider}-${safeModel}.json`;
+            const tasksDir = path.join(process.cwd(), ".task-o-matic", "tasks");
+
+            if (!existsSync(tasksDir)) {
+              mkdirSync(tasksDir, { recursive: true });
+            }
+
+            const outputPath = path.join(tasksDir, filename);
+
+            try {
+              writeFileSync(outputPath, JSON.stringify(result.tasks, null, 2));
+              // console.log(chalk.dim(`   Saved: ${filename}`)); // Too verbose for parallel output?
+            } catch (e) {
+              // ignore write error
+            }
+
+            return {
+              data: result,
+              stats: result.stats,
+            };
+          },
+          {
+            description: "Parsing PRD",
+            showSummary: true,
+          }
+        );
+
+        let finalTasks: Task[] = [];
+
+        if (options.combineAi && results.length > 0) {
+          const taskLists = results.map((r) => r.data.tasks);
+          const prdContent = readFileSync(options.file, "utf-8");
+
+          const combineModelConfig = parseModelString(options.combineAi);
+          const reasoning = options.aiReasoning || combineModelConfig.reasoning;
+
+          finalTasks = await combineParsedTasks(
+            taskLists,
+            options.combineAi,
+            options.stream,
+            prdContent,
+            reasoning
           );
+        } else if (results.length > 0) {
+          // Just pick the first one if no combine requested?
+          // Or if single model was run, it IS the result.
+          finalTasks = results[0].data.tasks;
+          if (results.length > 1) {
+            console.log(
+              chalk.yellow(
+                "\n⚠️  Multiple models used but no --combine-ai specified. Saving tasks from first model only."
+              )
+            );
+          }
         }
-        if (task.estimatedEffort) {
-          console.log(chalk.cyan(`   Effort: ${task.estimatedEffort}`));
-        }
+      } else {
+        // Fallback to original single flow
+        const streamingOptions = createStreamingOptions(
+          options.stream,
+          "Parsing"
+        );
+
+        const result = await prdService.parsePRD({
+          file: options.file,
+          workingDirectory, // Pass working directory explicitly to service
+          enableFilesystemTools: options.tools,
+          aiOptions: {
+            aiProvider: options.aiProvider,
+            aiModel: options.aiModel,
+            aiKey: options.aiKey,
+            aiProviderUrl: options.aiProviderUrl,
+            aiReasoning: options.aiReasoning,
+          },
+          promptOverride: options.prompt,
+          messageOverride: options.message,
+          streamingOptions,
+          callbacks: {
+            onProgress: displayProgress,
+            onError: displayError,
+          },
+        });
+
         console.log("");
-      });
+        console.log(chalk.blue(`📊 PRD Parsing Summary:`));
+        console.log(
+          chalk.cyan(`  Tasks created: ${result.stats.tasksCreated}`)
+        );
+        console.log(chalk.cyan(`  Duration: ${result.stats.duration}ms`));
+        console.log(chalk.cyan(`  AI Model: ${result.stats.aiModel}`));
+
+        console.log(chalk.blue("\n📋 Processing Steps:"));
+        result.steps.forEach((step) => {
+          const icon = step.status === "completed" ? "✓" : "✗";
+          console.log(`  ${icon} ${step.step} (${step.duration}ms)`);
+          if (step.details) {
+            console.log(chalk.gray(`     ${JSON.stringify(step.details)}`));
+          }
+        });
+
+        // Show created tasks
+        console.log(chalk.blue("\n✨ Created Tasks:"));
+        result.tasks.forEach((task, index) => {
+          console.log(`${index + 1}. ${chalk.bold(task.title)} (${task.id})`);
+          if (task.description) {
+            console.log(
+              chalk.gray(
+                `   ${task.description.substring(0, 100)}${
+                  task.description.length > 100 ? "..." : ""
+                }`
+              )
+            );
+          }
+          if (task.estimatedEffort) {
+            console.log(chalk.cyan(`   Effort: ${task.estimatedEffort}`));
+          }
+          console.log("");
+        });
+      }
     } catch (error) {
       displayError(error);
       process.exit(1);
@@ -500,8 +606,7 @@ prdCommand
       });
 
       const outputPath = options.output || "prd-questions.json";
-      const fs = await import("fs");
-      fs.writeFileSync(outputPath, JSON.stringify({ questions }, null, 2));
+      writeFileSync(outputPath, JSON.stringify({ questions }, null, 2));
 
       console.log("");
       console.log(chalk.green(`✓ Generated ${questions.length} questions`));
@@ -542,16 +647,15 @@ prdCommand
   .action(async (options) => {
     try {
       const workingDirectory = process.cwd();
-      const fs = await import("fs");
 
       let questions: string[] = [];
 
       // If questions file provided, load it
-      if (options.questions && fs.existsSync(options.questions)) {
+      if (options.questions && existsSync(options.questions)) {
         console.log(
           chalk.blue(`Loading questions from ${options.questions}...`)
         );
-        const content = fs.readFileSync(options.questions, "utf-8");
+        const content = readFileSync(options.questions, "utf-8");
         const data = JSON.parse(content);
         questions = data.questions || [];
       }

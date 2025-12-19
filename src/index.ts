@@ -14,6 +14,7 @@ import { initCommand } from "./commands/init";
 import { promptCommand } from "./commands/prompt";
 import { workflowCommand } from "./commands/workflow";
 import { benchmarkCommand } from "./commands/benchmark";
+import { installCommand } from "./commands/install";
 import { configManager } from "./lib/config";
 import { registerLoggerHooks } from "./lib/hooks/logger";
 
@@ -33,6 +34,7 @@ program.addCommand(promptCommand);
 program.addCommand(initCommand);
 program.addCommand(workflowCommand);
 program.addCommand(benchmarkCommand);
+program.addCommand(installCommand);
 
 // Default action - show help
 program.action(() => {
@@ -58,7 +60,7 @@ program.action(() => {
 program.on("command:*", (operands) => {
   console.error(chalk.red(`Unknown command: ${operands[0]}`));
   console.log(
-    chalk.blue("Available commands: config, tasks, prd, prompt, init, workflow")
+    chalk.blue("Available commands: config, tasks, prd, prompt, init, workflow, benchmark, install")
   );
   console.log(chalk.blue("Use --help for available commands"));
   process.exit(1);

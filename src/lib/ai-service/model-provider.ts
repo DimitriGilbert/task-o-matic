@@ -105,7 +105,13 @@ export class ModelProvider {
               ],
             }
           );
-        const openRouterProvider = createOpenRouter({ apiKey });
+        const openRouterProvider = createOpenRouter({
+          apiKey,
+          headers: {
+            "HTTP-Referer": "https://task-o-matic.dev",
+            "X-Title": "Task-O-Matic",
+          },
+        });
         return openRouterProvider(model);
 
       case "custom":

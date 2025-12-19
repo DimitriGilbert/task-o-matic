@@ -74,6 +74,11 @@ export function createMetricsStreamingOptions(
       streamingOptions?.onError?.(error);
     },
     onReasoning: (text: string) => {
+      // Measure time to first token (reasoning counts as response start)
+      if (text && text.trim() && !timeToFirstToken && aiStartTime) {
+        timeToFirstToken = Date.now() - aiStartTime;
+      }
+
       // Pass through reasoning callback
       streamingOptions?.onReasoning?.(text);
     },

@@ -39,7 +39,9 @@ export interface AIProviderOptions {
 /**
  * Command-specific option interfaces
  */
-export interface CreateCommandOptions extends StreamingOptions, AIProviderOptions {
+export interface CreateCommandOptions
+  extends StreamingOptions,
+    AIProviderOptions {
   title: string;
   content?: string;
   effort?: "small" | "medium" | "large";
@@ -62,10 +64,14 @@ export interface SplitCommandOptions
     ForceOptions,
     StreamingOptions,
     AIProviderOptions {
+  ai?: string[];
+  combineAi?: string;
   tools?: boolean;
 }
 
-export interface PlanCommandOptions extends StreamingOptions, AIProviderOptions {
+export interface PlanCommandOptions
+  extends StreamingOptions,
+    AIProviderOptions {
   id: string;
 }
 
@@ -88,7 +94,9 @@ export interface SetPlanCommandOptions {
   planFile?: string;
 }
 
-export interface DocumentCommandOptions extends StreamingOptions, AIProviderOptions {
+export interface DocumentCommandOptions
+  extends StreamingOptions,
+    AIProviderOptions {
   taskId: string;
   force?: boolean;
 }
