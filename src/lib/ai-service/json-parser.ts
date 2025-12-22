@@ -24,15 +24,41 @@ export class JSONParser {
     }
 
     // Strategy 2: Try to extract JSON object/array directly
-    const directPatterns = [
-      /\{[\s\S]*\}/,  // Object
-      /\[[\s\S]*\]/,  // Array
+    // Determine priority based on which structure appears first
+    const firstBrace = text.indexOf("{");
+    const firstBracket = text.indexOf("[");
+
+    // Default order
+    let directPatterns = [
+      /\{[\s\S]*\}/, // Object
+      /\[[\s\S]*\]/, // Array
     ];
 
+    // If Array bracket appears before Object brace (and exists), prioritize Array
+    if (
+      firstBracket !== -1 &&
+      (firstBrace === -1 || firstBracket < firstBrace)
+    ) {
+      directPatterns = [
+        /\[[\s\S]*\]/, // Array
+        /\{[\s\S]*\}/, // Object
+      ];
+    }
+
+    // Also consider strict Priority if one is found
     for (const pattern of directPatterns) {
       const match = text.match(pattern);
       if (match) {
-        return match[0];
+        // Quick sanity check: does it parse?
+        // This prevents capturing " inner content " when outer content exists but regex failed for some reason
+        try {
+          JSON.parse(match[0]);
+          return match[0];
+        } catch (e) {
+          // Continue to next pattern if this one isn't valid JSON alone
+          // This handles cases where we might match a substring that isn't the full JSON
+          continue;
+        }
       }
     }
 
@@ -81,7 +107,8 @@ export class JSONParser {
       if (!jsonStr) {
         return {
           success: false,
-          error: "Could not extract JSON from AI response. No JSON object or codeblock found.",
+          error:
+            "Could not extract JSON from AI response. No JSON object or codeblock found.",
           rawText: text,
         };
       }

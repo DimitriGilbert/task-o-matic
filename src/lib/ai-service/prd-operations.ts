@@ -150,8 +150,11 @@ Use these tools to understand the project structure, existing code patterns, and
           );
         }
 
+        // Define union type for the AI response
+        type AIParsedResponse = PRDResponse | ParsedAITask[];
+
         const parseResult =
-          this.jsonParser.parseJSONFromResponse<PRDResponse>(response);
+          this.jsonParser.parseJSONFromResponse<AIParsedResponse>(response);
         if (!parseResult.success) {
           throw createStandardError(
             TaskOMaticErrorCodes.PRD_PARSING_ERROR,
@@ -168,7 +171,22 @@ Use these tools to understand the project structure, existing code patterns, and
 
         const parsed = parseResult.data;
 
-        const tasks: Task[] = (parsed?.tasks || []).map(
+        // Handle both { tasks: [...] } and [...] (array) formats
+        let tasksList: ParsedAITask[] = [];
+        let summary = "PRD parsed successfully";
+        let estimatedDuration = "Unknown";
+        let confidence = 0.7;
+
+        if (Array.isArray(parsed)) {
+          tasksList = parsed;
+        } else if (parsed && typeof parsed === "object") {
+          tasksList = parsed.tasks || [];
+          summary = parsed.summary || summary;
+          estimatedDuration = parsed.estimatedDuration || estimatedDuration;
+          confidence = parsed.confidence || confidence;
+        }
+
+        const tasks: Task[] = tasksList.map(
           (task: ParsedAITask, index: number) => {
             const taskId = (task.id as string) || (index + 1).toString();
 
@@ -214,9 +232,9 @@ Use these tools to understand the project structure, existing code patterns, and
 
         return {
           tasks,
-          summary: parsed?.summary || "PRD parsed successfully",
-          estimatedDuration: parsed?.estimatedDuration || "Unknown",
-          confidence: parsed?.confidence || 0.7,
+          summary,
+          estimatedDuration,
+          confidence,
         };
       },
       retryConfig,

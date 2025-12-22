@@ -9,12 +9,20 @@ import { executeBulkOperation } from "../../utils/bulk-operations";
 import { confirmBulkOperation } from "../../utils/confirmation";
 import { SplitCommandOptions } from "../../types/cli-options";
 import { wrapCommandHandler } from "../../utils/command-error-handler";
-import { runAIParallel, combineSubtasks } from "../utils/ai-parallel";
+import { runAIParallel } from "../utils/ai-parallel";
 import { prdCommand, parseModelString } from "../prd";
 import { getAIOperations } from "../../utils/ai-service-factory";
 import { SplitTaskResult, ParsedAITask } from "../../types";
-import { writeFileSync, existsSync, mkdirSync } from "fs";
+import {
+  writeFileSync,
+  existsSync,
+  mkdirSync,
+  copyFileSync,
+  renameSync,
+  unlinkSync,
+} from "fs";
 import { join } from "path";
+import { configManager } from "../../lib/config";
 
 export const splitCommand = new Command("split")
   .description("Split a task into smaller subtasks using AI")
@@ -69,7 +77,6 @@ export const splitCommand = new Command("split")
 
           try {
             // Check for parallel/multi-model usage
-            // Support multi-model if array of models provided in options.ai (added to command option below)
             const cliModels = Array.isArray(options.ai)
               ? options.ai
               : options.ai
@@ -84,119 +91,138 @@ export const splitCommand = new Command("split")
                       `${options.aiProvider || "openai"}:${
                         options.aiModel || "gpt-4o"
                       }`,
-                    ]; // Fallback if simple flags used?
-              // Actually if cliModels empty but combineAi is set, we might default to existing logic OR just error?
-              // Let's assume if they use --combine-ai they probably want parallel, but if not, single model logic below handles it unless we force it here.
-              // For now, only enter parallel block if explicit --ai list is given OR if we want to force combine on single model (unlikely).
+                    ];
 
               const task = await taskService.getTask(taskId);
               if (!task) throw new Error(`Task ${taskId} not found`);
 
-              const aiOperations = getAIOperations();
-
-              // Parallel execution
-              const results = await runAIParallel(
-                modelsToUse,
-                async (modelConfig, streamingOptions) => {
-                  // We use aiOperations.breakdownTask directly to avoid side effects (saving)
-                  const subtasks = await aiOperations.breakdownTask(
-                    task,
-                    {
-                      provider: modelConfig.provider as any,
-                      model: modelConfig.model,
-                      reasoning: options.reasoning
-                        ? { maxTokens: parseInt(options.reasoning) }
-                        : modelConfig.reasoning
-                        ? { maxTokens: parseInt(modelConfig.reasoning) }
-                        : undefined,
-                    },
-                    undefined,
-                    undefined,
-                    streamingOptions,
-                    undefined,
-                    task.content, // full content
-                    undefined, // stack info
-                    undefined, // existing subtasks (we ignore for parallel gen to let them all gen freely)
-                    options.tools ?? false
-                  );
-
-                  // Save intermediate result
-                  const safeModel = (modelConfig.model || "")
-                    .replace(/[^a-z0-9]/gi, "-")
-                    .toLowerCase();
-                  const filename = `subtasks-${modelConfig.provider}-${safeModel}.json`;
-                  const tasksDir = join(
-                    process.cwd(),
-                    ".task-o-matic",
-                    "tasks"
-                  );
-
-                  if (!existsSync(tasksDir)) {
-                    mkdirSync(tasksDir, { recursive: true });
-                  }
-
-                  const outputPath = join(tasksDir, filename);
-
-                  try {
-                    writeFileSync(
-                      outputPath,
-                      JSON.stringify(subtasks, null, 2)
-                    );
-                  } catch (e) {
-                    // ignore
-                  }
-
-                  return {
-                    data: subtasks as ParsedAITask[],
-                    stats: { duration: 0 }, // simplified stats
-                  };
-                },
-                {
-                  description: "Splitting Task",
-                  showSummary: true,
-                }
+              const taskOMaticDir = configManager.getTaskOMaticDir();
+              const tasksJsonPath = join(taskOMaticDir, "tasks.json");
+              const aiMetadataPath = join(taskOMaticDir, "ai-metadata.json");
+              const tasksBackupPath = join(taskOMaticDir, "tasks.json.bak");
+              const aiMetadataBackupPath = join(
+                taskOMaticDir,
+                "ai-metadata.json.bak"
               );
 
-              let finalSubtasks: ParsedAITask[] = [];
+              // 1. Backup Phase
+              if (existsSync(tasksJsonPath)) {
+                copyFileSync(tasksJsonPath, tasksBackupPath);
+              }
+              if (existsSync(aiMetadataPath)) {
+                copyFileSync(aiMetadataPath, aiMetadataBackupPath);
+              }
 
-              if (options.combineAi && results.length > 0) {
-                const subtaskLists = results.map((r) => r.data);
-                const combineModelConfig = parseModelString(options.combineAi);
-                const reasoning =
-                  options.reasoning || combineModelConfig.reasoning;
+              let results: any[] = [];
 
-                finalSubtasks = await combineSubtasks(
-                  subtaskLists,
-                  options.combineAi,
-                  options.stream ?? false,
-                  task.title,
-                  task.description || "",
-                  reasoning
+              try {
+                // 2. Parallel Generation (Service-Based)
+                // We let the service write to the file. It will be corrupted/racy, but we don't care.
+                results = await runAIParallel(
+                  modelsToUse,
+                  async (modelConfig, streamingOptions) => {
+                    const result = await taskService.splitTask(
+                      taskId,
+                      {
+                        aiProvider: modelConfig.provider,
+                        aiModel: modelConfig.model,
+                        aiKey: options.aiKey,
+                        aiProviderUrl: options.aiProviderUrl,
+                        aiReasoning: options.reasoning || modelConfig.reasoning,
+                      },
+                      undefined,
+                      undefined,
+                      streamingOptions,
+                      options.tools
+                    );
+
+                    return {
+                      data: result.subtasks, // We only care about the returned data
+                      stats: result.stats,
+                    };
+                  },
+                  {
+                    description: "Splitting Task",
+                    showSummary: true,
+                  }
                 );
-              } else if (results.length > 0) {
-                finalSubtasks = results[0].data;
-                if (results.length > 1) {
-                  console.log(
-                    chalk.yellow(
-                      "\n⚠️  Multiple models used but no --combine-ai specified. Saving splits from first model only."
-                    )
-                  );
+              } finally {
+                // 3. Restore Phase
+                // Restore the original clean state
+                if (existsSync(tasksBackupPath)) {
+                  renameSync(tasksBackupPath, tasksJsonPath);
+                }
+                if (existsSync(aiMetadataBackupPath)) {
+                  renameSync(aiMetadataBackupPath, aiMetadataPath);
                 }
               }
 
-              // Save subtasks
-              const createdSubtasks = [];
-              for (const st of finalSubtasks) {
-                const subtask = await taskService.createTask({
-                  title: st.title,
-                  content: st.content || st.description,
-                  parentId: taskId,
-                  effort: st.effort as "small" | "medium" | "large" | undefined,
-                });
-                createdSubtasks.push(subtask);
-              }
+              if (options.combineAi && results.length > 0) {
+                const taskLists = results.map((r) => r.data);
+                const combineModelConfig = parseModelString(options.combineAi);
 
-              displaySubtaskCreation(createdSubtasks.map((r) => r.task));
+                console.log(
+                  chalk.blue(
+                    `\nCombining ${taskLists.length} subtask lists with ${combineModelConfig.model}...`
+                  )
+                );
+
+                // Construct the message with drafts
+                let draftsMessage =
+                  "Here are draft subtask lists generated by multiple models. Please combine them into the best possible single list ensuring strict schema compliance:\n\n";
+
+                results.forEach((r, idx) => {
+                  draftsMessage += `--- Model ${
+                    idx + 1
+                  } Draft ---\n${JSON.stringify(r.data, null, 2)}\n\n`;
+                });
+
+                // 4. Service-Based Combination
+                const result = await taskService.splitTask(
+                  taskId,
+                  {
+                    aiProvider: combineModelConfig.provider,
+                    aiModel: combineModelConfig.model,
+                    aiReasoning:
+                      options.reasoning || combineModelConfig.reasoning,
+                  },
+                  undefined,
+                  draftsMessage, // Inject drafts
+                  createStreamingOptions(options.stream, "Combining"),
+                  options.tools
+                );
+
+                displaySubtaskCreation(result.subtasks);
+              } else if (results.length > 0) {
+                // Single select fallback (using service to save cleanly)
+                const bestResult = results[0].data;
+                console.log(
+                  chalk.yellow(
+                    "\n⚠️  Multiple models used without --combine-ai. Saving result from first model."
+                  )
+                );
+
+                const draftsMessage = `Here is the pre-generated subtask list. Please validate and save it exactly as is:\n\n${JSON.stringify(
+                  bestResult,
+                  null,
+                  2
+                )}`;
+
+                const result = await taskService.splitTask(
+                  taskId,
+                  {
+                    aiProvider: options.aiProvider,
+                    aiModel: options.aiModel,
+                    aiReasoning: options.reasoning,
+                  },
+                  undefined,
+                  draftsMessage,
+                  createStreamingOptions(options.stream, "Saving"),
+                  options.tools
+                );
+
+                displaySubtaskCreation(result.subtasks);
+              }
             } else {
               // Standard single model execution
               const result = await withProgressTracking(async () => {
