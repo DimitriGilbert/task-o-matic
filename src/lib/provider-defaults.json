@@ -1,6 +1,6 @@
 {
   "openrouter": {
-    "model": "z-ai/glm-4.6",
+    "model": "z-ai/glm-4.7",
     "maxTokens": 32768,
     "temperature": 0.5
   },
@@ -16,6 +16,11 @@
   },
   "custom": {
     "model": "llama-3.3-70b",
+    "maxTokens": 32768,
+    "temperature": 0.5
+  },
+  "gemini": {
+    "model": "gemini-3.0-pro",
     "maxTokens": 32768,
     "temperature": 0.5
   }

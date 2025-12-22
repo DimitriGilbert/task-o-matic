@@ -2,6 +2,8 @@ import { openai } from "@ai-sdk/openai";
 import { anthropic } from "@ai-sdk/anthropic";
 import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
 import { createOpenRouter } from "@openrouter/ai-sdk-provider";
+// import { createGeminiProvider } from "ai-sdk-provider-gemini-cli";
+import { GeminiProviderProxy } from "./gemini-proxy";
 import type { LanguageModelV2 } from "@ai-sdk/provider";
 import { AIConfig } from "../../types";
 import { configManager } from "../config";
@@ -143,6 +145,12 @@ export class ModelProvider {
           baseURL,
         });
         return customProvider(model);
+
+      case "gemini":
+        // Use Gemini CLI provider with OAuth via Proxy to handle lazy loading
+        return new GeminiProviderProxy(model, {
+          authType: "oauth-personal",
+        });
 
       default:
         throw createStandardError(

@@ -286,10 +286,12 @@ export class ConfigManager {
       // Validate provider
       if (
         provider &&
-        !["openrouter", "anthropic", "openai", "custom"].includes(provider)
+        !["openrouter", "anthropic", "openai", "custom", "gemini"].includes(
+          provider
+        )
       ) {
         errors.push(
-          `Invalid provider: ${provider}. Must be one of: openrouter, anthropic, openai, custom`
+          `Invalid provider: ${provider}. Must be one of: openrouter, anthropic, openai, custom, gemini`
         );
       }
 

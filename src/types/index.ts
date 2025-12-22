@@ -47,6 +47,11 @@ export interface ProviderDefaults {
     maxTokens: number;
     temperature: number;
   };
+  gemini: {
+    model: string;
+    maxTokens: number;
+    temperature: number;
+  };
 }
 
 // Task Documentation References
@@ -305,7 +310,12 @@ export interface DocumentationDetection {
 }
 
 // AI Provider Types (union types based on AI SDK)
-export type AIProvider = "openai" | "anthropic" | "openrouter" | "custom";
+export type AIProvider =
+  | "openai"
+  | "anthropic"
+  | "openrouter"
+  | "custom"
+  | "gemini";
 
 // AI Metadata Types (using AI SDK patterns)
 export type MetadataType = "generated" | "enhanced" | "analyzed";

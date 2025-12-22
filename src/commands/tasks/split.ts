@@ -291,17 +291,17 @@ export const splitCommand = new Command("split")
             return;
           }
 
-          // Confirm bulk operation
-          const confirmed = await confirmBulkOperation(
-            "split",
-            tasks.length,
-            options.force
-          );
+          // // Confirm bulk operation
+          // const confirmed = await confirmBulkOperation(
+          //   "split",
+          //   tasks.length,
+          //   options.force
+          // );
 
-          if (!confirmed) {
-            console.log(chalk.yellow("Operation cancelled"));
-            return;
-          }
+          // if (!confirmed) {
+          //   console.log(chalk.yellow("Operation cancelled"));
+          //   return;
+          // }
 
           await executeBulkOperation((taskId) => splitSingleTask(taskId), {
             operationName: "Splitting",
