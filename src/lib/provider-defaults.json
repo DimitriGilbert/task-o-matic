@@ -20,7 +20,12 @@
     "temperature": 0.5
   },
   "gemini": {
-    "model": "gemini-3.0-pro",
+    "model": "gemini-3-flash-preview",
+    "maxTokens": 32768,
+    "temperature": 0.5
+  },
+  "zai": {
+    "model": "glm-4.7",
     "maxTokens": 32768,
     "temperature": 0.5
   }

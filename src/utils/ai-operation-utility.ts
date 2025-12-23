@@ -108,7 +108,8 @@ export class AIOperationUtility extends BaseOperations {
           return await operation();
         },
         {
-          maxAttempts: options.maxRetries || options.retryConfig?.maxAttempts || 2,
+          maxAttempts:
+            options.maxRetries || options.retryConfig?.maxAttempts || 2,
           ...options.retryConfig,
         },
         operationName
@@ -130,26 +131,31 @@ export class AIOperationUtility extends BaseOperations {
         error instanceof Error ? error : new Error(String(error));
 
       // THROW error instead of returning it
-      throw new TaskOMaticError(`AI operation failed: ${operationName}`, {
-        code: "AI_OPERATION_FAILED",
-        context: JSON.stringify({
-          operation: operationName,
-          duration,
-          error: this.getErrorMessage(typedError),
-        }),
-        cause: typedError,
-        suggestions: [
-          "Check AI configuration",
-          "Verify network connectivity",
-          "Review operation parameters",
-          "Check API keys and endpoints",
-        ],
-        metadata: {
-          operationName,
-          duration,
-          attemptedRetries: options.maxRetries || 2,
-        },
-      });
+      throw new TaskOMaticError(
+        `AI operation failed: ${operationName} - ${this.getErrorMessage(
+          typedError
+        )}`,
+        {
+          code: "AI_OPERATION_FAILED",
+          context: JSON.stringify({
+            operation: operationName,
+            duration,
+            error: this.getErrorMessage(typedError),
+          }),
+          cause: typedError,
+          suggestions: [
+            "Check AI configuration",
+            "Verify network connectivity",
+            "Review operation parameters",
+            "Check API keys and endpoints",
+          ],
+          metadata: {
+            operationName,
+            duration,
+            attemptedRetries: options.maxRetries || 2,
+          },
+        }
+      );
     }
   }
 
@@ -194,6 +200,35 @@ export class AIOperationUtility extends BaseOperations {
     // Create streaming configuration with Context7 handling and callbacks
     const streamConfig = this.createStreamingConfig(streamingOptions);
 
+    let accumulatedText = "";
+    const originalOnChunk = streamConfig.onChunk;
+
+    // Wrap onChunk to accumulate text locally
+    streamConfig.onChunk = (event: any) => {
+      // Debug log for chunk structure
+      // console.log(
+      //   `[DEBUG] Chunk type: ${event.chunk?.type} | keys: ${Object.keys(
+      //     event.chunk || {}
+      //   ).join(",")}`
+      // );
+
+      if (
+        event.chunk?.type === "text-delta" &&
+        typeof event.chunk.text === "string"
+      ) {
+        accumulatedText += event.chunk.text;
+        // } else {
+        // console.log(
+        //   `[DEBUG] Ignored chunk content:`,
+        //   JSON.stringify(event.chunk)
+        // );
+      }
+
+      if (originalOnChunk) {
+        originalOnChunk(event);
+      }
+    };
+
     const result = await streamText({
       model,
       tools: tools || {},
@@ -216,7 +251,8 @@ export class AIOperationUtility extends BaseOperations {
         : {}),
     });
 
-    return await result.text;
+    const fullText = await result.text;
+    return fullText || accumulatedText;
   }
 
   /**
@@ -270,22 +306,23 @@ export class AIOperationUtility extends BaseOperations {
    */
   private createStreamingConfig(streamingOptions?: StreamingOptions) {
     return {
-      onChunk: streamingOptions?.onChunk || streamingOptions?.onReasoning
-        ? (event: any) => {
-            // Handle Context7 tool results ALWAYS (critical for caching)
-            this.handleContext7ToolResult(event.chunk);
+      onChunk:
+        streamingOptions?.onChunk || streamingOptions?.onReasoning
+          ? (event: any) => {
+              // Handle Context7 tool results ALWAYS (critical for caching)
+              this.handleContext7ToolResult(event.chunk);
 
-            // Forward text deltas to user callback
-            if (event.chunk?.type === "text-delta") {
-              streamingOptions?.onChunk?.(event.chunk.text);
-            }
+              // Forward text deltas to user callback
+              if (event.chunk?.type === "text-delta") {
+                streamingOptions?.onChunk?.(event.chunk.text);
+              }
 
-            // Forward reasoning deltas to user callback
-            if (event.chunk?.type === "reasoning-delta") {
-              streamingOptions?.onReasoning?.(event.chunk.text);
+              // Forward reasoning deltas to user callback
+              if (event.chunk?.type === "reasoning-delta") {
+                streamingOptions?.onReasoning?.(event.chunk.text);
+              }
             }
-          }
-        : undefined,
+          : undefined,
       onFinish: streamingOptions?.onFinish
         ? (event: any) => {
             streamingOptions.onFinish!({

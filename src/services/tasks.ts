@@ -909,28 +909,38 @@ export class TaskService {
         type: "progress",
       });
 
-      const result = await this.createTask({
-        title: subtask.title,
-        content: subtask.content,
-        effort: subtask.estimatedEffort,
-        parentId: taskId,
-      });
-      createdSubtasks.push(result.task);
+      // console.log(
+      //   `[DEBUG] Creating subtask ${i + 1}:`,
+      //   JSON.stringify(subtask, null, 2)
+      // );
 
-      // Save AI metadata for each subtask (Bug fix 2.3)
-      const subtaskMetadata = {
-        ...createBaseAIMetadata(
-          result.task.id,
-          aiConfig,
-          promptOverride,
-          "Split task into meaningful subtasks with full context and existing subtask awareness",
-          0.9
-        ),
-        splitAt: splitTimestamp,
-        parentTaskId: taskId,
-        subtaskIndex: i + 1,
-      };
-      await getStorage().saveTaskAIMetadata(subtaskMetadata);
+      try {
+        const result = await this.createTask({
+          title: subtask.title,
+          content: subtask.content,
+          effort: subtask.estimatedEffort,
+          parentId: taskId,
+        });
+        createdSubtasks.push(result.task);
+
+        // Save AI metadata for each subtask (Bug fix 2.3)
+        const subtaskMetadata = {
+          ...createBaseAIMetadata(
+            result.task.id,
+            aiConfig,
+            promptOverride,
+            "Split task into meaningful subtasks with full context and existing subtask awareness",
+            0.9
+          ),
+          splitAt: splitTimestamp,
+          parentTaskId: taskId,
+          subtaskIndex: i + 1,
+        };
+        await getStorage().saveTaskAIMetadata(subtaskMetadata);
+      } catch (err) {
+        console.error(`[DEBUG] Failed to create subtask ${i + 1}:`, err);
+        throw err;
+      }
     }
 
     // Save AI metadata for parent task as well
@@ -1435,7 +1445,8 @@ export class TaskService {
         TaskOMaticErrorCodes.INVALID_INPUT,
         "Either planText or planFilePath must be provided",
         {
-          context: "setTaskPlan requires either planText or planFilePath parameter",
+          context:
+            "setTaskPlan requires either planText or planFilePath parameter",
           suggestions: [
             "Provide planText parameter with the plan content",
             "Provide planFilePath parameter with path to plan file",

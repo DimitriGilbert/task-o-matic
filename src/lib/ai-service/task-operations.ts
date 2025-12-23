@@ -116,9 +116,10 @@ Use these tools to understand the project structure, existing code, and dependen
           tools
         );
 
-        const parseResult = this.jsonParser.parseJSONFromResponse<{
-          subtasks: ParsedAITask[];
-        }>(response);
+        const parseResult = this.jsonParser.parseJSONFromResponse<
+          { subtasks?: ParsedAITask[]; tasks?: ParsedAITask[] } | ParsedAITask[]
+        >(response);
+
         if (!parseResult.success) {
           throw createStandardError(
             TaskOMaticErrorCodes.AI_OPERATION_FAILED,
@@ -134,10 +135,18 @@ Use these tools to understand the project structure, existing code, and dependen
         }
 
         const parsed = parseResult.data;
+        let subtasksList: ParsedAITask[] = [];
 
-        return (parsed?.subtasks || []).map((subtask: ParsedAITask) => ({
+        // Handle various output formats (Array, { subtasks: [] }, { tasks: [] })
+        if (Array.isArray(parsed)) {
+          subtasksList = parsed;
+        } else if (parsed && typeof parsed === "object") {
+          subtasksList = parsed.subtasks || parsed.tasks || [];
+        }
+
+        return subtasksList.map((subtask: ParsedAITask) => ({
           title: subtask.title,
-          content: subtask.description || "",
+          content: subtask.description || subtask.content || "",
           estimatedEffort: subtask.effort,
         }));
       },

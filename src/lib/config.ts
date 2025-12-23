@@ -37,6 +37,8 @@ function getApiKeyFromEnv(
       return getEnv("OPENAI_API_KEY");
     case "custom":
       return getEnv("CUSTOM_API_KEY");
+    case "zai":
+      return getEnv("ZAI_API_KEY");
     default:
       return undefined;
   }
@@ -286,12 +288,17 @@ export class ConfigManager {
       // Validate provider
       if (
         provider &&
-        !["openrouter", "anthropic", "openai", "custom", "gemini"].includes(
-          provider
-        )
+        ![
+          "openrouter",
+          "anthropic",
+          "openai",
+          "custom",
+          "gemini",
+          "zai",
+        ].includes(provider)
       ) {
         errors.push(
-          `Invalid provider: ${provider}. Must be one of: openrouter, anthropic, openai, custom, gemini`
+          `Invalid provider: ${provider}. Must be one of: openrouter, anthropic, openai, custom, gemini, zai`
         );
       }
 

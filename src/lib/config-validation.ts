@@ -1,12 +1,20 @@
 import { z } from "zod";
-import { TaskOMaticError, TaskOMaticErrorCodes } from "../utils/task-o-matic-error";
+import {
+  TaskOMaticError,
+  TaskOMaticErrorCodes,
+} from "../utils/task-o-matic-error";
 
 /**
  * Zod schema for AI Provider
  */
-export const AIProviderSchema = z.enum(["openai", "anthropic", "openrouter", "custom"], {
+import { AI_PROVIDERS_LIST } from "../types";
+
+/**
+ * Zod schema for AI Provider
+ */
+export const AIProviderSchema = z.enum(AI_PROVIDERS_LIST, {
   errorMap: () => ({
-    message: "Provider must be one of: openai, anthropic, openrouter, custom",
+    message: `Provider must be one of: ${AI_PROVIDERS_LIST.join(", ")}`,
   }),
 });
 
@@ -17,7 +25,11 @@ export const AIConfigSchema = z.object({
   provider: AIProviderSchema,
   model: z.string().min(1, "Model name cannot be empty"),
   apiKey: z.string().optional(),
-  baseURL: z.string().url("Base URL must be a valid URL").optional().or(z.literal("")),
+  baseURL: z
+    .string()
+    .url("Base URL must be a valid URL")
+    .optional()
+    .or(z.literal("")),
   maxTokens: z
     .number()
     .int("Max tokens must be an integer")
@@ -82,7 +94,9 @@ export interface ValidationResult<T> {
  * // validated is now type-safe and guaranteed valid
  * ```
  */
-export function validateAIConfig(config: unknown): z.infer<typeof AIConfigSchema> {
+export function validateAIConfig(
+  config: unknown
+): z.infer<typeof AIConfigSchema> {
   try {
     return AIConfigSchema.parse(config);
   } catch (error) {
@@ -172,7 +186,9 @@ export function validateConfig(config: unknown): z.infer<typeof ConfigSchema> {
  * }
  * ```
  */
-export function safeValidateConfig(config: unknown): ValidationResult<z.infer<typeof ConfigSchema>> {
+export function safeValidateConfig(
+  config: unknown
+): ValidationResult<z.infer<typeof ConfigSchema>> {
   const result = ConfigSchema.safeParse(config);
 
   if (result.success) {
@@ -197,7 +213,9 @@ export function safeValidateConfig(config: unknown): ValidationResult<z.infer<ty
  * @param config - AI configuration to validate
  * @returns Validation result with success flag and data or errors
  */
-export function safeValidateAIConfig(config: unknown): ValidationResult<z.infer<typeof AIConfigSchema>> {
+export function safeValidateAIConfig(
+  config: unknown
+): ValidationResult<z.infer<typeof AIConfigSchema>> {
   const result = AIConfigSchema.safeParse(config);
 
   if (result.success) {

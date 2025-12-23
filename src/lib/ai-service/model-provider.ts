@@ -1,5 +1,5 @@
 import { openai } from "@ai-sdk/openai";
-import { anthropic } from "@ai-sdk/anthropic";
+import { anthropic, createAnthropic } from "@ai-sdk/anthropic";
 import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
 import { createOpenRouter } from "@openrouter/ai-sdk-provider";
 // import { createGeminiProvider } from "ai-sdk-provider-gemini-cli";
@@ -49,6 +49,9 @@ export class ModelProvider {
         },
         anthropic: {
           apiKey: getEnv("ANTHROPIC_API_KEY"),
+        },
+        zai: {
+          apiKey: getEnv("ZAI_API_KEY"),
         },
         openrouter: {
           apiKey: getEnv("OPENROUTER_API_KEY"),
@@ -152,13 +155,33 @@ export class ModelProvider {
           authType: "oauth-personal",
         });
 
+      case "zai":
+        if (!apiKey)
+          throw createStandardError(
+            TaskOMaticErrorCodes.AI_CONFIGURATION_ERROR,
+            "Z.AI Coding plan API key is required",
+            {
+              suggestions: [
+                "Set the ZAI_API_KEY environment variable.",
+                "Run `task-o-matic config set-ai-key <key>`",
+              ],
+            }
+          );
+
+        const zaiProvider = createAnthropic({
+          baseURL: "https://api.z.ai/api/anthropic/v1",
+          apiKey,
+        });
+
+        return zaiProvider(model);
+
       default:
         throw createStandardError(
           TaskOMaticErrorCodes.AI_CONFIGURATION_ERROR,
           `Unsupported provider: ${provider}`,
           {
             suggestions: [
-              "Use one of the supported providers: 'openai', 'anthropic', 'openrouter', 'custom'.",
+              "Use one of the supported providers: 'openai', 'anthropic', 'openrouter', 'custom', 'zai'.",
               "Run `task-o-matic config set-ai-provider <provider>`",
             ],
           }

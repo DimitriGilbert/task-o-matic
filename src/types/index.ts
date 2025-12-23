@@ -52,6 +52,11 @@ export interface ProviderDefaults {
     maxTokens: number;
     temperature: number;
   };
+  zai: {
+    model: string;
+    maxTokens: number;
+    temperature: number;
+  };
 }
 
 // Task Documentation References
@@ -310,12 +315,16 @@ export interface DocumentationDetection {
 }
 
 // AI Provider Types (union types based on AI SDK)
-export type AIProvider =
-  | "openai"
-  | "anthropic"
-  | "openrouter"
-  | "custom"
-  | "gemini";
+export const AI_PROVIDERS_LIST = [
+  "openai",
+  "anthropic",
+  "openrouter",
+  "custom",
+  "gemini",
+  "zai",
+] as const;
+
+export type AIProvider = (typeof AI_PROVIDERS_LIST)[number];
 
 // AI Metadata Types (using AI SDK patterns)
 export type MetadataType = "generated" | "enhanced" | "analyzed";
