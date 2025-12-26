@@ -1,6 +1,6 @@
 {
   "name": "task-o-matic",
-  "version": "0.0.22",
+  "version": "0.0.24",
   "description": "AI-powered task management CLI",
   "keywords": [
     "task-management",
@@ -68,6 +68,7 @@
     "commander": "^14.0.2",
     "create-better-t-stack": "^3.0.10",
     "dotenv": "^16.4.7",
+    "glob": "^13.0.0",
     "inquirer": "^12.11.0",
     "zod": "^3.25.76"
   },
