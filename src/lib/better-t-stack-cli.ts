@@ -30,9 +30,21 @@ export class BetterTStackService {
       console.log(`🔥 Calling Better-T-Stack programmatic API...`);
 
       // Use dynamic import with eval to bypass TypeScript module resolution
-      // this is magically fucking terrible
+      // The module exports `init` as a named export, but depending on how it's bundled,
+      // it might be directly on the module or wrapped in a default export
       const btsModule = await eval(`import("create-better-t-stack")`);
-      const result = await btsModule.init(name, apiConfig);
+
+      // Handle different module structures: direct named export, default export, or nested
+      const initFn =
+        btsModule.init || btsModule.default?.init || btsModule.default;
+      if (typeof initFn !== "function") {
+        throw new Error(
+          `Could not find 'init' function in create-better-t-stack module. ` +
+            `Available exports: ${Object.keys(btsModule).join(", ")}`
+        );
+      }
+
+      const result = await initFn(name, apiConfig);
 
       // Restore original directory
       if (workingDirectory) {
