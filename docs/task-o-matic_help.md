@@ -20,21 +20,23 @@ Usage: task-o-matic [options] [command]
 AI-powered Task Management CLI for Single Projects
 
 Options:
-  -V, --version            output the version number
-  -v, --verbose            Enable verbose logging
-  -h, --help               display help for command
+  -V, --version               output the version number
+  -v, --verbose               Enable verbose logging
+  -h, --help                  display help for command
 
 Commands:
-  config                   Manage task-o-matic configuration
+  config                      Manage task-o-matic configuration
   tasks
-  prd                      Manage PRDs and generate tasks
-  prompt [options] [name]  Build AI service prompts with variable replacement
-                           for external tools
-  init                     Initialize task-o-matic project and bootstrap
-                           projects (web/native/cli/tui)
-  workflow [options]       Interactive workflow for complete project setup and
-                           task management
-  benchmark                Run and manage AI benchmarks
+  prd                         Manage PRDs and generate tasks
+  prompt [options] [name]     Build AI service prompts with variable replacement
+                              for external tools
+  init                        Initialize task-o-matic project and bootstrap
+                              projects (web/native/cli/tui)
+  workflow [options]          Interactive workflow for complete project setup
+                              and task management
+  benchmark                   Run and manage AI benchmarks
+  install [options] <target>  Install task-o-matic documentation and agent
+                              guides into current project
 ```
 
 ## Tasks Commands
@@ -264,21 +266,26 @@ Usage: task-o-matic tasks split [options]
 Split a task into smaller subtasks using AI
 
 Options:
-  --task-id <id>            Task ID to split
-  --all                     Split all existing tasks that don't have subtasks
-  --status <status>         Filter tasks by status (todo/in-progress/completed)
-  --tag <tag>               Filter tasks by tag
-  --dry                     Preview what would be split without making changes
-  --force                   Skip confirmation prompt for bulk operations
-  --stream                  Show streaming AI output during breakdown
-  --ai-provider <provider>  AI provider override
-  --ai-model <model>        AI model override
-  --ai-key <key>            AI API key override
-  --ai-provider-url <url>   AI provider URL override
-  --reasoning <tokens>      Enable reasoning for OpenRouter models (max
-                            reasoning tokens)
-  --tools                   Enable filesystem tools for project analysis
-  -h, --help                display help for command
+  --task-id <id>                 Task ID to split
+  --all                          Split all existing tasks that don't have
+                                 subtasks
+  --status <status>              Filter tasks by status
+                                 (todo/in-progress/completed)
+  --tag <tag>                    Filter tasks by tag
+  --dry                          Preview what would be split without making
+                                 changes
+  --force                        Skip confirmation prompt for bulk operations
+  --stream                       Show streaming AI output during breakdown
+  --ai-provider <provider>       AI provider override
+  --ai-key <key>                 AI API key override
+  --ai-provider-url <url>        AI provider URL override
+  --ai <models...>               AI model(s) to use. Format:
+                                 [provider:]model[;reasoning[=budget]]
+  --combine-ai <provider:model>  AI model to combine multiple split results
+  --reasoning <tokens>           Enable reasoning for OpenRouter models (max
+                                 reasoning tokens)
+  --tools                        Enable filesystem tools for project analysis
+  -h, --help                     display help for command
 ```
 
 ### tasks plan --help
@@ -571,18 +578,21 @@ Usage: task-o-matic prd parse [options]
 Parse a PRD file into structured tasks
 
 Options:
-  --file <path>             Path to PRD file
-  --prompt <prompt>         Override prompt
-  --message <message>       User message
-  --ai-provider <provider>  AI provider override
-  --ai-model <model>        AI model override
-  --ai-key <key>            AI API key override
-  --ai-provider-url <url>   AI provider URL override
-  --ai-reasoning <tokens>   Enable reasoning for OpenRouter models (max
-                            reasoning tokens)
-  --stream                  Show streaming AI output during parsing
-  --tools                   Enable filesystem tools for project analysis
-  -h, --help                display help for command
+  --file <path>                  Path to PRD file
+  --ai <models...>               AI model(s) to use. Format:
+                                 [provider:]model[;reasoning[=budget]]
+  --combine-ai <provider:model>  AI model to combine multiple parsed results
+  --prompt <prompt>              Override prompt
+  --message <message>            User message
+  --ai-provider <provider>       AI provider override
+  --ai-model <model>             AI model override
+  --ai-key <key>                 AI API key override
+  --ai-provider-url <url>        AI provider URL override
+  --ai-reasoning <tokens>        Enable reasoning for OpenRouter models (max
+                                 reasoning tokens)
+  --stream                       Show streaming AI output during parsing
+  --tools                        Enable filesystem tools for project analysis
+  -h, --help                     display help for command
 ```
 
 ### prd rework --help
