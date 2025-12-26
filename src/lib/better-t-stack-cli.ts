@@ -34,12 +34,17 @@ export class BetterTStackService {
       // it might be directly on the module or wrapped in a default export
       const btsModule = await eval(`import("create-better-t-stack")`);
 
-      // Handle different module structures: direct named export, default export, or nested
+      // Handle different module structures and API versions
+      // The package renamed 'init' to 'create' in a recent update
       const initFn =
-        btsModule.init || btsModule.default?.init || btsModule.default;
+        btsModule.create ||
+        btsModule.init ||
+        btsModule.default?.create ||
+        btsModule.default?.init ||
+        btsModule.default;
       if (typeof initFn !== "function") {
         throw new Error(
-          `Could not find 'init' function in create-better-t-stack module. ` +
+          `Could not find 'create' or 'init' function in create-better-t-stack module. ` +
             `Available exports: ${Object.keys(btsModule).join(", ")}`
         );
       }
