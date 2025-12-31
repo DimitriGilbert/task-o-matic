@@ -26,6 +26,8 @@ import {
   TASK_PRIORITIZATION_SYSTEM_PROMPT,
   TASK_SPLITTING_ASSISTANCE_PROMPT,
   TASK_SPLITTING_ASSISTANCE_SYSTEM_PROMPT,
+  PRD_SUGGEST_STACK_PROMPT,
+  PRD_SUGGEST_STACK_SYSTEM_PROMPT,
 } from "../prompts";
 
 export interface PromptMetadata {
@@ -357,6 +359,30 @@ export class PromptRegistry {
         requiredVariables: [],
         optionalVariables: [],
         promptText: TASK_SPLITTING_ASSISTANCE_SYSTEM_PROMPT,
+      },
+    ],
+
+    // PRD Stack Suggestion Prompts
+    [
+      "prd-suggest-stack",
+      {
+        name: "prd-suggest-stack",
+        description: "Suggest technology stack based on PRD analysis",
+        type: "user",
+        requiredVariables: ["PRD_CONTENT"],
+        optionalVariables: ["STACK_INFO", "PROJECT_NAME"],
+        promptText: PRD_SUGGEST_STACK_PROMPT,
+      },
+    ],
+    [
+      "prd-suggest-stack-system",
+      {
+        name: "prd-suggest-stack-system",
+        description: "System prompt for PRD stack suggestion",
+        type: "system",
+        requiredVariables: [],
+        optionalVariables: [],
+        promptText: PRD_SUGGEST_STACK_SYSTEM_PROMPT,
       },
     ],
   ]);

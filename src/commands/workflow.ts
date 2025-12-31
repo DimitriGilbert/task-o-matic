@@ -2,10 +2,12 @@
 
 import { Command } from "commander";
 import chalk from "chalk";
-import { readFileSync } from "fs";
+import { readFileSync, existsSync } from "fs";
 import { resolve } from "path";
 import { workflowService } from "../services/workflow";
+import { configManager } from "../lib/config";
 import { prdService } from "../services/prd";
+import { runBetterTStackCLI } from "../lib/better-t-stack-cli";
 import inquirer from "inquirer";
 import {
   confirmPrompt,
@@ -13,6 +15,7 @@ import {
   multiSelectPrompt,
   textInputPrompt,
   editorPrompt,
+  passwordPrompt,
 } from "../utils/workflow-prompts";
 import { createStreamingOptions } from "../utils/streaming-options";
 import { displayProgress, displayError } from "../cli/display/progress";
@@ -20,7 +23,12 @@ import type {
   WorkflowState,
   WorkflowAutomationOptions,
 } from "../types/options";
-import type { Task, ExecuteLoopOptions, ExecuteLoopConfig, ExecutorTool } from "../types";
+import type {
+  Task,
+  ExecuteLoopOptions,
+  ExecuteLoopConfig,
+  ExecutorTool,
+} from "../types";
 import {
   createStandardError,
   TaskOMaticErrorCodes,
@@ -84,7 +92,17 @@ export const workflowCommand = new Command("workflow")
     "Model to use for combining PRDs (provider:model)"
   )
 
-  // Step 2.5: PRD Question/Refine (NEW)
+  // Step 2.4: Stack Suggestion
+  .option("--skip-stack-suggestion", "Skip stack suggestion step")
+  .option(
+    "--suggest-stack-from-prd [path]",
+    "Get stack from PRD (path or current)"
+  )
+
+  // Step 3: Bootstrap
+  .option("--skip-bootstrap", "Skip bootstrap step")
+
+  // Step 5: PRD Question/Refine
   .option("--skip-prd-question-refine", "Skip PRD question/refine step")
   .option("--prd-question-refine", "Use question-based PRD refinement")
   .option("--prd-answer-mode <mode>", "Who answers questions: user, ai")
@@ -126,9 +144,15 @@ export const workflowCommand = new Command("workflow")
 
   // Step 6: Execute Tasks
   .option("--execute", "Execute generated tasks immediately")
-  .option("--execute-concurrency <number>", "Number of concurrent tasks (default: 1)")
+  .option(
+    "--execute-concurrency <number>",
+    "Number of concurrent tasks (default: 1)"
+  )
   .option("--no-auto-commit", "Disable auto-commit during execution")
-  .option("--execute-tool <tool>", "Executor tool (opencode/claude/gemini/codex)")
+  .option(
+    "--execute-tool <tool>",
+    "Executor tool (opencode/claude/gemini/codex)"
+  )
   .option("--execute-model <model>", "Model override for execution")
   .option("--execute-max-retries <number>", "Max retries per task")
   .option("--execute-plan", "Enable planning phase")
@@ -137,6 +161,9 @@ export const workflowCommand = new Command("workflow")
   .option("--execute-review-model <model>", "Model for review")
   .action(async (cliOptions) => {
     try {
+      // Load .env from current working directory
+      await configManager.load();
+
       // Load and merge options from config file if specified
       const options = await loadWorkflowOptions(cliOptions);
 
@@ -154,12 +181,14 @@ export const workflowCommand = new Command("workflow")
       }
 
       console.log(chalk.gray("This wizard will guide you through:"));
-      console.log(chalk.gray("  1. Project initialization & bootstrap"));
+      console.log(chalk.gray("  1. Project initialization"));
       console.log(chalk.gray("  2. PRD definition"));
-      console.log(chalk.gray("  2.5. PRD question & refinement (optional)"));
-      console.log(chalk.gray("  3. PRD manual refinement (optional)"));
-      console.log(chalk.gray("  4. Task generation"));
-      console.log(chalk.gray("  5. Task splitting\n"));
+      console.log(chalk.gray("  3. Stack suggestion (from PRD)"));
+      console.log(chalk.gray("  4. Bootstrap project (uses suggested stack)"));
+      console.log(chalk.gray("  5. PRD question & refinement (optional)"));
+      console.log(chalk.gray("  6. PRD manual refinement (optional)"));
+      console.log(chalk.gray("  7. Task generation"));
+      console.log(chalk.gray("  8. Task splitting\n"));
 
       const state: WorkflowState = {
         initialized: false,
@@ -178,22 +207,28 @@ export const workflowCommand = new Command("workflow")
       // Step 2: Define PRD
       await stepDefinePRD(state, options, streamingOptions);
 
-      // Step 2.5: PRD Question/Refine (NEW)
+      // Step 3: Stack Suggestion
+      await stepStackSuggestion(state, options, streamingOptions);
+
+      // Step 4: Bootstrap (uses suggested stack)
+      await stepBootstrap(state, options, streamingOptions);
+
+      // Step 5: PRD Question/Refine
       await stepPRDQuestionRefine(state, options, streamingOptions);
 
-      // Step 3: Refine PRD
+      // Step 6: Refine PRD
       await stepRefinePRD(state, options, streamingOptions);
 
-      // Step 4: Generate Tasks
+      // Step 7: Generate Tasks
       await stepGenerateTasks(state, options, streamingOptions);
 
-      // Step 5: Split Tasks
+      // Step 8: Split Tasks
       await stepSplitTasks(state, options, streamingOptions);
 
-      // Step 6: Execute Tasks
+      // Step 9: Execute Tasks
       if (options.execute) {
         console.log(chalk.blue.bold("\n⚡ Step 6: Execute Tasks\n"));
-        
+
         // Confirm execution if not auto-accepting
         const shouldExecute = await getOrPrompt(
           options.autoAccept ? true : undefined,
@@ -240,12 +275,12 @@ export const workflowCommand = new Command("workflow")
             callbacks: {
               onProgress: displayProgress,
               onError: displayError,
-            }
+            },
           });
-          
+
           console.log(chalk.green("\n✓ Execution complete"));
         } else {
-           console.log(chalk.gray("  Skipping execution"));
+          console.log(chalk.gray("  Skipping execution"));
         }
       }
 
@@ -276,7 +311,6 @@ async function loadWorkflowOptions(
   if (cliOptions.configFile) {
     try {
       const configPath = resolve(cliOptions.configFile);
-      const { existsSync, readFileSync } = await import("fs");
       if (existsSync(configPath)) {
         const configContent = readFileSync(configPath, "utf-8");
         const fileOptions = JSON.parse(configContent);
@@ -290,6 +324,56 @@ async function loadWorkflowOptions(
     } catch (error) {
       console.log(chalk.red(`✗ Failed to load config file: ${error}`));
     }
+  }
+
+  // Check for AI config
+  const aiProvider =
+    options.aiProvider ||
+    process.env.AI_PROVIDER ||
+    process.env.AI_API_PROVIDER;
+  const aiKey =
+    options.aiKey ||
+    process.env.AI_KEY ||
+    process.env.AI_API_KEY ||
+    process.env.OPENROUTER_API_KEY ||
+    process.env.ANTHROPIC_API_KEY ||
+    process.env.OPENAI_API_KEY;
+
+  // If missing critical AI config, prompt for it
+  if (!aiKey) {
+    console.log(chalk.blue.bold("\n🤖 AI Configuration Required"));
+    console.log(
+      chalk.gray("No API key found in arguments or environment (.env).\n")
+    );
+
+    const provider = await getOrPrompt(aiProvider, () =>
+      selectPrompt("Select AI Provider:", [
+        { name: "OpenRouter (Recommended)", value: "openrouter" },
+        { name: "Anthropic", value: "anthropic" },
+        { name: "OpenAI", value: "openai" },
+      ])
+    );
+
+    const model = await getOrPrompt(options.aiModel, () =>
+      textInputPrompt(
+        "Enter AI Model:",
+        provider === "openrouter"
+          ? "anthropic/claude-3.5-sonnet"
+          : provider === "anthropic"
+          ? "claude-3-5-sonnet-20241022"
+          : "gpt-4o"
+      )
+    );
+
+    const key = await getOrPrompt(undefined, () =>
+      passwordPrompt("Enter API Key:")
+    );
+
+    options.aiProvider = provider;
+    options.aiModel = model;
+    options.aiKey = key;
+
+    console.log(chalk.green("✓ AI Configuration updated\n"));
   }
 
   return options;
@@ -313,8 +397,8 @@ async function getOrPrompt<T>(
 }
 
 /**
- * Step 1: Initialize/Bootstrap
- * Uses workflowService.initializeProject()
+ * Step 1: Initialize Project Structure
+ * Creates project directory and .task-o-matic structure - NO bootstrap yet
  */
 async function stepInitialize(
   state: WorkflowState,
@@ -331,7 +415,7 @@ async function stepInitialize(
   }
 
   const shouldInitialize = await getOrPrompt(
-    options.skipInit === false || options.initMethod ? true : undefined,
+    options.skipInit === false || options.projectName ? true : undefined,
     () => confirmPrompt("Initialize a new task-o-matic project?", true)
   );
 
@@ -346,79 +430,13 @@ async function stepInitialize(
     textInputPrompt("What is the name of your project?", "my-app")
   );
 
-  // Determine initialization method
-  const initMethod = await getOrPrompt(options.initMethod, () =>
-    selectPrompt("How would you like to configure your project stack?", [
-      { name: "Quick start (recommended defaults)", value: "quick" },
-      { name: "Custom configuration", value: "custom" },
-      { name: "AI-assisted (describe your project)", value: "ai" },
-    ])
-  );
-
-  let projectDescription: string | undefined;
-  if (initMethod === "ai") {
-    projectDescription = await getOrPrompt(options.projectDescription, () =>
-      textInputPrompt(
-        "Describe your project (e.g., 'A SaaS app for team collaboration with real-time features'):"
-      )
-    );
-  }
-
-  // Collect stack config for custom mode
-  let stackConfig: any = {};
-  if (initMethod === "custom") {
-    const shouldBootstrap = await getOrPrompt(options.bootstrap, () =>
-      confirmPrompt("Bootstrap with Better-T-Stack?", true)
-    );
-
-    if (shouldBootstrap) {
-      stackConfig.frontend = await getOrPrompt(options.frontend, () =>
-        selectPrompt("Frontend framework:", [
-          "next",
-          "tanstack-router",
-          "react-router",
-          "vite-react",
-          "remix",
-        ])
-      );
-      stackConfig.backend = await getOrPrompt(options.backend, () =>
-        selectPrompt("Backend framework:", [
-          "hono",
-          "express",
-          "elysia",
-          "fastify",
-        ])
-      );
-      stackConfig.database = await getOrPrompt(options.database, () =>
-        selectPrompt("Database:", [
-          "sqlite",
-          "postgres",
-          "mysql",
-          "mongodb",
-          "turso",
-          "neon",
-        ])
-      );
-      stackConfig.auth = await getOrPrompt(options.auth, () =>
-        confirmPrompt("Include authentication?", true)
-      );
-    }
-  }
-
-  // Determine if we should bootstrap
-  const bootstrap =
-    initMethod === "quick" ||
-    (initMethod === "ai" && options.bootstrap !== false) ||
-    (initMethod === "custom" && Object.keys(stackConfig).length > 0);
-
-  // Call service
+  // Call service with NO bootstrap - just project structure
   const result = await workflowService.initializeProject({
     projectName,
-    initMethod: initMethod as "quick" | "custom" | "ai",
-    projectDescription,
+    initMethod: "custom", // No AI-assisted stack config
     aiOptions: options,
-    stackConfig,
-    bootstrap,
+    stackConfig: {}, // Empty - no stack config yet
+    bootstrap: false, // NO bootstrap in Step 1
     includeDocs: options.includeDocs,
     streamingOptions,
     callbacks: {
@@ -428,6 +446,7 @@ async function stepInitialize(
   });
 
   console.log(chalk.green("✓ Project initialized"));
+  console.log(chalk.gray("  (Stack will be configured after PRD is defined)"));
 
   state.initialized = true;
   state.projectName = result.projectName;
@@ -523,7 +542,8 @@ async function stepDefinePRD(
             TaskOMaticErrorCodes.WORKFLOW_EXECUTION_ERROR,
             `Invalid model format: ${m}. Expected provider:model`,
             {
-              context: "Model format validation failed during multi-generation setup",
+              context:
+                "Model format validation failed during multi-generation setup",
               suggestions: [
                 "Use format: provider:model (e.g., anthropic:claude-sonnet-4.5)",
                 "Check for typos in provider or model name",
@@ -557,7 +577,8 @@ async function stepDefinePRD(
               TaskOMaticErrorCodes.WORKFLOW_EXECUTION_ERROR,
               `Invalid model format: ${combineModelInput}. Expected provider:model`,
               {
-                context: "Model format validation failed during PRD combine setup",
+                context:
+                  "Model format validation failed during PRD combine setup",
                 suggestions: [
                   "Use format: provider:model (e.g., anthropic:claude-sonnet-4.5)",
                   "Check for typos in provider or model name",
@@ -638,11 +659,259 @@ async function stepDefinePRD(
 
   state.prdFile = result.prdFile;
   state.prdContent = result.prdContent;
+  state.currentStep = "stack-suggestion";
+}
+
+/**
+ * Step 2.4: Stack Suggestion
+ * Uses prdService.suggestStack() to get AI-recommended stack from PRD
+ */
+async function stepStackSuggestion(
+  state: WorkflowState,
+  options: WorkflowAutomationOptions,
+  streamingOptions: any
+): Promise<void> {
+  console.log(chalk.blue.bold("\n🛠️ Step 2.4: Stack Suggestion\n"));
+
+  // Skip conditions
+  if (options.skipStackSuggestion || options.skipAll) {
+    console.log(chalk.gray("  Skipping stack suggestion"));
+    state.currentStep = "question-refine-prd";
+    return;
+  }
+
+  if (!state.prdFile && !state.prdContent) {
+    console.log(chalk.yellow("⚠ No PRD available, skipping stack suggestion"));
+    state.currentStep = "question-refine-prd";
+    return;
+  }
+
+  // Determine PRD file to use
+  let prdFile: string | undefined = state.prdFile;
+  if (typeof options.suggestStackFromPrd === "string") {
+    prdFile = options.suggestStackFromPrd;
+  }
+
+  // Ask user if they want AI stack suggestion
+  const wantsStackSuggestion = await getOrPrompt(
+    options.suggestStackFromPrd !== undefined ? true : undefined,
+    () => confirmPrompt("Get AI-recommended stack based on your PRD?", true)
+  );
+
+  if (!wantsStackSuggestion) {
+    console.log(chalk.gray("  Skipping stack suggestion"));
+    state.currentStep = "question-refine-prd";
+    return;
+  }
+
+  // Call prdService.suggestStack()
+  const result = await prdService.suggestStack({
+    file: prdFile,
+    content: !prdFile ? state.prdContent : undefined,
+    projectName: state.projectName,
+    workingDirectory: state.projectDir,
+    aiOptions: options,
+    streamingOptions,
+    callbacks: {
+      onProgress: displayProgress,
+      onError: displayError,
+    },
+  });
+
+  // Display suggested stack
+  console.log(chalk.green("\n✓ Suggested Stack:\n"));
+  const s = result.stack;
+  console.log(
+    chalk.cyan("  Frontend:    ") +
+      (Array.isArray(s.frontend) ? s.frontend.join(", ") : s.frontend)
+  );
+  console.log(chalk.cyan("  Backend:     ") + s.backend);
+  console.log(chalk.cyan("  Database:    ") + s.database);
+  console.log(chalk.cyan("  ORM:         ") + s.orm);
+  console.log(chalk.cyan("  Auth:        ") + s.auth);
+  console.log(chalk.cyan("  Runtime:     ") + s.runtime);
+  console.log(
+    chalk.cyan("  Addons:      ") +
+      (s.addons.length > 0 ? s.addons.join(", ") : "none")
+  );
+
+  console.log(chalk.blue("\n  Reasoning:"));
+  console.log(chalk.dim("  " + result.reasoning.split("\n")[0]));
+
+  // Display stats
+  console.log(chalk.cyan(`\n  Duration: ${result.stats.duration}ms`));
+  if (result.stats.tokenUsage) {
+    console.log(chalk.cyan(`  Tokens: ${result.stats.tokenUsage.total}`));
+  }
+
+  // Ask to accept
+  const acceptStack = await getOrPrompt(
+    options.autoAccept ? true : undefined,
+    () => confirmPrompt("Accept this stack configuration?", true)
+  );
+
+  if (acceptStack) {
+    state.suggestedStack = result.stack;
+    console.log(
+      chalk.green("  ✓ Stack accepted and will be used for bootstrap")
+    );
+  } else {
+    console.log(chalk.yellow("  Stack suggestion discarded"));
+  }
+
+  state.currentStep = "bootstrap";
+}
+
+/**
+ * Step 4: Bootstrap Project
+ * Uses suggestedStack from PRD analysis to bootstrap with Better-T-Stack
+ */
+async function stepBootstrap(
+  state: WorkflowState,
+  options: WorkflowAutomationOptions,
+  streamingOptions: any
+): Promise<void> {
+  console.log(chalk.blue.bold("\n🚀 Step 4: Bootstrap Project\n"));
+
+  // Skip conditions
+  if (options.skipBootstrap || options.skipAll) {
+    console.log(chalk.gray("  Skipping bootstrap"));
+    state.currentStep = "question-refine-prd";
+    return;
+  }
+
+  // Check if we have a suggested stack
+  if (state.suggestedStack) {
+    console.log(chalk.cyan("Using AI-suggested stack from PRD:"));
+    const s = state.suggestedStack;
+    console.log(
+      chalk.dim(
+        `  Frontend: ${
+          Array.isArray(s.frontend) ? s.frontend.join(", ") : s.frontend
+        }`
+      )
+    );
+    console.log(chalk.dim(`  Backend: ${s.backend}`));
+    console.log(chalk.dim(`  Database: ${s.database}`));
+    console.log(chalk.dim(`  Auth: ${s.auth}`));
+
+    const useStack = await getOrPrompt(
+      options.autoAccept ? true : undefined,
+      () => confirmPrompt("Bootstrap with this stack?", true)
+    );
+
+    if (useStack) {
+      console.log(chalk.cyan("\n  Bootstrapping with Better-T-Stack..."));
+      try {
+        const result = await runBetterTStackCLI(
+          {
+            projectName: ".",
+            frontend: Array.isArray(s.frontend) ? s.frontend[0] : s.frontend,
+            backend: s.backend,
+            database: s.database,
+            noAuth: s.auth === "none",
+            orm: s.orm || "drizzle",
+            packageManager: s.packageManager || "npm",
+            runtime: s.runtime || "node",
+            noInstall: false,
+            noGit: false,
+            includeDocs: options.includeDocs,
+          },
+          state.projectDir || process.cwd()
+        );
+
+        if (result.success) {
+          console.log(chalk.green("  ✓ Bootstrap complete"));
+        } else {
+          console.log(chalk.yellow(`  ⚠ Bootstrap warning: ${result.message}`));
+        }
+      } catch (error) {
+        displayError(error);
+        console.log(
+          chalk.yellow("  ⚠ Bootstrap failed, continuing without it")
+        );
+      }
+    } else {
+      console.log(chalk.gray("  Skipping bootstrap"));
+    }
+  } else {
+    // No suggested stack - ask if user wants manual config
+    const wantsBootstrap = await getOrPrompt(options.bootstrap, () =>
+      confirmPrompt("Bootstrap project with Better-T-Stack?", true)
+    );
+
+    if (wantsBootstrap) {
+      // Manual stack config
+      const frontend = await getOrPrompt(options.frontend, () =>
+        selectPrompt("Frontend framework:", [
+          "next",
+          "tanstack-router",
+          "react-router",
+          "none",
+        ])
+      );
+      const backend = await getOrPrompt(options.backend, () =>
+        selectPrompt("Backend framework:", [
+          "hono",
+          "express",
+          "elysia",
+          "convex",
+          "none",
+        ])
+      );
+      const database = await getOrPrompt(options.database, () =>
+        selectPrompt("Database:", [
+          "sqlite",
+          "postgres",
+          "turso",
+          "neon",
+          "none",
+        ])
+      );
+      const auth = await getOrPrompt(options.auth, () =>
+        confirmPrompt("Include authentication?", true)
+      );
+
+      console.log(chalk.cyan("\n  Bootstrapping with Better-T-Stack..."));
+      try {
+        const result = await runBetterTStackCLI(
+          {
+            projectName: ".",
+            frontend,
+            backend,
+            database,
+            noAuth: !auth,
+            orm: "drizzle",
+            packageManager: "npm",
+            runtime: "node",
+            noInstall: false,
+            noGit: false,
+            includeDocs: options.includeDocs,
+          },
+          state.projectDir || process.cwd()
+        );
+
+        if (result.success) {
+          console.log(chalk.green("  ✓ Bootstrap complete"));
+        } else {
+          console.log(chalk.yellow(`  ⚠ Bootstrap warning: ${result.message}`));
+        }
+      } catch (error) {
+        displayError(error);
+        console.log(
+          chalk.yellow("  ⚠ Bootstrap failed, continuing without it")
+        );
+      }
+    } else {
+      console.log(chalk.gray("  Skipping bootstrap"));
+    }
+  }
+
   state.currentStep = "question-refine-prd";
 }
 
 /**
- * Step 2.5: PRD Question/Refine (NEW)
+ * Step 5: PRD Question/Refine
  * Uses prdService.refinePRDWithQuestions()
  */
 async function stepPRDQuestionRefine(

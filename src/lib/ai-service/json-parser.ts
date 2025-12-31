@@ -31,9 +31,9 @@ export class JSONParser {
         candidates.push({ start: i, char: text[i] });
       }
     }
-    console.log(
-      `[DEBUG] Found ${candidates.length} candidates for JSON extraction`
-    );
+    // console.log(
+    //   `[DEBUG] Found ${candidates.length} candidates for JSON extraction`
+    // );
 
     // Try to extract a valid JSON from each candidate start
     for (const candidate of candidates) {
@@ -57,10 +57,10 @@ export class JSONParser {
           JSON.parse(cleaned);
           return cleaned;
         } catch (e) {
-          console.error(
-            `[DEBUG] JSON Parse failed for candidate at index ${candidate.start}:`,
-            e
-          );
+          // console.error(
+          //   `[DEBUG] JSON Parse failed for candidate at index ${candidate.start}:`,
+          //   e
+          // );
           // If parse fails, continue to next candidate
           continue;
         }
@@ -172,7 +172,7 @@ export class JSONParser {
       const jsonStr = this.extractJSONString(text);
 
       if (!jsonStr) {
-        console.error("[DEBUG] extractJSONString returned null");
+        // console.error("[DEBUG] extractJSONString returned null");
         return {
           success: false,
           error:

@@ -1,3 +1,5 @@
+import type { BTSConfig } from "./index";
+
 // Base interface for any command that can use AI
 export interface AIProviderOptions {
   aiProvider?: string;
@@ -135,6 +137,8 @@ export interface ReworkPrdOptions extends StreamingAIOptions {
 export type WorkflowStep =
   | "initialize"
   | "define-prd"
+  | "stack-suggestion"
+  | "bootstrap"
   | "question-refine-prd"
   | "refine-prd"
   | "generate-tasks"
@@ -154,6 +158,7 @@ export interface WorkflowState {
     model: string;
     key?: string;
   };
+  suggestedStack?: BTSConfig;
 }
 
 export interface AIAssistedChoice<T = any> {

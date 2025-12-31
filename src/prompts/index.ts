@@ -11,3 +11,4 @@ export * from "./prd-combination";
 export * from "./documentation-recap";
 export * from "./prd-question-answer";
 export * from "./workflow-prompts";
+export * from "./prd-suggest-stack";

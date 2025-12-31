@@ -1,6 +1,6 @@
-import { existsSync, writeFileSync, mkdirSync } from "fs";
+import { existsSync, writeFileSync, mkdirSync, readFileSync } from "fs";
 import { access, constants } from "fs/promises";
-import { join } from "path";
+import { join, dirname } from "path";
 import {
   createStandardError,
   TaskOMaticErrorCodes,
@@ -134,4 +134,64 @@ export function savePRDFile(
   writeFileSync(path, content);
 
   return path;
+}
+
+/**
+ * Saves a stack configuration to a JSON file.
+ * If no output path is specified, saves to `.task-o-matic/stack.json`.
+ *
+ * @param config - BTSConfig object to save
+ * @param outputPath - Optional custom output path
+ * @returns Full path to the saved file
+ *
+ * @example
+ * ```typescript
+ * // Save to default location
+ * const path = saveStackFile(config);
+ *
+ * // Save to custom location
+ * const path = saveStackFile(config, "./my-project/stack.json");
+ * ```
+ */
+export function saveStackFile(config: object, outputPath?: string): string {
+  const taskOMaticDir = configManager.getTaskOMaticDir();
+  const stackPath = outputPath || join(taskOMaticDir, "stack.json");
+
+  const dir = dirname(stackPath);
+  if (!existsSync(dir)) {
+    mkdirSync(dir, { recursive: true });
+  }
+
+  writeFileSync(stackPath, JSON.stringify(config, null, 2));
+  return stackPath;
+}
+
+/**
+ * Loads a stack configuration from a JSON file.
+ * If no input path is specified, loads from `.task-o-matic/stack.json`.
+ *
+ * @param inputPath - Optional custom input path
+ * @returns The parsed BTSConfig object, or null if file doesn't exist
+ *
+ * @example
+ * ```typescript
+ * // Load from default location
+ * const config = loadStackFile();
+ *
+ * // Load from custom location
+ * const config = loadStackFile("./my-project/stack.json");
+ * ```
+ */
+export function loadStackFile<T = Record<string, unknown>>(
+  inputPath?: string
+): T | null {
+  const taskOMaticDir = configManager.getTaskOMaticDir();
+  const stackPath = inputPath || join(taskOMaticDir, "stack.json");
+
+  if (!existsSync(stackPath)) {
+    return null;
+  }
+
+  const content = readFileSync(stackPath, "utf-8");
+  return JSON.parse(content) as T;
 }

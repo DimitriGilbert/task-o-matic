@@ -281,4 +281,30 @@ export class AIOperations extends BaseOperations {
       retryConfig
     );
   }
+
+  // Stack suggestion - Delegated to PRDOperations
+
+  async suggestStack(
+    prdContent: string,
+    projectName?: string,
+    config?: Partial<AIConfig>,
+    promptOverride?: string,
+    userMessage?: string,
+    streamingOptions?: StreamingOptions,
+    retryConfig?: Partial<RetryConfig>,
+    workingDirectory?: string,
+    enableFilesystemTools?: boolean
+  ): Promise<{ config: import("../../types").BTSConfig; reasoning: string }> {
+    return this.prdOps.suggestStack(
+      prdContent,
+      projectName,
+      config,
+      promptOverride,
+      userMessage,
+      streamingOptions,
+      retryConfig,
+      workingDirectory,
+      enableFilesystemTools
+    );
+  }
 }

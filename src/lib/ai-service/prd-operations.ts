@@ -9,13 +9,16 @@ import {
   ParsedAITask,
   PRDResponse,
   PRDQuestionResponse,
+  BTSConfig,
 } from "../../types";
+import { StackSuggestionResponse } from "../../types/results";
 import { PromptBuilder } from "../prompt-builder";
 import {
   PRD_PARSING_SYSTEM_PROMPT,
   PRD_REWORK_SYSTEM_PROMPT,
   PRD_GENERATION_SYSTEM_PROMPT,
   PRD_COMBINATION_SYSTEM_PROMPT,
+  PRD_SUGGEST_STACK_SYSTEM_PROMPT,
 } from "../../prompts";
 import { JSONParser } from "./json-parser";
 import { RetryHandler } from "./retry-handler";
@@ -664,5 +667,188 @@ Use these tools to understand the current project structure, existing code patte
       retryConfig,
       "PRD combination"
     );
+  }
+
+  /**
+   * Suggest a technology stack based on PRD analysis.
+   */
+  async suggestStack(
+    prdContent: string,
+    projectName?: string,
+    config?: Partial<AIConfig>,
+    promptOverride?: string,
+    userMessage?: string,
+    streamingOptions?: StreamingOptions,
+    retryConfig?: Partial<RetryConfig>,
+    workingDirectory?: string,
+    enableFilesystemTools?: boolean
+  ): Promise<{ config: BTSConfig; reasoning: string }> {
+    return this.retryHandler.executeWithRetry(
+      async () => {
+        // Try to detect stack info for context
+        let stackInfo = "";
+        try {
+          stackInfo = await PromptBuilder.detectStackInfo(workingDirectory);
+          if (stackInfo === "Not detected") {
+            stackInfo = "";
+          }
+        } catch (error) {
+          // Stack info not available
+        }
+
+        let enhancedPrompt: string;
+        if (promptOverride) {
+          enhancedPrompt = promptOverride;
+        } else {
+          const variables: Record<string, string> = {
+            PRD_CONTENT: prdContent,
+          };
+
+          if (stackInfo) {
+            variables.STACK_INFO = `## Existing Stack Info\n${stackInfo}`;
+          }
+
+          if (projectName) {
+            variables.PROJECT_NAME = `## Project Name\nUse this project name: ${projectName}`;
+          }
+
+          const promptResult = PromptBuilder.buildPrompt({
+            name: "prd-suggest-stack",
+            type: "user",
+            variables,
+          });
+
+          if (!promptResult.success) {
+            throw createStandardError(
+              TaskOMaticErrorCodes.PRD_GENERATION_ERROR,
+              `Failed to build stack suggestion prompt: ${promptResult.error}`,
+              {
+                context: "Prompt building failed during stack suggestion",
+                suggestions: [
+                  "Verify prompt template exists",
+                  "Check variable substitution",
+                ],
+              }
+            );
+          }
+
+          enhancedPrompt = promptResult.prompt!;
+        }
+
+        let response: string;
+
+        if (enableFilesystemTools) {
+          const model = this.modelProvider.getModel({
+            ...this.modelProvider.getAIConfig(),
+            ...config,
+          });
+
+          const allTools = {
+            ...filesystemTools,
+          };
+
+          const result = await streamText({
+            model,
+            tools: allTools,
+            system:
+              PRD_SUGGEST_STACK_SYSTEM_PROMPT +
+              `\n\nYou have access to filesystem tools that allow you to:\n- readFile: Read the contents of any file in the project\n- listDirectory: List contents of directories\n\nUse these tools to understand the project structure and existing dependencies when suggesting the stack.`,
+            messages: [
+              { role: "user", content: userMessage || enhancedPrompt },
+            ],
+            maxRetries: 0,
+            onChunk: streamingOptions?.onChunk
+              ? ({ chunk }) => {
+                  if (chunk.type === "text-delta") {
+                    streamingOptions.onChunk!(chunk.text);
+                  } else if (chunk.type === "reasoning-delta") {
+                    streamingOptions.onReasoning?.(chunk.text);
+                  }
+                }
+              : undefined,
+            onFinish: streamingOptions?.onFinish
+              ? ({ text, finishReason, usage }) => {
+                  streamingOptions.onFinish!({
+                    text,
+                    finishReason,
+                    usage,
+                    isAborted: false,
+                  });
+                }
+              : undefined,
+          });
+
+          response = await result.text;
+        } else {
+          response = await this.streamText(
+            "",
+            config,
+            PRD_SUGGEST_STACK_SYSTEM_PROMPT,
+            userMessage || enhancedPrompt,
+            streamingOptions,
+            { maxAttempts: 1 }
+          );
+        }
+
+        // Parse the JSON response
+        const parseResult =
+          this.jsonParser.parseJSONFromResponse<StackSuggestionResponse>(
+            response
+          );
+
+        if (!parseResult.success) {
+          throw createStandardError(
+            TaskOMaticErrorCodes.PRD_GENERATION_ERROR,
+            parseResult.error || "Failed to parse stack suggestion response",
+            {
+              context: "AI response parsing failed during stack suggestion",
+              suggestions: [
+                "Check AI response format",
+                "Verify JSON structure",
+              ],
+            }
+          );
+        }
+
+        const parsed = parseResult.data!;
+
+        // Validate and apply defaults to the config
+        const validatedConfig = this.validateStackConfig(
+          parsed.config || (parsed as unknown as Partial<BTSConfig>)
+        );
+
+        return {
+          config: validatedConfig,
+          reasoning: parsed.reasoning || "No reasoning provided.",
+        };
+      },
+      retryConfig,
+      "Stack suggestion"
+    );
+  }
+
+  /**
+   * Validate and apply defaults to a partial BTSConfig.
+   */
+  private validateStackConfig(partial: Partial<BTSConfig>): BTSConfig {
+    return {
+      projectName: partial.projectName || "my-project",
+      frontend: partial.frontend || "none",
+      backend: partial.backend || "none",
+      database: partial.database || "none",
+      orm: partial.orm || "none",
+      api: partial.api || "none",
+      auth: partial.auth || "none",
+      payments: partial.payments || "none",
+      dbSetup: partial.dbSetup || "none",
+      runtime: partial.runtime || "bun",
+      packageManager: partial.packageManager || "bun",
+      git: partial.git ?? true,
+      install: partial.install ?? true,
+      webDeploy: partial.webDeploy || "none",
+      serverDeploy: partial.serverDeploy || "none",
+      addons: Array.isArray(partial.addons) ? partial.addons : [],
+      examples: Array.isArray(partial.examples) ? partial.examples : [],
+    };
   }
 }

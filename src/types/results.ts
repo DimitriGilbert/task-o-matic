@@ -1,4 +1,9 @@
-import { Task, TaskAIMetadata, DocumentationDetection } from "./index";
+import {
+  Task,
+  TaskAIMetadata,
+  DocumentationDetection,
+  BTSConfig,
+} from "./index";
 
 /**
  * Generic operation result using discriminated union pattern.
@@ -178,4 +183,34 @@ export interface PRDParseResult {
     duration: number;
     details?: any;
   }[];
+}
+
+/**
+ * AI response wrapper for stack suggestion.
+ * Contains the config and reasoning explanation.
+ */
+export interface StackSuggestionResponse {
+  config: BTSConfig;
+  reasoning: string;
+}
+
+/**
+ * Result of stack suggestion operation.
+ * Always returns success; throws exception on error.
+ */
+export interface SuggestStackResult {
+  success: true;
+  stack: BTSConfig;
+  reasoning: string;
+  savedPath?: string;
+  stats: {
+    duration: number;
+    tokenUsage?: {
+      prompt: number;
+      completion: number;
+      total: number;
+    };
+    timeToFirstToken?: number;
+    cost?: number;
+  };
 }

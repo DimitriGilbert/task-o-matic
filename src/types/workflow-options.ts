@@ -1,4 +1,5 @@
 import { StreamingAIOptions } from "./options";
+import type { BTSConfig } from "./index";
 
 /**
  * Comprehensive options for workflow command automation.
@@ -41,7 +42,14 @@ export interface WorkflowAutomationOptions extends StreamingAIOptions {
   skipPrdCombine?: boolean; // Skip PRD combination
   prdCombineModel?: string; // Model to use for combining (provider:model)
 
-  // Step 3: Refine PRD
+  // Step 2.4: Stack Suggestion
+  skipStackSuggestion?: boolean; // Skip stack suggestion step
+  suggestStackFromPrd?: string | true; // PRD file path, or true = use current PRD
+
+  // Step 3: Bootstrap (moved after PRD and stack suggestion)
+  skipBootstrap?: boolean; // Skip bootstrap step
+
+  // Step 4: Refine PRD
   skipRefine?: boolean; // Skip PRD refinement
   refineMethod?: "manual" | "ai" | "skip"; // Refinement method
   refineFeedback?: string; // Feedback for AI refinement
@@ -87,6 +95,8 @@ export interface WorkflowState {
   currentStep:
     | "initialize"
     | "define-prd"
+    | "stack-suggestion"
+    | "bootstrap"
     | "question-refine-prd"
     | "refine-prd"
     | "generate-tasks"
@@ -99,4 +109,5 @@ export interface WorkflowState {
   prdFile?: string;
   prdContent?: string;
   tasks?: Array<{ id: string; title: string; description?: string }>;
+  suggestedStack?: BTSConfig; // Accepted stack, used by bootstrap
 }

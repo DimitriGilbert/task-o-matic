@@ -13,12 +13,16 @@ import { join, basename, relative } from "path";
 import { getAIOperations, getStorage } from "../utils/ai-service-factory";
 import { buildAIConfig, AIOptions } from "../utils/ai-config-builder";
 import { AIConfig, StreamingOptions } from "../types";
-import { PRDParseResult } from "../types/results";
+import { PRDParseResult, SuggestStackResult } from "../types/results";
 import { configManager, setupWorkingDirectory } from "../lib/config";
 import { isValidAIProvider } from "../lib/validation";
 import { ProgressCallback } from "../types/callbacks";
 import { createMetricsStreamingOptions } from "../utils/streaming-utils";
-import { validateFileExists, savePRDFile } from "../utils/file-utils";
+import {
+  validateFileExists,
+  savePRDFile,
+  saveStackFile,
+} from "../utils/file-utils";
 
 /**
  * Dependencies for PRDService
@@ -676,6 +680,143 @@ export class PRDService {
     return {
       path,
       content,
+      stats: {
+        duration: Date.now() - startTime,
+        tokenUsage,
+        timeToFirstToken,
+        cost,
+      },
+    };
+  }
+
+  /**
+   * Suggest a technology stack based on PRD analysis.
+   */
+  async suggestStack(input: {
+    file?: string;
+    content?: string;
+    projectName?: string;
+    output?: string;
+    workingDirectory?: string;
+    enableFilesystemTools?: boolean;
+    save?: boolean;
+    aiOptions?: AIOptions;
+    promptOverride?: string;
+    messageOverride?: string;
+    streamingOptions?: StreamingOptions;
+    callbacks?: ProgressCallback;
+  }): Promise<SuggestStackResult> {
+    const startTime = Date.now();
+
+    input.callbacks?.onProgress?.({
+      type: "started",
+      message: "Analyzing PRD for stack suggestion...",
+    });
+
+    // Validate mutual exclusivity
+    if (input.file && input.content) {
+      throw createStandardError(
+        TaskOMaticErrorCodes.INVALID_INPUT,
+        "Cannot specify both --file and --content",
+        {
+          suggestions: ["Use either --file OR --content, not both."],
+        }
+      );
+    }
+
+    if (!input.file && !input.content) {
+      throw createStandardError(
+        TaskOMaticErrorCodes.INVALID_INPUT,
+        "Must specify either --file or --content",
+        {
+          suggestions: [
+            "Provide a PRD file with --file or content with --content.",
+          ],
+        }
+      );
+    }
+
+    // Get PRD content
+    let prdContent: string;
+    if (input.file) {
+      validateFileExists(input.file, `PRD file not found: ${input.file}`);
+      prdContent = readFileSync(input.file, "utf-8");
+    } else {
+      prdContent = input.content!;
+    }
+
+    // Set working directory
+    const workingDir = input.workingDirectory || process.cwd();
+    await setupWorkingDirectory(workingDir);
+
+    // Validate AI provider if specified
+    if (
+      input.aiOptions?.aiProvider &&
+      !isValidAIProvider(input.aiOptions.aiProvider)
+    ) {
+      throw createStandardError(
+        TaskOMaticErrorCodes.AI_CONFIGURATION_ERROR,
+        `Invalid AI provider: ${input.aiOptions.aiProvider}`,
+        {
+          suggestions: ["Use a valid AI provider, e.g., 'openai', 'anthropic'"],
+        }
+      );
+    }
+
+    const aiConfig = buildAIConfig(input.aiOptions);
+
+    input.callbacks?.onProgress?.({
+      type: "progress",
+      message: "Calling AI to analyze PRD...",
+    });
+
+    // Use utility to wrap streaming options and capture metrics
+    const { options: metricsStreamingOptions, getMetrics } =
+      createMetricsStreamingOptions(input.streamingOptions, startTime);
+
+    const result = await this.aiOperations.suggestStack(
+      prdContent,
+      input.projectName,
+      aiConfig,
+      input.promptOverride,
+      input.messageOverride,
+      metricsStreamingOptions,
+      undefined, // retryConfig
+      workingDir,
+      input.enableFilesystemTools
+    );
+
+    // Get metrics after AI operation
+    const { tokenUsage, timeToFirstToken } = getMetrics();
+
+    // Calculate cost if needed
+    let cost: number | undefined;
+    if (tokenUsage && tokenUsage.total > 0) {
+      cost = tokenUsage.total * 0.000001; // Placeholder cost calculation
+    }
+
+    // Save if requested
+    let savedPath: string | undefined;
+    if (input.save || input.output) {
+      input.callbacks?.onProgress?.({
+        type: "progress",
+        message: "Saving stack configuration...",
+      });
+      savedPath = saveStackFile(result.config, input.output);
+    }
+
+    input.callbacks?.onProgress?.({
+      type: "completed",
+      message: savedPath
+        ? `Stack suggestion saved to ${savedPath}`
+        : "Stack suggestion complete",
+    });
+
+    return {
+      success: true,
+      stack: result.config,
+      reasoning: result.reasoning,
+      savedPath,
       stats: {
         duration: Date.now() - startTime,
         tokenUsage,

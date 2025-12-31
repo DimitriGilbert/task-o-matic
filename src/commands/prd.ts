@@ -839,3 +839,137 @@ prdCommand
       process.exit(1);
     }
   });
+
+// Get recommended technology stack from PRD
+prdCommand
+  .command("get-stack")
+  .description("Suggest optimal technology stack based on PRD analysis")
+  .option("--file <path>", "Path to PRD file")
+  .option(
+    "--content <text>",
+    "PRD content as string (mutually exclusive with --file)"
+  )
+  .option(
+    "--project-name <name>",
+    "Project name (inferred from PRD if not provided)"
+  )
+  .option("--save", "Save suggested stack to .task-o-matic/stack.json")
+  .option("--output <path>", "Custom output path (implies --save)")
+  .option("--json", "Output result as JSON")
+  .option("--prompt <prompt>", "Override prompt")
+  .option("--message <message>", "User message")
+  .option("--ai-provider <provider>", "AI provider override")
+  .option("--ai-model <model>", "AI model override")
+  .option("--ai-key <key>", "AI API key override")
+  .option("--ai-provider-url <url>", "AI provider URL override")
+  .option(
+    "--ai-reasoning <tokens>",
+    "Enable reasoning for OpenRouter models (max reasoning tokens)"
+  )
+  .option("--stream", "Show streaming AI output")
+  .option("--tools", "Enable filesystem tools for project analysis")
+  .action(async (options) => {
+    try {
+      const workingDirectory = process.cwd();
+      const streamingOptions = createStreamingOptions(
+        options.stream,
+        "Analyzing"
+      );
+
+      const result = await prdService.suggestStack({
+        file: options.file,
+        content: options.content,
+        projectName: options.projectName,
+        output: options.output,
+        workingDirectory,
+        enableFilesystemTools: options.tools,
+        save: options.save || !!options.output,
+        aiOptions: {
+          aiProvider: options.aiProvider,
+          aiModel: options.aiModel,
+          aiKey: options.aiKey,
+          aiProviderUrl: options.aiProviderUrl,
+          aiReasoning: options.aiReasoning,
+        },
+        promptOverride: options.prompt,
+        messageOverride: options.message,
+        streamingOptions,
+        callbacks: {
+          onProgress: displayProgress,
+          onError: displayError,
+        },
+      });
+
+      console.log("");
+
+      if (options.json) {
+        // JSON output mode
+        console.log(
+          JSON.stringify(
+            {
+              stack: result.stack,
+              reasoning: result.reasoning,
+              savedPath: result.savedPath,
+              stats: result.stats,
+            },
+            null,
+            2
+          )
+        );
+      } else {
+        // Human-readable output
+        console.log(chalk.green("✓ Suggested Technology Stack\n"));
+
+        const stack = result.stack;
+        console.log(
+          chalk.cyan("Project:     ") + chalk.bold(stack.projectName)
+        );
+        console.log(
+          chalk.cyan("Frontend:    ") +
+            (Array.isArray(stack.frontend)
+              ? stack.frontend.join(", ")
+              : stack.frontend)
+        );
+        console.log(chalk.cyan("Backend:     ") + stack.backend);
+        console.log(chalk.cyan("Database:    ") + stack.database);
+        console.log(chalk.cyan("ORM:         ") + stack.orm);
+        console.log(chalk.cyan("API:         ") + stack.api);
+        console.log(chalk.cyan("Auth:        ") + stack.auth);
+        console.log(chalk.cyan("Payments:    ") + stack.payments);
+        console.log(chalk.cyan("Runtime:     ") + stack.runtime);
+        console.log(chalk.cyan("DB Setup:    ") + stack.dbSetup);
+        console.log(chalk.cyan("Pkg Manager: ") + stack.packageManager);
+        console.log(chalk.cyan("Web Deploy:  ") + stack.webDeploy);
+        console.log(chalk.cyan("Server Deploy: ") + stack.serverDeploy);
+        console.log(
+          chalk.cyan("Addons:      ") +
+            (stack.addons.length > 0 ? stack.addons.join(", ") : "none")
+        );
+        console.log(
+          chalk.cyan("Examples:    ") +
+            (stack.examples.length > 0 ? stack.examples.join(", ") : "none")
+        );
+
+        console.log(chalk.blue("\nReasoning:"));
+        console.log(
+          chalk.dim("  " + result.reasoning.split("\n").join("\n  "))
+        );
+
+        console.log(chalk.blue("\nStats:"));
+        console.log(chalk.cyan(`  Duration: ${result.stats.duration}ms`));
+        if (result.stats.tokenUsage) {
+          console.log(chalk.cyan(`  Tokens: ${result.stats.tokenUsage.total}`));
+        }
+        if (result.stats.timeToFirstToken) {
+          console.log(chalk.cyan(`  TTFT: ${result.stats.timeToFirstToken}ms`));
+        }
+
+        if (result.savedPath) {
+          console.log(chalk.green(`\n✓ Saved to: ${result.savedPath}`));
+        }
+      }
+    } catch (error) {
+      displayError(error);
+      process.exit(1);
+    }
+  });
