@@ -13,7 +13,7 @@ import {
 import { runBetterTStackCLI } from "../lib/better-t-stack-cli";
 
 export const initCommand = new Command("init").description(
-  "Initialize task-o-matic project and bootstrap projects (web/native/cli/tui)"
+  "Initialize task-o-matic project and bootstrap projects (web/native/cli)"
 );
 
 // Initialize task-o-matic project
@@ -36,7 +36,11 @@ initCommand
   .option("--temperature <temp>", "AI temperature", "0.5")
   .option("--no-bootstrap", "Skip bootstrap after initialization")
   .option("--project-name <name>", "Project name for bootstrap")
-  .option("--frontend <frontends...>", "Frontend framework(s) - space/comma-separated (next, native-bare, cli, tui, etc.)", "next")
+  .option(
+    "--frontend <frontends...>",
+    "Frontend framework(s) - space/comma-separated (next, native-bare, cli, etc.)",
+    "next"
+  )
   .option("--backend <backend>", "Backend framework for bootstrap", "convex")
   .option("--database <database>", "Database for bootstrap")
   .option("--auth <auth>", "Authentication for bootstrap", "better-auth")
@@ -45,8 +49,11 @@ initCommand
   .option("--package-manager <pm>", "Package manager (npm/pnpm/bun)", "npm")
   .option("--runtime <runtime>", "Runtime (bun/node)", "node")
   .option("--payment <payment>", "Payment provider (none/polar)", "none")
-  .option("--cli-deps <level>", "CLI dependency level (minimal/standard/full/task-o-matic)", "standard")
-  .option("--tui-framework <framework>", "TUI framework (solid/vue/react)", "solid")
+  .option(
+    "--cli-deps <level>",
+    "CLI dependency level (minimal/standard/full/task-o-matic)",
+    "standard"
+  )
   .action(async (options) => {
     // Handle directory creation/setup first
     if (options.directory) {
@@ -83,8 +90,7 @@ initCommand
           // Initialize task-o-matic structure in the new project directory
           await initializeProjectStructure(options);
 
-// ... (existing code)
-
+          // ... (existing code)
         } else {
           throw createStandardError(
             TaskOMaticErrorCodes.UNEXPECTED_ERROR,
@@ -197,30 +203,39 @@ async function initializeProjectStructure(options: any) {
 // Bootstrap project with Better-T-Stack
 initCommand
   .command("bootstrap")
-  .description("Bootstrap a new project (web/native/cli/tui)")
+  .description("Bootstrap a new project (web/native/cli)")
   .argument("<name>", "Project name")
   .option(
     "--frontend <frontends...>",
-    "Frontend framework(s) - space/comma-separated (next, native-bare, cli, tui, etc.)",
+    "Frontend framework(s) - space/comma-separated (next, native-bare, cli, etc.)",
     "next"
   )
   .option(
     "--backend <backend>",
-    "Backend framework (hono/express/elysia)",
+    "Backend framework (hono/express/fastify/elysia/convex/self/none)",
     "hono"
   )
   .option(
     "--database <database>",
-    "Database (sqlite/postgres/mysql/mongodb)",
+    "Database (sqlite/postgres/mysql/mongodb/none)",
     "sqlite"
   )
-  .option("--orm <orm>", "ORM (drizzle/prisma/none)", "drizzle")
+  .option("--orm <orm>", "ORM (drizzle/prisma/mongoose/none)", "drizzle")
+  .option(
+    "--auth <auth>",
+    "Authentication (better-auth/clerk/none)",
+    "better-auth"
+  )
   .option("--no-auth", "Exclude authentication")
   .option(
-    "--addons <addons... >",
-    "Additional addons (pwa/tauri/starlight/biome/husky/turborepo)"
+    "--addons <addons...>",
+    "Addons (turborepo/pwa/tauri/biome/husky/starlight/fumadocs/ultracite/oxlint/ruler/opentui/wxt)"
   )
-  .option("--examples <examples... >", "Examples to include (todo/ai)")
+  .option("--examples <examples...>", "Examples to include (todo/ai)")
+  .option(
+    "--template <template>",
+    "Use a predefined template (mern/pern/t3/uniwind/none)"
+  )
   .option("--no-git", "Skip git initialization")
   .option("--package-manager <pm>", "Package manager (npm/pnpm/bun)", "npm")
   .option("--no-install", "Skip installing dependencies")
@@ -231,8 +246,11 @@ initCommand
   .option("--runtime <runtime>", "Runtime (bun/node)", "node")
   .option("--api <type>", "API type (trpc/orpc)")
   .option("--payment <payment>", "Payment provider (none/polar)", "none")
-  .option("--cli-deps <level>", "CLI dependency level (minimal/standard/full/task-o-matic)", "standard")
-  .option("--tui-framework <framework>", "TUI framework (solid/vue/react)", "solid")
+  .option(
+    "--cli-deps <level>",
+    "CLI dependency level (minimal/standard/full/task-o-matic)",
+    "standard"
+  )
   .action(async (name, options) => {
     const taskOMaticDir = configManager.getTaskOMaticDir();
 
@@ -299,7 +317,7 @@ initCommand.action(() => {
   console.log("");
   console.log("  # Web + Native + CLI + TUI (monorepo):");
   console.log(
-    "  task-o-matic init init --project-name my-app --frontend \"next native-uniwind cli tui\" --backend hono"
+    '  task-o-matic init init --project-name my-app --frontend "next native-uniwind cli tui" --backend hono'
   );
   console.log("");
   console.log("  # CLI only:");
@@ -314,12 +332,12 @@ initCommand.action(() => {
   console.log("");
   console.log("  # Web + Native (monorepo):");
   console.log(
-    "  task-o-matic init init --project-name my-app --frontend \"next native-bare\" --backend hono"
+    '  task-o-matic init init --project-name my-app --frontend "next native-bare" --backend hono'
   );
   console.log("");
   console.log("  # Multiple web frontends:");
   console.log(
-    "  task-o-matic init init --project-name my-app --frontend \"next tanstack-router\" --backend hono"
+    '  task-o-matic init init --project-name my-app --frontend "next tanstack-router" --backend hono'
   );
   console.log("");
   console.log("  # No bootstrap:");
@@ -363,17 +381,19 @@ initCommand.action(() => {
   console.log(
     "                                Native: native-bare, native-uniwind, native-unistyles"
   );
-  console.log(
-    "                                Custom: cli, tui"
-  );
+  console.log("                                Custom: cli, tui");
   console.log(
     "  --backend <backend>           Backend framework (hono/express/elysia/convex)"
   );
   console.log(
     "  --database <database>         Database (sqlite/postgres/mysql/mongodb)"
   );
-  console.log("  --auth <auth>                Authentication (better-auth/none)");
-  console.log("  --cli-deps <level>           CLI dependency level (minimal/standard/full/task-o-matic)");
+  console.log(
+    "  --auth <auth>                Authentication (better-auth/none)"
+  );
+  console.log(
+    "  --cli-deps <level>           CLI dependency level (minimal/standard/full/task-o-matic)"
+  );
   console.log("  --tui-framework <framework>  TUI framework (solid/vue/react)");
   console.log("  --package-manager <pm>       Package manager (npm/pnpm/bun)");
   console.log("  --runtime <runtime>          Runtime (node/bun)");

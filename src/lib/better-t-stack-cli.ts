@@ -122,11 +122,17 @@ export class BetterTStackService {
       install: config.install,
       addons: config.addons,
       examples:
-        config.examples && config.examples.length > 0
+        config.examples &&
+        config.examples.length > 0 &&
+        config.examples[0] !== "none"
           ? config.examples
-          : undefined,
+          : ["none"],
       disableAnalytics: true,
       payments: config.payments,
+      template: config.template, // v3.13.0: mern, pern, t3, uniwind
+      // Non-interactive options (yes: true conflicts with explicit config)
+      manualDb: true, // Skip DB setup prompts
+      renderTitle: false, // Cleaner output
     };
   }
 
@@ -283,7 +289,7 @@ export class BetterTStackIntegration {
     btsFrontends: BTSFrontend[];
     customFrontends: BTSFrontend[];
   } {
-    const customTypes = new Set<string>(["cli", "tui", "opentui", "medusa"]);
+    const customTypes = new Set<string>(["cli", "medusa"]);
 
     return {
       btsFrontends: frontends.filter((f) => !customTypes.has(f)),
@@ -344,16 +350,6 @@ export class BetterTStackIntegration {
           results.push(result.message);
         }
 
-        if (frontend === "tui" || frontend === "opentui") {
-          const result = await this.addTuiToProject(
-            name,
-            projectPath,
-            isMonorepo,
-            options
-          );
-          results.push(result.message);
-        }
-
         if (frontend === "medusa") {
           const result = await this.addMedusaToProject(
             name,
@@ -398,20 +394,31 @@ export class BetterTStackIntegration {
       database: isConvex
         ? "none"
         : (options.database as BTSConfig["database"]) || "sqlite",
-      auth: options.noAuth ? "none" : "better-auth",
-      addons: options.addons || ["turborepo"],
-      runtime:
-        isConvex || backend === "self" ? "none" : options.runtime || "node",
-      api: options.api || "none",
-      payments: options.payment || "none",
-      orm: isConvex ? "none" : options.orm || "drizzle",
-      dbSetup: isConvex ? "none" : options.dbSetup || "none",
-      packageManager: options.packageManager || "npm",
+      auth: options.noAuth
+        ? "none"
+        : (options.auth as BTSConfig["auth"]) || "better-auth",
+      addons: (options.addons as BTSConfig["addons"]) || ["turborepo"],
+      runtime: (isConvex || backend === "self"
+        ? "none"
+        : options.runtime || "node") as BTSConfig["runtime"],
+      api: (options.api as BTSConfig["api"]) || "none",
+      payments: (options.payment as BTSConfig["payments"]) || "none",
+      orm: (isConvex ? "none" : options.orm || "drizzle") as BTSConfig["orm"],
+      dbSetup: (isConvex
+        ? "none"
+        : options.dbSetup || "none") as BTSConfig["dbSetup"],
+      packageManager:
+        (options.packageManager as BTSConfig["packageManager"]) || "npm",
       git: !options.noGit,
-      webDeploy: options.webDeploy || "none",
-      serverDeploy: options.serverDeploy || "none",
+      webDeploy: (options.webDeploy as BTSConfig["webDeploy"]) || "none",
+      serverDeploy:
+        (options.serverDeploy as BTSConfig["serverDeploy"]) || "none",
       install: !options.noInstall,
-      examples: options.examples || [],
+      examples: (options.examples as BTSConfig["examples"]) || ["none"],
+      template: options.template as BTSConfig["template"], // Optional shortcut, don't default
+      // Non-interactive options (yes: true conflicts with explicit config)
+      manualDb: true,
+      renderTitle: false,
       includeDocs: options.includeDocs,
     };
 
@@ -460,40 +467,6 @@ export class BetterTStackIntegration {
       message: isMonorepo
         ? `✅ CLI app added to apps/cli/`
         : `✅ CLI project "${projectName}" created successfully!`,
-    };
-  }
-
-  /**
-   * Add TUI app to project (standalone or monorepo)
-   */
-  private async addTuiToProject(
-    projectName: string,
-    projectPath: string,
-    isMonorepo: boolean,
-    options: InitOptions
-  ): Promise<{ success: boolean; message: string }> {
-    const { bootstrapOpenTuiProject } = await import(
-      "./bootstrap/opentui-bootstrap.js"
-    );
-
-    const tuiPath = isMonorepo ? join(projectPath, "apps", "tui") : projectPath;
-    const tuiName = isMonorepo ? `${projectName}-tui` : projectName;
-
-    const result = await bootstrapOpenTuiProject({
-      projectName: tuiName,
-      projectPath: tuiPath,
-      framework: (options.tuiFramework as "solid" | "vue" | "react") || "solid",
-      packageManager:
-        (options.packageManager as "npm" | "pnpm" | "bun") || "bun",
-    });
-
-    if (!result.success) throw new Error(result.message);
-
-    return {
-      success: true,
-      message: isMonorepo
-        ? `✅ TUI app added to apps/tui/`
-        : `✅ TUI project "${projectName}" created successfully!`,
     };
   }
 

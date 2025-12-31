@@ -140,7 +140,7 @@ export interface PRDQuestionResponse {
 
 // Better-T-Stack Integration
 
-// Frontend types - supports Better-T-Stack frontends + custom (CLI, TUI)
+// Frontend types - supports Better-T-Stack frontends + custom (CLI)
 export type BTSFrontend =
   // Better-T-Stack web frontends
   | "tanstack-router"
@@ -156,8 +156,6 @@ export type BTSFrontend =
   | "native-unistyles"
   // Custom frontends (handled separately by task-o-matic)
   | "cli"
-  | "tui"
-  | "opentui" // Alias for tui
   | "medusa"
   | "none";
 
@@ -168,25 +166,96 @@ export type CliDependencyLevel =
   | "full"
   | "task-o-matic";
 
+// Backend types - v3.13.0
+export type BTSBackend =
+  | "hono"
+  | "express"
+  | "fastify"
+  | "elysia"
+  | "convex"
+  | "self"
+  | "none";
+
+// Database types - v3.13.0
+export type BTSDatabase = "sqlite" | "postgres" | "mysql" | "mongodb" | "none";
+
+// ORM types - v3.13.0
+export type BTSORM = "drizzle" | "prisma" | "mongoose" | "none";
+
+// API types - v3.13.0
+export type BTSAPI = "trpc" | "orpc" | "none";
+
+// Auth types - v3.13.0
+export type BTSAuth = "better-auth" | "clerk" | "none";
+
+// Payments types - v3.13.0
+export type BTSPayments = "polar" | "none";
+
+// Database setup types - v3.13.0
+export type BTSDbSetup =
+  | "turso"
+  | "neon"
+  | "prisma-postgres"
+  | "planetscale"
+  | "mongodb-atlas"
+  | "supabase"
+  | "d1"
+  | "docker"
+  | "none";
+
+// Deploy types - v3.13.0
+export type BTSWebDeploy = "cloudflare" | "alchemy" | "none";
+export type BTSServerDeploy = "cloudflare" | "alchemy" | "none";
+
+// Runtime types - v3.13.0
+export type BTSRuntime = "bun" | "node" | "workers" | "none";
+
+// Addon types - v3.13.0
+export type BTSAddon =
+  | "turborepo"
+  | "pwa"
+  | "tauri"
+  | "biome"
+  | "husky"
+  | "starlight"
+  | "fumadocs"
+  | "ultracite"
+  | "oxlint"
+  | "ruler"
+  | "opentui"
+  | "wxt"
+  | "none";
+
+// Template types - v3.13.0
+export type BTSTemplate = "mern" | "pern" | "t3" | "uniwind" | "none";
+
+// Example types - v3.13.0
+export type BTSExample = "todo" | "ai" | "none";
+
 export interface BTSConfig {
   frontend: BTSFrontend | BTSFrontend[]; // Array to support multiple frontends
-  backend: "convex" | "hono" | "express" | "none";
-  database: "sqlite" | "postgres" | "mysql" | "none";
-  auth: "better-auth" | "clerk" | "none";
+  backend: BTSBackend;
+  database: BTSDatabase;
+  auth: BTSAuth;
   projectName: string;
-  runtime: string; // "none"
-  api: string; // "none"
-  payments: string; // "none"
-  orm: string; // "none" for convex
-  dbSetup: string; // "none"
-  packageManager: string; // "npm"
-  git: boolean; // true
-  webDeploy: string; // "none"
-  serverDeploy: string; // "none"
-  install: boolean; // true
+  runtime: BTSRuntime;
+  api: BTSAPI;
+  payments: BTSPayments;
+  orm: BTSORM;
+  dbSetup: BTSDbSetup;
+  packageManager: "npm" | "pnpm" | "bun";
+  git: boolean;
+  webDeploy: BTSWebDeploy;
+  serverDeploy: BTSServerDeploy;
+  install: boolean;
   includeDocs?: boolean;
-  addons: string[]; // ["turborepo"]
-  examples: string[]; // []
+  addons: BTSAddon[];
+  examples: BTSExample[];
+  template?: BTSTemplate;
+  // Non-interactive options
+  yes?: boolean; // Skip prompts, use defaults
+  manualDb?: boolean; // Skip DB setup prompts
+  renderTitle?: boolean; // Show/hide ASCII art title
   createdAt?: string;
   _source?: string; // Track if config came from file or fallback
 }
@@ -210,7 +279,6 @@ export interface InitOptions {
   // Frontend configuration - can now be array or comma-separated string
   frontend?: BTSFrontend | BTSFrontend[] | string;
   cliDeps?: CliDependencyLevel;
-  tuiFramework?: "solid" | "vue" | "react";
 
   // Backend configuration
   backend?: string;
@@ -231,6 +299,7 @@ export interface InitOptions {
   // Options
   addons?: string[];
   examples?: string[];
+  template?: string; // v3.13.0: mern, pern, t3, uniwind, none
   noGit?: boolean;
   noInstall?: boolean;
   noBootstrap?: boolean;
