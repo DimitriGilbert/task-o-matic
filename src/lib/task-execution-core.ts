@@ -13,7 +13,7 @@ import {
   Task,
 } from "../types";
 import { ExecutorFactory } from "./executors/executor-factory";
-import { runValidations } from "./validation";
+import { runValidations, formatVerificationError } from "./validation";
 import { getContextBuilder } from "../utils/ai-service-factory";
 import { hooks } from "./hooks";
 import { PromptBuilder } from "./prompt-builder";
@@ -23,6 +23,7 @@ import {
   captureGitState,
   extractCommitInfo,
   autoCommit,
+  hasNewCommitsSince,
   GitState,
 } from "./git-utils";
 import { logger } from "./logger";
@@ -447,12 +448,12 @@ async function executeSingleAttempt(
 
     if (!allVerificationsPassed) {
       const failedVerification = verificationResults.find((r) => !r.success);
-      const error = `Verification command "${failedVerification?.command}" failed:\n${failedVerification?.error}`;
+      const formattedError = formatVerificationError(failedVerification!);
 
       attempts.push({
         attemptNumber,
         success: false,
-        error,
+        error: formattedError,
         executor: tool,
         model: executorConfig?.model,
         verificationResults,
@@ -463,36 +464,57 @@ async function executeSingleAttempt(
         `❌ Task execution failed verification on attempt ${attemptNumber}`
       );
 
-      throw new Error(error);
+      // Don't throw - return failure so retry loop can handle with session continuation
+      // This enables automatic error feedback to the AI
+      return {
+        success: false,
+        attempts,
+      };
     }
 
     // Extract commit info if enabled
     let commitInfo: { message: string; files: string[] } | undefined;
 
     if (enableAutoCommit && !dry) {
-      logger.info("📝 Extracting commit information...");
+      logger.info("📝 Checking git state for auto-commit...");
 
-      const gitStateAfter = await captureGitState();
-      const gitState: GitState = {
-        beforeHead: gitStateBefore.beforeHead || "",
-        afterHead: gitStateAfter.afterHead || "",
-        hasUncommittedChanges: gitStateAfter.hasUncommittedChanges || false,
-      };
-
-      commitInfo = await extractCommitInfo(
-        task.id,
-        task.title,
-        executionMessage,
-        gitState
+      // Check if agent already committed during execution
+      const agentCommitted = await hasNewCommitsSince(
+        gitStateBefore.beforeHead || ""
       );
 
-      logger.success(`✅ Commit message: ${commitInfo.message}`);
-      if (commitInfo.files.length > 0) {
-        logger.success(`📁 Changed files: ${commitInfo.files.join(", ")}`);
-      }
+      if (agentCommitted) {
+        logger.info(
+          "📝 Agent already committed changes during execution, skipping auto-commit"
+        );
+      } else {
+        const gitStateAfter = await captureGitState();
 
-      // Auto-commit the changes
-      await autoCommit(commitInfo);
+        if (gitStateAfter.hasUncommittedChanges) {
+          const gitState: GitState = {
+            beforeHead: gitStateBefore.beforeHead || "",
+            afterHead: gitStateAfter.afterHead || "",
+            hasUncommittedChanges: gitStateAfter.hasUncommittedChanges || false,
+          };
+
+          commitInfo = await extractCommitInfo(
+            task.id,
+            task.title,
+            executionMessage,
+            gitState
+          );
+
+          logger.success(`✅ Commit message: ${commitInfo.message}`);
+          if (commitInfo.files.length > 0) {
+            logger.success(`📁 Changed files: ${commitInfo.files.join(", ")}`);
+          }
+
+          // Auto-commit the changes
+          await autoCommit(commitInfo);
+        } else {
+          logger.info("📝 No uncommitted changes to commit");
+        }
+      }
     }
 
     // Update task status to completed

@@ -15,6 +15,26 @@ export interface ValidationResult {
   error?: string;
 }
 
+/**
+ * Format verification error for AI feedback
+ * Produces a structured message that AI can easily parse and act upon
+ */
+export function formatVerificationError(result: ValidationResult): string {
+  return `## Verification Failed: ${result.command}
+
+**Error Output**:
+\`\`\`
+${result.error || "No error output captured"}
+\`\`\`
+
+Please analyze this error carefully and fix the issue. Common causes include:
+- Syntax errors in the code
+- Type errors (missing types, wrong types)
+- Missing imports or dependencies
+- Logic errors or incorrect implementations
+- Build configuration issues`;
+}
+
 export function isValidAIProvider(
   provider: string
 ): provider is NonNullable<AIConfig["provider"]> {

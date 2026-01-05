@@ -23,6 +23,25 @@ export interface CommitInfo {
 }
 
 /**
+ * Check if new commits were made since a given HEAD
+ * Used to detect if the AI agent already committed during execution
+ */
+export async function hasNewCommitsSince(
+  beforeHead: string,
+  execFn: (
+    command: string
+  ) => Promise<{ stdout: string; stderr: string }> = execAsync
+): Promise<boolean> {
+  if (!beforeHead) return false;
+  try {
+    const { stdout } = await execFn("git rev-parse HEAD");
+    return stdout.trim() !== beforeHead;
+  } catch {
+    return false;
+  }
+}
+
+/**
  * Capture git state (HEAD commit and uncommitted changes)
  */
 export async function captureGitState(
