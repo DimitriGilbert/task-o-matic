@@ -17,6 +17,7 @@ import {
   editorPrompt,
   passwordPrompt,
 } from "../utils/workflow-prompts";
+import providerDefaults from "../lib/provider-defaults.json";
 import { createStreamingOptions } from "../utils/streaming-options";
 import { displayProgress, displayError } from "../cli/display/progress";
 import type {
@@ -326,6 +327,27 @@ async function loadWorkflowOptions(
     }
   }
 
+  // Manually load .env from CWD if present (to avoid dotenv dependency issues and ensure keys are picked up)
+  try {
+    const envPath = resolve(process.cwd(), ".env");
+    if (existsSync(envPath)) {
+      const envContent = readFileSync(envPath, "utf-8");
+      envContent.split("\n").forEach((line) => {
+        const match = line.match(/^([^=]+)=(.*)$/);
+        if (match) {
+          const key = match[1].trim();
+          const value = match[2].trim().replace(/^["']|["']$/g, ""); // Remove quotes
+          if (key && value && !process.env[key]) {
+            process.env[key] = value;
+          }
+        }
+      });
+      // console.log(chalk.gray("  Loaded .env from current directory"));
+    }
+  } catch (e) {
+    // Ignore errors reading .env
+  }
+
   // Check for AI config
   const aiProvider =
     options.aiProvider ||
@@ -358,10 +380,10 @@ async function loadWorkflowOptions(
       textInputPrompt(
         "Enter AI Model:",
         provider === "openrouter"
-          ? "anthropic/claude-3.5-sonnet"
+          ? providerDefaults.openrouter.model
           : provider === "anthropic"
-          ? "claude-3-5-sonnet-20241022"
-          : "gpt-4o"
+          ? providerDefaults.anthropic.model
+          : providerDefaults.openai.model
       )
     );
 
