@@ -390,6 +390,7 @@ export class PromptBuilder {
     stack?: any;
     documentation?: any;
     retryContext?: string;
+    prdContent?: string;
   }): PromptBuilderResult {
     const {
       taskTitle,
@@ -398,6 +399,7 @@ export class PromptBuilder {
       stack,
       documentation,
       retryContext,
+      prdContent,
     } = options;
 
     // Build TASK_PLAN variable
@@ -405,7 +407,9 @@ export class PromptBuilder {
     if (taskPlan) {
       taskPlanText = `# Task Plan\n\n${taskPlan}\n`;
     } else {
-      taskPlanText = `# Task: ${taskTitle}\n\n${taskDescription || "No description"}\n`;
+      taskPlanText = `# Task: ${taskTitle}\n\n${
+        taskDescription || "No description"
+      }\n`;
     }
 
     // Build STACK_INFO variable
@@ -444,6 +448,12 @@ export class PromptBuilder {
       docContext = docParts.join("\n");
     }
 
+    // Build PRD_CONTENT variable
+    let prdCtx = "";
+    if (prdContent) {
+      prdCtx = `\n# Product Requirements Document\n\n${prdContent}\n`;
+    }
+
     // Build RETRY_CONTEXT variable
     const retryCtx = retryContext || "";
 
@@ -454,6 +464,7 @@ export class PromptBuilder {
         TASK_PLAN: taskPlanText,
         STACK_INFO: stackInfo,
         DOCUMENTATION_CONTEXT: docContext,
+        PRD_CONTENT: prdCtx,
       },
     });
   }

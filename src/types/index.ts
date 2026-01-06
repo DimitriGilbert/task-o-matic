@@ -483,6 +483,7 @@ export interface ExecuteTaskOptions {
   review?: boolean; // Enable AI code review
   reviewModel?: string; // Model/executor for review
   autoCommit?: boolean; // Auto-commit changes
+  includePrd?: boolean; // Include PRD content in execution context
 }
 
 export interface ExternalExecutor {
@@ -519,8 +520,11 @@ export interface ExecuteLoopConfig {
   reviewPlan?: boolean; // Pause for human review of the plan
   review?: boolean; // Run AI review after execution
   reviewModel?: string; // Model/executor to use for review
-  customMessage?: string; // NEW: Custom message override (from execute command)
-  continueSession?: boolean; // NEW: Continue last session (from execute command)
+  customMessage?: string; // Custom message override (from execute command)
+  continueSession?: boolean; // Continue last session (from execute command)
+  includeCompleted?: boolean; // Include already-completed tasks (default: false)
+  includePrd?: boolean; // Include PRD content in execution context (default: false)
+  notifyTargets?: string[]; // Notify on completion (URL or command)
 }
 
 // Execute Loop Options
@@ -585,6 +589,8 @@ export interface TaskExecutionConfig {
   reviewModel?: string; // Model/executor for review (format: "executor:model" or "model")
   autoCommit?: boolean; // Auto-commit changes
   executeSubtasks?: boolean; // Execute subtasks recursively (default: true)
+  includeCompleted?: boolean; // Include already-completed tasks (default: false)
+  includePrd?: boolean; // Include PRD content in execution context (default: false)
   dry?: boolean; // Dry run mode
 }
 

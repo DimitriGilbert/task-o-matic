@@ -2,7 +2,11 @@ import { Command } from "commander";
 import chalk from "chalk";
 import { executeTask } from "../../lib/task-execution";
 import { ModelAttemptConfig } from "../../types";
-import { parseTryModels, validateExecutor, VALID_EXECUTORS } from "../../utils/model-executor-parser";
+import {
+  parseTryModels,
+  validateExecutor,
+  VALID_EXECUTORS,
+} from "../../utils/model-executor-parser";
 import { ExecuteCommandOptions } from "../../types/cli-options";
 import { wrapCommandHandler } from "../../utils/command-error-handler";
 
@@ -64,55 +68,64 @@ export const executeCommand = new Command("execute")
     "Automatically commit changes after execution",
     false
   )
-  .action(wrapCommandHandler("Task execution", async (options: ExecuteCommandOptions) => {
-    // Validate executor tool
-    if (!validateExecutor(options.tool)) {
-      console.error(
-        chalk.red(
-          `Invalid tool: ${options.tool}. Must be one of: ${VALID_EXECUTORS.join(", ")}`
-        )
-      );
-      process.exit(1);
-    }
+  .option("--include-prd", "Include PRD content in execution context", false)
+  .action(
+    wrapCommandHandler(
+      "Task execution",
+      async (options: ExecuteCommandOptions) => {
+        // Validate executor tool
+        if (!validateExecutor(options.tool)) {
+          console.error(
+            chalk.red(
+              `Invalid tool: ${
+                options.tool
+              }. Must be one of: ${VALID_EXECUTORS.join(", ")}`
+            )
+          );
+          process.exit(1);
+        }
 
-    // Combine both --validate and --verify options
-    const validations = [
-      ...(options.validate || []),
-      ...(options.verify || []),
-    ];
+        // Combine both --validate and --verify options
+        const validations = [
+          ...(options.validate || []),
+          ...(options.verify || []),
+        ];
 
-    // Parse tryModels if provided
-    let tryModels: ModelAttemptConfig[] | undefined;
-    if (options.tryModels) {
-      try {
-        tryModels = parseTryModels(options.tryModels);
-      } catch (error) {
-        console.error(
-          chalk.red(
-            `Failed to parse --try-models: ${
-              error instanceof Error ? error.message : "Unknown error"
-            }`
-          )
-        );
-        process.exit(1);
+        // Parse tryModels if provided
+        let tryModels: ModelAttemptConfig[] | undefined;
+        if (options.tryModels) {
+          try {
+            tryModels = parseTryModels(options.tryModels);
+          } catch (error) {
+            console.error(
+              chalk.red(
+                `Failed to parse --try-models: ${
+                  error instanceof Error ? error.message : "Unknown error"
+                }`
+              )
+            );
+            process.exit(1);
+          }
+        }
+
+        await executeTask({
+          taskId: options.id,
+          tool: options.tool,
+          message: options.message,
+          model: options.model,
+          continueSession: options.continueSession,
+          dry: options.dry,
+          validate: validations,
+          maxRetries: options.maxRetries,
+          tryModels,
+          plan: options.plan,
+          planModel: options.planModel,
+          reviewPlan: options.reviewPlan,
+          review: options.review,
+          reviewModel: options.reviewModel,
+          autoCommit: options.autoCommit,
+          includePrd: options.includePrd,
+        });
       }
-    }
-
-    await executeTask({
-      taskId: options.id,
-      tool: options.tool,
-      message: options.message,
-      model: options.model,
-      continueSession: options.continueSession,
-      dry: options.dry,
-      validate: validations,
-      maxRetries: options.maxRetries,
-      tryModels,
-      plan: options.plan,
-      planModel: options.planModel,
-      reviewPlan: options.reviewPlan,
-      review: options.review,
-      reviewModel: options.reviewModel,
-      autoCommit: options.autoCommit,
-    });
-  }));
+    )
+  );

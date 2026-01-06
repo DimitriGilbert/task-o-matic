@@ -40,8 +40,14 @@ export class ClaudeCodeExecutor implements ExternalExecutor {
       console.log(chalk.cyan(`🔄 Resuming session: ${finalConfig.sessionId}`));
     }
 
-    // Add prompt
-    args.push("-p", message);
+    // Add --print for non-interactive mode (required for automation)
+    args.push("-p");
+
+    // Auto-approve file edits for automation
+    args.push("--permission-mode", "acceptEdits");
+
+    // Add prompt as positional argument
+    args.push(message);
 
     if (dry) {
       console.log(chalk.cyan(`🔧 Using executor: ${this.name}`));

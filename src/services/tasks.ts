@@ -340,17 +340,23 @@ export class TaskService {
 
     // Validate status transitions
     if (updates.status) {
-      const validTransitions: Record<string, string[]> = {
-        todo: ["in-progress", "completed"],
-        "in-progress": ["completed", "todo"],
-        completed: ["todo", "in-progress"],
-      };
+      // Allow same-status transitions as no-ops (needed for retry flows)
+      if (updates.status === existingTask.status) {
+        // Remove status from updates - it's already correct
+        delete updates.status;
+      } else {
+        const validTransitions: Record<string, string[]> = {
+          todo: ["in-progress", "completed"],
+          "in-progress": ["completed", "todo"],
+          completed: ["todo", "in-progress"],
+        };
 
-      if (!validTransitions[existingTask.status].includes(updates.status)) {
-        throw formatInvalidStatusTransitionError(
-          existingTask.status,
-          updates.status
-        );
+        if (!validTransitions[existingTask.status].includes(updates.status)) {
+          throw formatInvalidStatusTransitionError(
+            existingTask.status,
+            updates.status
+          );
+        }
       }
     }
 

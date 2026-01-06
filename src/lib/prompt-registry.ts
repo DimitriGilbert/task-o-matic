@@ -184,7 +184,11 @@ export class PromptRegistry {
         description: "Execute task with full project context",
         type: "user",
         requiredVariables: ["TASK_PLAN", "STACK_INFO"],
-        optionalVariables: ["RETRY_CONTEXT", "DOCUMENTATION_CONTEXT"],
+        optionalVariables: [
+          "RETRY_CONTEXT",
+          "DOCUMENTATION_CONTEXT",
+          "PRD_CONTENT",
+        ],
         promptText: TASK_EXECUTION_PROMPT,
       },
     ],

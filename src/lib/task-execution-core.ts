@@ -51,6 +51,7 @@ export async function executeTaskCore(
     reviewModel,
     autoCommit: enableAutoCommit = false,
     executeSubtasks = true,
+    includePrd = false,
     dry = false,
   } = config;
 
@@ -115,7 +116,7 @@ async function executeTaskWithSubtasks(
   subtasks: Task[],
   config: TaskExecutionConfig
 ): Promise<TaskExecutionResult> {
-  const { dry } = config;
+  const { dry, includeCompleted = false } = config;
 
   logger.info(
     `📋 Task has ${subtasks.length} subtasks, executing recursively...`
@@ -127,6 +128,15 @@ async function executeTaskWithSubtasks(
   // Execute subtasks one by one
   for (let i = 0; i < subtasks.length; i++) {
     const subtask = subtasks[i];
+
+    // Skip completed subtasks unless includeCompleted is set
+    if (!includeCompleted && subtask.status === "completed") {
+      logger.info(
+        `⏭️  Skipping completed subtask: ${subtask.title} (${subtask.id})`
+      );
+      continue;
+    }
+
     logger.progress(
       `\n[${i + 1}/${subtasks.length}] Executing subtask: ${subtask.title} (${
         subtask.id
@@ -366,6 +376,7 @@ async function executeSingleAttempt(
     customMessage,
     verificationCommands = [],
     autoCommit: enableAutoCommit = false,
+    includePrd = false,
     dry = false,
   } = config;
 
@@ -407,6 +418,7 @@ async function executeSingleAttempt(
       stack: taskContext.stack,
       documentation: taskContext.documentation,
       retryContext,
+      prdContent: includePrd ? taskContext.prdContent : undefined,
     });
 
     if (!promptResult.success) {

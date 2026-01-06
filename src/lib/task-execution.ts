@@ -1,7 +1,4 @@
-import {
-  ExecuteTaskOptions,
-  TaskExecutionConfig,
-} from "../types";
+import { ExecuteTaskOptions, TaskExecutionConfig } from "../types";
 import { executeTaskCore } from "./task-execution-core";
 
 /**
@@ -25,6 +22,7 @@ export async function executeTask(options: ExecuteTaskOptions): Promise<void> {
     review,
     reviewModel,
     autoCommit,
+    includePrd,
   } = options;
 
   // Build unified task execution config
@@ -46,6 +44,7 @@ export async function executeTask(options: ExecuteTaskOptions): Promise<void> {
     reviewModel,
     autoCommit,
     executeSubtasks: true, // Always execute subtasks in execute command
+    includePrd,
     dry,
   };
 

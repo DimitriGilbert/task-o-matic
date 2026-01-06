@@ -22,29 +22,33 @@ export class CodexExecutor implements ExternalExecutor {
     // Merge constructor config with execution config (execution takes precedence)
     const finalConfig = { ...this.config, ...config };
 
-    // Build arguments array
-    const args: string[] = ["exec"];
+    // Build arguments array - structure depends on session resumption
+    const args: string[] = [];
 
-    // Add model if specified
+    // Add model via config if specified (codex uses -c for config overrides)
     if (finalConfig.model) {
-      args.push("-m", finalConfig.model);
+      args.push("-c", `model="${finalConfig.model}"`);
       console.log(chalk.cyan(`🤖 Using model: ${finalConfig.model}`));
     }
 
-    // Add session resumption if specified
+    // Session resumption uses different subcommand
     if (finalConfig.continueLastSession) {
-      args.push("resume", "--last");
+      // Use 'exec resume --last' subcommand
+      args.push("exec", "resume", "--last");
       console.log(chalk.cyan("🔄 Continuing last session"));
     } else if (finalConfig.sessionId) {
-      // Codex doesn't support resuming specific session IDs directly
-      console.log(
-        chalk.yellow(
-          `⚠️  Codex doesn't support resuming specific session IDs. Starting new session instead.`
-        )
-      );
+      // Use 'exec resume <session-id>' subcommand
+      args.push("exec", "resume", finalConfig.sessionId);
+      console.log(chalk.cyan(`🔄 Resuming session: ${finalConfig.sessionId}`));
+    } else {
+      // Normal execution
+      args.push("exec");
     }
 
-    // Add prompt
+    // Add full write access for automation
+    args.push("--sandbox", "workspace-write");
+
+    // Add prompt as positional argument
     args.push(message);
 
     if (dry) {

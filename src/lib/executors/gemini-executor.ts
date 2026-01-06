@@ -40,8 +40,11 @@ export class GeminiExecutor implements ExternalExecutor {
       console.log(chalk.cyan(`🔄 Resuming session: ${finalConfig.sessionId}`));
     }
 
-    // Add prompt
-    args.push("-p", message);
+    // Enable auto-approval of all tools (yolo mode) - required for file writes
+    args.push("--yolo");
+
+    // Add prompt as positional argument (the -p flag is deprecated)
+    args.push(message);
 
     if (dry) {
       console.log(chalk.cyan(`🔧 Using executor: ${this.name}`));

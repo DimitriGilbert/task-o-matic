@@ -7,6 +7,7 @@ import {
   TaskExecutionConfig,
 } from "../types";
 import { executeTaskCore } from "./task-execution-core";
+import { sendNotifications } from "./notifications";
 import chalk from "chalk";
 
 /**
@@ -31,7 +32,10 @@ export async function executeTaskLoop(
     reviewModel,
     customMessage,
     continueSession,
-    model, // NEW: Extract model from config
+    model,
+    includeCompleted = false,
+    includePrd = false,
+    notifyTargets,
   } = config;
 
   console.log(chalk.blue.bold("\n🔄 Starting Task Loop Execution\n"));
@@ -71,15 +75,30 @@ export async function executeTaskLoop(
     });
   }
 
+  // Filter out completed tasks unless includeCompleted is set
+  if (!includeCompleted) {
+    const beforeCount = tasksToExecute.length;
+    tasksToExecute = tasksToExecute.filter((t) => t.status !== "completed");
+    const filtered = beforeCount - tasksToExecute.length;
+    if (filtered > 0) {
+      console.log(
+        chalk.dim(`   (Skipped ${filtered} already-completed task(s))\n`)
+      );
+    }
+  }
+
   if (tasksToExecute.length === 0) {
-    console.log(chalk.yellow("⚠️  No tasks found matching the filters"));
-    return {
+    console.log(chalk.yellow("⚠️  No tasks to execute (all may be completed)"));
+    const emptyResult: ExecuteLoopResult = {
       totalTasks: 0,
       completedTasks: 0,
       failedTasks: 0,
       taskResults: [],
       duration: Date.now() - startTime,
     };
+    if (notifyTargets?.length)
+      await sendNotifications(notifyTargets, emptyResult);
+    return emptyResult;
   }
 
   console.log(
@@ -121,6 +140,8 @@ export async function executeTaskLoop(
       reviewModel,
       autoCommit,
       executeSubtasks: true, // Now supports subtasks!
+      includeCompleted, // Pass through to subtask execution
+      includePrd, // Pass through to execution core
       dry,
     };
 
@@ -153,6 +174,11 @@ export async function executeTaskLoop(
         attempts: result.attempts,
         finalStatus: succeeded ? "completed" : "failed",
       });
+
+      // Stop the loop on first failure
+      if (!succeeded) {
+        break;
+      }
     } catch (error) {
       failedTasks++;
       console.error(
@@ -169,6 +195,9 @@ export async function executeTaskLoop(
         attempts: [],
         finalStatus: "failed",
       });
+
+      // Stop the loop on error
+      break;
     }
   }
 
@@ -187,11 +216,18 @@ export async function executeTaskLoop(
     chalk.cyan(`⏱  Duration: ${(duration / 1000).toFixed(2)} seconds\n`)
   );
 
-  return {
+  const result: ExecuteLoopResult = {
     totalTasks: tasksToExecute.length,
     completedTasks,
     failedTasks,
     taskResults,
     duration,
   };
+
+  // Send notifications if configured
+  if (notifyTargets?.length) {
+    await sendNotifications(notifyTargets, result);
+  }
+
+  return result;
 }

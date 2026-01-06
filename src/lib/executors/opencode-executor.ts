@@ -40,8 +40,8 @@ export class OpencodeExecutor implements ExternalExecutor {
       console.log(chalk.cyan(`🔄 Resuming session: ${finalConfig.sessionId}`));
     }
 
-    // Add prompt
-    args.push("-p", message);
+    // Use 'run' subcommand with message as positional argument
+    args.push("run", message);
 
     if (dry) {
       console.log(chalk.cyan(`🔧 Using executor: ${this.name}`));

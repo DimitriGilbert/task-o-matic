@@ -127,6 +127,7 @@ export interface ExecuteCommandOptions extends DryRunOptions {
   review?: boolean;
   reviewModel?: string;
   autoCommit?: boolean;
+  includePrd?: boolean;
 }
 
 export interface ExecuteLoopCommandOptions extends DryRunOptions {
@@ -146,6 +147,9 @@ export interface ExecuteLoopCommandOptions extends DryRunOptions {
   reviewPlan?: boolean;
   review?: boolean;
   reviewModel?: string;
+  includeCompleted?: boolean;
+  includePrd?: boolean;
+  notify?: string[];
 }
 
 export interface ListCommandOptions {

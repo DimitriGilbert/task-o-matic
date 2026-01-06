@@ -1,7 +1,7 @@
 export const TASK_EXECUTION_PROMPT = `{RETRY_CONTEXT}{TASK_PLAN}
 # Technology Stack
 {STACK_INFO}
-{DOCUMENTATION_CONTEXT}`;
+{DOCUMENTATION_CONTEXT}{PRD_CONTENT}`;
 
 export const TASK_EXECUTION_SYSTEM_PROMPT = `
 You are an expert software developer. Execute the task according to the implementation plan and project context provided.
