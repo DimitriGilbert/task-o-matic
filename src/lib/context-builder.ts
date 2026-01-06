@@ -82,7 +82,7 @@ export class ContextBuilder {
     const fullContent = await this.getTaskFullContent(task);
     const prdContent = task.prdFile
       ? await this.getPRDContent(task.prdFile)
-      : undefined;
+      : await this.getRelevantPRDContent(task.title, task.description);
 
     return {
       task: {

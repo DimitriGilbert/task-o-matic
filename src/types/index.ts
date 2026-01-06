@@ -457,7 +457,7 @@ export interface RetryConfig {
 export type TaskListResponse = Task[];
 
 // External Executor Types
-export type ExecutorTool = "opencode" | "claude" | "gemini" | "codex";
+export type ExecutorTool = "opencode" | "claude" | "gemini" | "codex" | "kilo";
 
 // Executor Configuration
 export interface ExecutorConfig {

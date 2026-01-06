@@ -12,6 +12,7 @@ export const VALID_EXECUTORS: ExecutorTool[] = [
   "claude",
   "gemini",
   "codex",
+  "kilo",
 ];
 
 /**

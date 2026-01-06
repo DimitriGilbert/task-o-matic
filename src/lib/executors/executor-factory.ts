@@ -3,6 +3,7 @@ import { OpencodeExecutor } from "./opencode-executor";
 import { ClaudeCodeExecutor } from "./claude-code-executor";
 import { GeminiExecutor } from "./gemini-executor";
 import { CodexExecutor } from "./codex-executor";
+import { KiloExecutor } from "./kilo-executor";
 
 export class ExecutorFactory {
   static create(
@@ -18,6 +19,8 @@ export class ExecutorFactory {
         return new GeminiExecutor(config);
       case "codex":
         return new CodexExecutor(config);
+      case "kilo":
+        return new KiloExecutor(config);
       default:
         throw new Error(`Unknown executor tool: ${tool}`);
     }
