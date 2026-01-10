@@ -41,7 +41,7 @@ export class ClaudeCodeExecutor implements ExternalExecutor {
     }
 
     // Add --print for non-interactive mode (required for automation)
-    args.push("-p");
+    // args.push("-p");
 
     // Auto-approve file edits for automation
     args.push("--permission-mode", "acceptEdits");

@@ -52,7 +52,8 @@
     "check-types": "tsc --noEmit --skipLibCheck",
     "test": "mocha -r tsx/cjs src/test/test-setup.ts src/test/**/*.test.ts",
     "prepare": "npm run build && chmod +x dist/cli/bin.js",
-    "prepublishOnly": "bun run build && chmod +x dist/cli/bin.js && bun test src/test"
+    "prepublishOnly": "bun run prepare && bun test src/test",
+    "verify-work": "bun run check-types && bun run prepublishOnly"
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^2.0.44",

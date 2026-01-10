@@ -1,7 +1,9 @@
 export const TASK_EXECUTION_PROMPT = `{RETRY_CONTEXT}{TASK_PLAN}
 # Technology Stack
 {STACK_INFO}
-{DOCUMENTATION_CONTEXT}{PRD_CONTENT}`;
+{DOCUMENTATION_CONTEXT}{PRD_CONTENT}
+
+## **IMPORTANT**: Before finishing, you MUST commit all your changes with a clear, descriptive commit message summarizing what was implemented. DO NOT hand back control without committing your work!`;
 
 export const TASK_EXECUTION_SYSTEM_PROMPT = `
 You are an expert software developer. Execute the task according to the implementation plan and project context provided.
@@ -13,6 +15,7 @@ You are an expert software developer. Execute the task according to the implemen
 4. Write clean, maintainable code following best practices
 5. Handle errors appropriately
 6. Test your changes
+7. **IMPORTANT**: Before finishing, commit all your changes with a clear, descriptive commit message summarizing what was implemented. Do not hand back control without committing your work.
 
 ## On Retries:
 If this is a retry attempt, carefully analyze the previous error and fix it before proceeding.
