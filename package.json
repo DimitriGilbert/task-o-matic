@@ -1,6 +1,6 @@
 {
   "name": "task-o-matic",
-  "version": "0.0.30",
+  "version": "0.0.31",
   "description": "AI-powered task management CLI",
   "keywords": [
     "task-management",
@@ -64,6 +64,7 @@
     "@modelcontextprotocol/sdk": "^1.19.1",
     "@openrouter/ai-sdk-provider": "^1.2.0",
     "ai": "^5.0.92",
+    "ai-sdk-provider-gemini-cli": "^1.5.1",
     "axios": "^1.7.9",
     "chalk": "^5.4.1",
     "commander": "^14.0.2",
