@@ -124,27 +124,73 @@ export class ConfigManager {
   }
 
   private loadEnvConfig(): Partial<AIConfig> {
-    const provider =
-      (this.callbacks.getEnv("AI_PROVIDER")?.toLowerCase() as AIProvider) ||
-      "openrouter";
-    const defaults =
-      PROVIDER_DEFAULTS[provider] || PROVIDER_DEFAULTS.openrouter;
+    const providerStr = this.callbacks.getEnv("AI_PROVIDER")?.toLowerCase();
+    const provider = providerStr ? (providerStr as AIProvider) : undefined;
+    
+    // Check if provider is valid if set
+    // (This validation is loose here, strict validation happens in validateConfig)
 
     const maxTokensStr = this.callbacks.getEnv("AI_MAX_TOKENS");
     const tempStr = this.callbacks.getEnv("AI_TEMPERATURE");
     const modelStr = this.callbacks.getEnv("AI_MODEL");
 
-    return {
-      provider,
-      model: modelStr || defaults.model,
-      maxTokens: maxTokensStr ? parseInt(maxTokensStr) : defaults.maxTokens,
-      temperature: tempStr ? parseFloat(tempStr) : defaults.temperature,
-      apiKey: getApiKeyFromEnv(provider, this.callbacks.getEnv),
-    };
+    const config: Partial<AIConfig> = {};
+    if (provider) config.provider = provider;
+    if (modelStr) config.model = modelStr;
+    if (maxTokensStr) config.maxTokens = parseInt(maxTokensStr);
+    if (tempStr) config.temperature = parseFloat(tempStr);
+    
+    // API Key logic needs to know the provider. 
+    // If provider is not in env, we should check the resolved provider... 
+    // But here we only return partial env overrides.
+    // The API key fetching logic in getApiKeyFromEnv depends on the provider.
+    // If the provider comes from file, we can't know it here easily if we are just returning overrides.
+    // However, getApiKeyFromEnv is a helper. 
+    
+    // We can fetch ALL potential API keys? No, that's messy.
+    // Or we just fetch the API key if AI_PROVIDER is set? 
+    // If AI_PROVIDER is NOT set, we don't know which env var to read for the key yet 
+    // (unless we assume the default or the file one).
+    
+    // If we return undefined for apiKey here, it might overwrite the file one? 
+    // No, undefined properties don't overwrite if we use spread correctly?
+    // { ...a, ...b } where b has undefined properties... 
+    // In JS/TS spread { ...{a:1}, ...{a: undefined} } results in {a: undefined}. 
+    // So we must NOT include undefined keys in the returned object.
+    
+    if (provider) {
+        const key = getApiKeyFromEnv(provider, this.callbacks.getEnv);
+        if (key) config.apiKey = key;
+    } else {
+        // If provider not in env, we might miss the API key from env if the user 
+        // intended to use file-provider + env-key.
+        // This is a bit tricky with the current structure.
+        // But let's stick to the fix for provider override first.
+        // We will deal with API key resolution merging later or assume user sets both in env.
+        
+        // Actually, we can check all possible keys?
+        // Or better: The merge logic in load() is complex.
+        
+        // Let's defer API key resolution to after we know the final provider?
+        // But load() does: ai: { ...defaultConfig.ai, ...fileConfig.ai, ...envConfig }
+        
+        // If I change loadEnvConfig to NOT return apiKey if provider is missing, 
+        // then apiKey will come from fileConfig or defaultConfig.
+    }
+
+    return config;
   }
 
   async load(): Promise<Config> {
     const envConfig = this.loadEnvConfig();
+
+    // Default provider is openrouter
+    const defaultProvider = envConfig.provider || "openrouter";
+    // We can try to get API key for default provider if not in envConfig
+    let defaultApiKey = envConfig.apiKey;
+    if (!defaultApiKey) {
+        defaultApiKey = getApiKeyFromEnv(defaultProvider, this.callbacks.getEnv);
+    }
 
     const defaultConfig: Config = {
       ai: {
@@ -152,7 +198,7 @@ export class ConfigManager {
         model: "z-ai/glm-4.6",
         maxTokens: 32768,
         temperature: 0.5,
-        ...envConfig,
+        apiKey: defaultApiKey, // This might be overwritten by file or envConfig later
       },
     };
 
@@ -162,10 +208,27 @@ export class ConfigManager {
 
       if (configData) {
         const fileConfig = JSON.parse(configData);
+        
+        // We need to resolve the final provider to get the correct API key from env 
+        // if it wasn't provided in envConfig.
+        const finalProvider = envConfig.provider || fileConfig.ai?.provider || defaultConfig.ai.provider;
+        
+        // If envConfig didn't provide a key, check if we can get it based on finalProvider
+        let finalApiKey = envConfig.apiKey;
+        if (!finalApiKey) {
+             finalApiKey = getApiKeyFromEnv(finalProvider, this.callbacks.getEnv);
+        }
+
+        // We construct a refined envConfig that includes the correct API key
+        const refinedEnvConfig = { ...envConfig };
+        if (finalApiKey) {
+            refinedEnvConfig.apiKey = finalApiKey;
+        }
+
         const mergedConfig = {
           ...defaultConfig,
           ...fileConfig,
-          ai: { ...defaultConfig.ai, ...fileConfig.ai, ...envConfig },
+          ai: { ...defaultConfig.ai, ...fileConfig.ai, ...refinedEnvConfig },
         };
 
         // Validate the merged configuration
@@ -176,8 +239,12 @@ export class ConfigManager {
           this.customWorkingDir = this.config.workingDirectory;
         }
       } else {
-        // Validate default config too
-        this.config = validateConfig(defaultConfig);
+        // Apply envConfig to defaults
+        const mergedConfig = {
+            ...defaultConfig,
+            ai: { ...defaultConfig.ai, ...envConfig }
+        };
+        this.config = validateConfig(mergedConfig);
       }
     } catch (error) {
       console.warn("Failed to read or validate config, using defaults:", error);

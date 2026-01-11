@@ -1,46 +1,99 @@
 import { exec } from "child_process";
 import * as assert from "assert";
 
-describe("CLI Commands", () => {
-  it("should show help for the main command", (done) => {
-    exec("bun src/cli/bin.ts --help", (error, stdout, stderr) => {
-      assert.strictEqual(error, null);
-      assert.ok(stdout.includes("Usage: task-o-matic"));
+describe("CLI Commands Help", () => {
+  const runHelp = (cmd: string, done: Mocha.Done) => {
+    exec(`bun src/cli/bin.ts ${cmd} --help`, (error, stdout, stderr) => {
+      assert.strictEqual(error, null, `Error executing ${cmd} --help: ${stderr}`);
+      assert.ok(stdout.includes("Usage:"), `Help output for ${cmd} missing "Usage:"`);
       done();
+    });
+  };
+
+  describe("Top-level Commands", () => {
+    const commands = [
+      "", // Main command
+      "config",
+      "tasks",
+      "prd",
+      "init",
+      "prompt",
+      "workflow",
+      "benchmark",
+      "install"
+    ];
+
+    commands.forEach(cmd => {
+      it(`should show help for ${cmd || "main"} command`, (done) => {
+        runHelp(cmd, done);
+      });
     });
   });
 
-  it("should show help for the config command", (done) => {
-    exec("bun src/cli/bin.ts config --help", (error, stdout, stderr) => {
-      assert.strictEqual(error, null);
-      assert.ok(stdout.includes("Usage: task-o-matic config"));
-      done();
+  describe("Config Subcommands", () => {
+    const subcommands = [
+      "get-ai-config",
+      "set-ai-provider",
+      "info"
+    ];
+
+    subcommands.forEach(sub => {
+      it(`should show help for config ${sub}`, (done) => {
+        runHelp(`config ${sub}`, done);
+      });
     });
   });
 
-  it("should help for the tasks command", (done) => {
-    exec("bun src/cli/bin.ts tasks --help", (error, stdout, stderr) => {
-      assert.strictEqual(error, null);
-      assert.ok(stdout.includes("Usage: task-o-matic tasks"));
-      done();
+  describe("Benchmark Subcommands", () => {
+    const subcommands = [
+      "run",
+      "list",
+      "operations",
+      "show",
+      "compare",
+      "execution",
+      "execute-loop",
+      "workflow"
+    ];
+
+    subcommands.forEach(sub => {
+      it(`should show help for benchmark ${sub}`, (done) => {
+        runHelp(`benchmark ${sub}`, done);
+      });
     });
   });
 
-  it("should show help for the prd command", (done) => {
-    exec("bun src/cli/bin.ts prd --help", (error, stdout, stderr) => {
-      assert.strictEqual(error, null);
-      assert.ok(stdout.includes("Usage: task-o-matic prd"));
-      done();
-    });
-  });
+  describe("Tasks Subcommands", () => {
+    const subcommands = [
+      "list",
+      "create",
+      "show",
+      "update",
+      "delete",
+      "status",
+      "add-tags",
+      "remove-tags",
+      "plan",
+      "get-plan",
+      "list-plan",
+      "delete-plan",
+      "set-plan",
+      "enhance",
+      "split",
+      "document",
+      "get-documentation",
+      "add-documentation",
+      "execute",
+      "execute-loop",
+      "subtasks",
+      "tree",
+      "next"
+    ];
 
-  it("should show help for the init command", (done) => {
-    exec("bun src/cli/bin.ts init --help", (error, stdout, stderr) => {
-      assert.strictEqual(error, null);
-      assert.ok(
-        stdout.includes("Usage: task-o-matic init [options] [command]")
-      );
-      done();
+    subcommands.forEach(sub => {
+      it(`should show help for tasks ${sub}`, (done) => {
+        runHelp(`tasks ${sub}`, done);
+      });
     });
   });
 });
