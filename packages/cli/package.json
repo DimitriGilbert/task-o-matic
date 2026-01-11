@@ -1,0 +1,28 @@
+{
+  "name": "@task-o-matic/cli",
+  "version": "0.0.35",
+  "description": "CLI for Task-O-Matic",
+  "bin": {
+    "task-o-matic": "dist/cli/bin.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "check-types": "tsc --noEmit",
+    "prepublishOnly": "npm run build && chmod +x dist/cli/bin.js",
+    "start": "node dist/cli/bin.js",
+    "dev": "tsx src/cli/bin.ts",
+    "test": "mocha -r tsx/cjs src/test/commands.test.ts"
+  },
+  "dependencies": {
+    "@task-o-matic/core": "workspace:*",
+    "chalk": "^5.4.1",
+    "commander": "^14.0.2",
+    "inquirer": "^12.11.0"
+  },
+  "devDependencies": {
+    "@types/inquirer": "^9.0.7",
+    "@types/node": "^20",
+    "tsx": "^4.19.2",
+    "typescript": "^5"
+  }
+}

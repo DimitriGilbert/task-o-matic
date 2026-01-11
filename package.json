@@ -1,85 +1,24 @@
 {
-  "name": "task-o-matic",
-  "version": "0.0.35",
-  "description": "AI-powered task management CLI",
-  "keywords": [
-    "task-management",
-    "ai",
-    "cli",
-    "project-management",
-    "automation",
-    "mcp",
-    "anthropic",
-    "openai"
-  ],
-  "author": "",
-  "license": "MIT",
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/DimitriGilbert/task-o-matic.git"
-  },
-  "main": "./dist/lib/index.js",
-  "types": "./dist/lib/index.d.ts",
-  "bin": {
-    "task-o-matic": "dist/cli/bin.js",
-    "task-o-matic-mcp": "dist/mcp/server.js"
-  },
-  "exports": {
-    ".": {
-      "types": "./dist/lib/index.d.ts",
-      "require": "./dist/lib/index.js",
-      "default": "./dist/lib/index.js"
-    },
-    "./types": {
-      "types": "./dist/types/index.d.ts",
-      "require": "./dist/types/index.js",
-      "default": "./dist/types/index.js"
-    }
-  },
-  "files": [
-    "dist",
-    "README.md",
-    "LICENSE",
-    "docs/agents/cli.md"
+  "name": "task-o-matic-root",
+  "private": true,
+  "workspaces": [
+    "packages/*"
   ],
   "scripts": {
     "clean": "rm -rf dist tsconfig.tsbuildinfo",
-    "build": "rm -rf dist tsconfig.tsbuildinfo && node_modules/.bin/tsc",
-    "build:watch": "tsc --watch",
-    "dev": "tsx src/cli/bin.ts",
-    "dev:mcp": "tsx src/mcp/server.ts",
-    "start": "node dist/cli/bin.js",
-    "check-types": "tsc --noEmit --skipLibCheck",
-    "test": "mocha -r tsx/cjs src/test/test-setup.ts src/test/**/*.test.ts",
-    "prepare": "npm run build && chmod +x dist/cli/bin.js",
-    "prepublishOnly": "bun run prepare && bun test src/test",
-    "verify-work": "bun run check-types && bun run prepublishOnly"
-  },
-  "dependencies": {
-    "@ai-sdk/anthropic": "^2.0.44",
-    "@ai-sdk/google": "^2.0.31",
-    "@ai-sdk/mcp": "^0.0.8",
-    "@ai-sdk/openai": "^2.0.65",
-    "@ai-sdk/openai-compatible": "^1.0.27",
-    "@modelcontextprotocol/sdk": "^1.19.1",
-    "@openrouter/ai-sdk-provider": "^1.2.0",
-    "ai": "^5.0.92",
-    "axios": "^1.7.9",
-    "chalk": "^5.4.1",
-    "commander": "^14.0.2",
-    "create-better-t-stack": "^3.13.0",
-    "dotenv": "^16.4.7",
-    "glob": "^13.0.0",
-    "inquirer": "^12.11.0",
-    "zod": "^3.25.76"
+    "build": "bun run --filter='./packages/*' build",
+    "check-types": "bun run --filter='./packages/*' check-types",
+    "test": "bun run --filter='./packages/*' test",
+    "dev": "bun run --filter @task-o-matic/cli dev",
+    "start": "bun run --filter @task-o-matic/cli start"
   },
   "devDependencies": {
-    "@types/inquirer": "^9.0.7",
+    "@types/inquirer": "^9.0.9",
     "@types/mocha": "^10.0.10",
-    "@types/node": "^20",
-    "mocha": "^11.7.4",
+    "@types/node": "^20.19.28",
+    "mocha": "^11.7.5",
     "ts-node": "^10.9.2",
-    "tsx": "^4.19.2",
-    "typescript": "^5"
+    "tsx": "^4.21.0",
+    "typescript": "^5.9.3"
   }
 }
