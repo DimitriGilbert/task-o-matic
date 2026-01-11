@@ -3,7 +3,7 @@ import { anthropic, createAnthropic } from "@ai-sdk/anthropic";
 import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
 import { createOpenRouter } from "@openrouter/ai-sdk-provider";
 // import { createGeminiProvider } from "ai-sdk-provider-gemini-cli";
-import { GeminiProviderProxy } from "./gemini-proxy";
+// import { GeminiProviderProxy } from "./gemini-proxy";
 import type { LanguageModelV2 } from "@ai-sdk/provider";
 import { AIConfig } from "../../types";
 import { configManager } from "../config";
@@ -149,11 +149,12 @@ export class ModelProvider {
         });
         return customProvider(model);
 
-      case "gemini":
-        // Use Gemini CLI provider with OAuth via Proxy to handle lazy loading
-        return new GeminiProviderProxy(model, {
-          authType: "oauth-personal",
-        });
+      // disable for now, import error in the app
+      // case "gemini":
+      //   // Use Gemini CLI provider with OAuth via Proxy to handle lazy loading
+      //   return new GeminiProviderProxy(model, {
+      //     authType: "oauth-personal",
+      //   });
 
       case "zai":
         if (!apiKey)
