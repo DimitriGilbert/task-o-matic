@@ -1,8 +1,8 @@
 import { Command } from "commander";
-import { taskService } from "@task-o-matic/core";
+import { taskService } from "task-o-matic-core";
 import { displayTaskStatusChange } from "../../cli/display/task";
 import { displayError } from "../../cli/display/progress";
-import { formatTaskNotFoundError } from "@task-o-matic/core";
+import { formatTaskNotFoundError } from "task-o-matic-core";
 
 export const statusCommand = new Command("status")
   .description("Set task status")

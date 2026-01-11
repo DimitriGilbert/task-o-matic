@@ -1,7 +1,7 @@
 import { Command } from "commander";
-import { taskService } from "@task-o-matic/core";
+import { taskService } from "task-o-matic-core";
 import { displayPlanList } from "../../../cli/display/plan";
-import { wrapCommandHandler } from "@task-o-matic/core";
+import { wrapCommandHandler } from "task-o-matic-core";
 
 export const listPlanCommand = new Command("list-plan")
   .description("List all available implementation plans")

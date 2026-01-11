@@ -9,8 +9,8 @@
     "build": "bun run --filter='./packages/*' build",
     "check-types": "bun run --filter='./packages/*' check-types",
     "test": "bun run --filter='./packages/*' test",
-    "dev": "bun run --filter @task-o-matic/cli dev",
-    "start": "bun run --filter @task-o-matic/cli start"
+    "dev": "bun run --filter task-o-matic dev",
+    "start": "bun run --filter task-o-matic start"
   },
   "devDependencies": {
     "@types/inquirer": "^9.0.9",

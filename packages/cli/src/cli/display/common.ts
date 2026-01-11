@@ -1,6 +1,6 @@
 
 import chalk from "chalk";
-import { DocumentationDetection } from "@task-o-matic/core";
+import { DocumentationDetection } from "task-o-matic-core";
 
 export function displayEnhancementResult(streamEnabled: boolean): void {
   if (!streamEnabled) {

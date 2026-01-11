@@ -10,21 +10,21 @@ import {
   mkdirSync,
   unlinkSync,
 } from "fs";
-import { prdService } from "@task-o-matic/core";
-import { createStreamingOptions, parseModelString } from "@task-o-matic/core";
+import { prdService } from "task-o-matic-core";
+import { createStreamingOptions, parseModelString } from "task-o-matic-core";
 import { displayProgress, displayError } from "../cli/display/progress";
-import { taskService } from "@task-o-matic/core";
+import { taskService } from "task-o-matic-core";
 import { join } from "path";
 import { runAIParallel, combinePRDs } from "./utils/ai-parallel";
-import { Task } from "@task-o-matic/core";
+import { Task } from "task-o-matic-core";
 
 export const prdCommand = new Command("prd").description(
   "Manage PRDs and generate tasks"
 );
 
-import { createStandardError, TaskOMaticErrorCodes } from "@task-o-matic/core";
-import { isValidAIProvider } from "@task-o-matic/core";
-import { configManager } from "@task-o-matic/core";
+import { createStandardError, TaskOMaticErrorCodes } from "task-o-matic-core";
+import { isValidAIProvider } from "task-o-matic-core";
+import { configManager } from "task-o-matic-core";
 import path from "path";
 
 // Create PRD command

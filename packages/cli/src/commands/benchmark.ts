@@ -1,13 +1,13 @@
 import { Command } from "commander";
 import chalk from "chalk";
-import { benchmarkService } from "@task-o-matic/core";
-import { benchmarkRegistry } from "@task-o-matic/core";
+import { benchmarkService } from "task-o-matic-core";
+import { benchmarkRegistry } from "task-o-matic-core";
 import {
   BenchmarkConfig,
   BenchmarkModelConfig,
   WorkflowBenchmarkInput,
-} from "@task-o-matic/core";
-import { WorkflowAutomationOptions } from "@task-o-matic/core";
+} from "task-o-matic-core";
+import { WorkflowAutomationOptions } from "task-o-matic-core";
 import { displayError } from "../cli/display/progress";
 import {
   confirmPrompt,
@@ -21,17 +21,17 @@ export const benchmarkCommand = new Command("benchmark").description(
   "Run and manage AI benchmarks"
 );
 
-import { createStandardError, TaskOMaticErrorCodes } from "@task-o-matic/core";
+import { createStandardError, TaskOMaticErrorCodes } from "task-o-matic-core";
 import {
   parseTryModels,
   validateExecutor,
   VALID_EXECUTORS,
-} from "@task-o-matic/core";
+} from "task-o-matic-core";
 import {
   ExecuteLoopOptions,
   ExecutorTool,
   ModelAttemptConfig,
-} from "@task-o-matic/core";
+} from "task-o-matic-core";
 
 // Helper to parse model string
 // Format: provider:model[:reasoning=<tokens>]

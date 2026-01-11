@@ -1,6 +1,6 @@
 import { Command } from "commander";
 import chalk from "chalk";
-import { taskService } from "@task-o-matic/core";
+import { taskService } from "task-o-matic-core";
 import { displayNextTask } from "../../cli/display/task";
 import { displayError } from "../../cli/display/progress";
 

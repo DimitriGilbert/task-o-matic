@@ -1,13 +1,13 @@
 import chalk from "chalk";
-import { getAIOperations, parseModelString } from "@task-o-matic/core";
+import { getAIOperations, parseModelString } from "task-o-matic-core";
 import { displayProgress, displayError } from "../../cli/display/progress";
-import { createStreamingOptions } from "@task-o-matic/core";
-import { Task, ParsedAITask } from "@task-o-matic/core";
-import { configManager } from "@task-o-matic/core";
+import { createStreamingOptions } from "task-o-matic-core";
+import { Task, ParsedAITask } from "task-o-matic-core";
+import { configManager } from "task-o-matic-core";
 import {
   PRD_PARSING_SYSTEM_PROMPT,
   TASK_BREAKDOWN_SYSTEM_PROMPT,
-} from "@task-o-matic/core";
+} from "task-o-matic-core";
 
 export interface AIParallelResult<T> {
   modelId: string;

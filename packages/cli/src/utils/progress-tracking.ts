@@ -1,4 +1,4 @@
-import { hooks } from "@task-o-matic/core";
+import { hooks } from "task-o-matic-core";
 
 /**
  * Progress event payload from AI operations

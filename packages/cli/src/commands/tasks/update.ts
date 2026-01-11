@@ -1,11 +1,11 @@
 import { Command } from "commander";
-import { taskService } from "@task-o-matic/core";
+import { taskService } from "task-o-matic-core";
 import { displayTaskUpdate } from "../../cli/display/task";
 import { displayError } from "../../cli/display/progress";
 import {
   createStandardError,
   TaskOMaticErrorCodes,
-} from "@task-o-matic/core";
+} from "task-o-matic-core";
 
 export const updateCommand = new Command("update")
   .description("Update an existing task")

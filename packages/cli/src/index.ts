@@ -15,7 +15,7 @@ import { promptCommand } from "./commands/prompt";
 import { workflowCommand } from "./commands/workflow";
 import { benchmarkCommand } from "./commands/benchmark";
 import { installCommand } from "./commands/install";
-import { configManager, registerLoggerHooks } from "@task-o-matic/core";
+import { configManager, registerLoggerHooks } from "task-o-matic-core";
 
 const program = new Command();
 

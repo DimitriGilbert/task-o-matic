@@ -1,5 +1,5 @@
 import { Command } from "commander";
-import { taskService } from "@task-o-matic/core";
+import { taskService } from "task-o-matic-core";
 import { displayTaskList, displayTask } from "../../cli/display/task";
 import { displayError } from "../../cli/display/progress";
 

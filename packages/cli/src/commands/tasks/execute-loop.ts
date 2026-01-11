@@ -1,18 +1,18 @@
 import { Command } from "commander";
 import chalk from "chalk";
-import { executeTaskLoop } from "@task-o-matic/core";
+import { executeTaskLoop } from "task-o-matic-core";
 import {
   ExecuteLoopOptions,
   ExecutorTool,
   ModelAttemptConfig,
-} from "@task-o-matic/core";
+} from "task-o-matic-core";
 import {
   parseTryModels,
   validateExecutor,
   VALID_EXECUTORS,
-} from "@task-o-matic/core";
+} from "task-o-matic-core";
 import { ExecuteLoopCommandOptions } from "../../types/cli-options";
-import { wrapCommandHandler } from "@task-o-matic/core";
+import { wrapCommandHandler } from "task-o-matic-core";
 import { textInputPrompt } from "../../utils/workflow-prompts";
 
 export const executeLoopCommand = new Command("execute-loop")

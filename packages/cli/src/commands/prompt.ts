@@ -1,5 +1,5 @@
 import { Command } from "commander";
-import { PromptBuilder, PromptBuilderOptions } from "@task-o-matic/core";
+import { PromptBuilder, PromptBuilderOptions } from "task-o-matic-core";
 import { exit } from "process";
 
 interface PromptCommandOptions {

@@ -1,5 +1,5 @@
 {
-  "name": "@task-o-matic/core",
+  "name": "task-o-matic-core",
   "version": "0.0.35",
   "description": "Core logic for Task-O-Matic",
   "main": "dist/index.js",

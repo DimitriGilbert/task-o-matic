@@ -1,5 +1,5 @@
 import chalk from "chalk";
-import { taskService, Task } from "@task-o-matic/core";
+import { taskService, Task } from "task-o-matic-core";
 
 /**
  * Configuration for bulk operation execution

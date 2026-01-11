@@ -1,13 +1,13 @@
 import { Command } from "commander";
 import chalk from "chalk";
-import { taskService } from "@task-o-matic/core";
-import { wrapCommandHandler } from "@task-o-matic/core";
+import { taskService } from "task-o-matic-core";
+import { wrapCommandHandler } from "task-o-matic-core";
 import { SetPlanCommandOptions } from "../../../types/cli-options";
 import {
   createStandardError,
   formatTaskNotFoundError,
   TaskOMaticErrorCodes,
-} from "@task-o-matic/core";
+} from "task-o-matic-core";
 
 export const setPlanCommand = new Command("set-plan")
   .description("Set implementation plan for a task")

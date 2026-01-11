@@ -1,8 +1,8 @@
 import { Command } from "commander";
 import chalk from "chalk";
-import { taskService } from "@task-o-matic/core";
-import { wrapCommandHandler } from "@task-o-matic/core";
-import { formatTaskNotFoundError } from "@task-o-matic/core";
+import { taskService } from "task-o-matic-core";
+import { wrapCommandHandler } from "task-o-matic-core";
+import { formatTaskNotFoundError } from "task-o-matic-core";
 import { AddDocumentationCommandOptions } from "../../../types/cli-options";
 
 export const addDocumentationCommand = new Command("add-documentation")

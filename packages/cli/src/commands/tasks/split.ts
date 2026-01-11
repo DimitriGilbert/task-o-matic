@@ -1,21 +1,21 @@
 import { Command } from "commander";
 import chalk from "chalk";
-import { taskService } from "@task-o-matic/core";
+import { taskService } from "task-o-matic-core";
 import { displaySubtaskCreation } from "../../cli/display/task";
 import { withProgressTracking } from "../../utils/progress-tracking";
 import { validateMutuallyExclusive } from "../../utils/cli-validators";
 import { executeBulkOperation } from "../../utils/bulk-operations";
 import { confirmBulkOperation } from "../../utils/confirmation";
 import { SplitCommandOptions } from "../../types/cli-options";
-import { wrapCommandHandler } from "@task-o-matic/core";
+import { wrapCommandHandler } from "task-o-matic-core";
 import { runAIParallel } from "../utils/ai-parallel";
 import { prdCommand } from "../prd";
 import {
   createStreamingOptions,
   parseModelString,
   getAIOperations,
-} from "@task-o-matic/core";
-import { SplitTaskResult, ParsedAITask } from "@task-o-matic/core";
+} from "task-o-matic-core";
+import { SplitTaskResult, ParsedAITask } from "task-o-matic-core";
 import {
   writeFileSync,
   existsSync,
@@ -25,7 +25,7 @@ import {
   unlinkSync,
 } from "fs";
 import { join } from "path";
-import { configManager } from "@task-o-matic/core";
+import { configManager } from "task-o-matic-core";
 
 export const splitCommand = new Command("split")
   .description("Split a task into smaller subtasks using AI")

@@ -1,14 +1,14 @@
 import { Command } from "commander";
 import chalk from "chalk";
-import { executeTask } from "@task-o-matic/core";
-import { ModelAttemptConfig } from "@task-o-matic/core";
+import { executeTask } from "task-o-matic-core";
+import { ModelAttemptConfig } from "task-o-matic-core";
 import {
   parseTryModels,
   validateExecutor,
   VALID_EXECUTORS,
-} from "@task-o-matic/core";
+} from "task-o-matic-core";
 import { ExecuteCommandOptions } from "../../types/cli-options";
-import { wrapCommandHandler } from "@task-o-matic/core";
+import { wrapCommandHandler } from "task-o-matic-core";
 import { textInputPrompt } from "../../utils/workflow-prompts";
 
 export const executeCommand = new Command("execute")

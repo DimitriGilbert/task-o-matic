@@ -1,9 +1,9 @@
 import { Command } from "commander";
 import chalk from "chalk";
-import { taskService } from "@task-o-matic/core";
+import { taskService } from "task-o-matic-core";
 import { displayTaskDelete } from "../../cli/display/task";
 import { displayError } from "../../cli/display/progress";
-import { formatTaskNotFoundError } from "@task-o-matic/core";
+import { formatTaskNotFoundError } from "task-o-matic-core";
 
 export const deleteCommand = new Command("delete")
   .description("Delete a task")

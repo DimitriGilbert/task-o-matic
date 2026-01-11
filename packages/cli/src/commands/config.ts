@@ -1,8 +1,8 @@
 import { Command } from "commander";
 import chalk from "chalk";
 import { existsSync, readFileSync } from "fs";
-import { configManager } from "@task-o-matic/core";
-import { AIConfig } from "@task-o-matic/core";
+import { configManager } from "task-o-matic-core";
+import { AIConfig } from "task-o-matic-core";
 
 export const configCommand = new Command("config").description(
   "Manage task-o-matic configuration",

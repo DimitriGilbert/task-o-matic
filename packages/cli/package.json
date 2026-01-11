@@ -1,5 +1,5 @@
 {
-  "name": "@task-o-matic/cli",
+  "name": "task-o-matic",
   "version": "0.0.35",
   "description": "CLI for Task-O-Matic",
   "bin": {
@@ -14,7 +14,7 @@
     "test": "mocha -r tsx/cjs src/test/commands.test.ts"
   },
   "dependencies": {
-    "@task-o-matic/core": "workspace:*",
+    "task-o-matic-core": "workspace:*",
     "chalk": "^5.4.1",
     "commander": "^14.0.2",
     "inquirer": "^12.11.0"

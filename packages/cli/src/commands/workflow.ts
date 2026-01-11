@@ -4,10 +4,10 @@ import { Command } from "commander";
 import chalk from "chalk";
 import { readFileSync, existsSync } from "fs";
 import { resolve } from "path";
-import { workflowService } from "@task-o-matic/core";
-import { configManager } from "@task-o-matic/core";
-import { prdService } from "@task-o-matic/core";
-import { runBetterTStackCLI } from "@task-o-matic/core";
+import { workflowService } from "task-o-matic-core";
+import { configManager } from "task-o-matic-core";
+import { prdService } from "task-o-matic-core";
+import { runBetterTStackCLI } from "task-o-matic-core";
 import inquirer from "inquirer";
 import {
   confirmPrompt,
@@ -17,20 +17,20 @@ import {
   editorPrompt,
   passwordPrompt,
 } from "../utils/workflow-prompts";
-import { providerDefaults } from "@task-o-matic/core";
-import { createStreamingOptions } from "@task-o-matic/core";
+import { providerDefaults } from "task-o-matic-core";
+import { createStreamingOptions } from "task-o-matic-core";
 import { displayProgress, displayError } from "../cli/display/progress";
 import type {
   WorkflowState,
   WorkflowAutomationOptions,
-} from "@task-o-matic/core";
+} from "task-o-matic-core";
 import type {
   Task,
   ExecuteLoopOptions,
   ExecuteLoopConfig,
   ExecutorTool,
-} from "@task-o-matic/core";
-import { createStandardError, TaskOMaticErrorCodes } from "@task-o-matic/core";
+} from "task-o-matic-core";
+import { createStandardError, TaskOMaticErrorCodes } from "task-o-matic-core";
 
 export const workflowCommand = new Command("workflow")
   .description(

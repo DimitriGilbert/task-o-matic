@@ -1,8 +1,8 @@
 import { Command } from "commander";
-import { taskService } from "@task-o-matic/core";
+import { taskService } from "task-o-matic-core";
 import { displayTaskTree } from "../../cli/display/task";
 import { displayError } from "../../cli/display/progress";
-import { Task } from "@task-o-matic/core";
+import { Task } from "task-o-matic-core";
 
 /**
  * Build a map of task ID to subtasks by traversing the task tree

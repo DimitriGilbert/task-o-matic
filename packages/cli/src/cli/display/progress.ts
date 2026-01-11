@@ -1,6 +1,6 @@
 import chalk from "chalk";
-import type { ProgressEvent } from "@task-o-matic/core";
-import { isTaskOMaticError, type TaskOMaticError } from "@task-o-matic/core";
+import type { ProgressEvent } from "task-o-matic-core";
+import { isTaskOMaticError, type TaskOMaticError } from "task-o-matic-core";
 
 /**
  * Display progress events for the CLI

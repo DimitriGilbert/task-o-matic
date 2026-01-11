@@ -1,4 +1,4 @@
-import { createStandardError, TaskOMaticErrorCodes } from "@task-o-matic/core";
+import { createStandardError, TaskOMaticErrorCodes } from "task-o-matic-core";
 
 /**
  * Validate that exactly one of two mutually exclusive options is provided

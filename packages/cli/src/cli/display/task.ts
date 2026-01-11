@@ -1,5 +1,5 @@
 import chalk from "chalk";
-import { Task, TaskAIMetadata } from "@task-o-matic/core";
+import { Task, TaskAIMetadata } from "task-o-matic-core";
 
 export interface TaskDisplayOptions {
   indent?: string;

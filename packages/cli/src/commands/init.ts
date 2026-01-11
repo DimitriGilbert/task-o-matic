@@ -4,13 +4,13 @@ import { Command } from "commander";
 import chalk from "chalk";
 import { existsSync, mkdirSync, writeFileSync } from "fs";
 import { resolve, join } from "path";
-import { configManager, Config } from "@task-o-matic/core";
+import { configManager, Config } from "task-o-matic-core";
 import { displayError } from "../cli/display/progress";
 import {
   createStandardError,
   TaskOMaticErrorCodes,
-} from "@task-o-matic/core";
-import { runBetterTStackCLI } from "@task-o-matic/core";
+} from "task-o-matic-core";
+import { runBetterTStackCLI } from "task-o-matic-core";
 
 export const initCommand = new Command("init").description(
   "Initialize task-o-matic project and bootstrap projects (web/native/cli)"

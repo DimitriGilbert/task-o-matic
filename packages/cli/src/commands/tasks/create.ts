@@ -1,6 +1,6 @@
 import { Command } from "commander";
-import { taskService } from "@task-o-matic/core";
-import { createStreamingOptions } from "@task-o-matic/core";
+import { taskService } from "task-o-matic-core";
+import { createStreamingOptions } from "task-o-matic-core";
 import { displayError } from "../../cli/display/progress";
 import { displayEnhancementResult } from "../../cli/display/common";
 import { displayCreatedTask } from "../../cli/display/task";
