@@ -1,6 +1,6 @@
 {
   "name": "task-o-matic-core",
-  "version": "0.1.1-beta.1",
+  "version": "0.1.1-beta.3",
   "description": "Core logic for Task-O-Matic",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",

@@ -114,12 +114,6 @@ if [ "$SKIP_VERIFY" = false ]; then
     echo ""
 fi
 
-# Reinstall to update workspace: references in lockfile
-echo "Updating workspace dependencies..."
-cd "$ROOT_DIR"
-bun install
-echo ""
-
 # Publish core
 echo "Publishing core@$NEW_CORE_VERSION..."
 cd "$ROOT_DIR/packages/core"
@@ -154,6 +148,12 @@ while [ $ATTEMPT -lt $MAX_ATTEMPTS ]; do
     echo "  Attempt $ATTEMPT/$MAX_ATTEMPTS - not yet available, waiting 2s..."
     sleep 2
 done
+echo ""
+
+# NOW reinstall to update workspace: references to the NEW core version
+echo "Updating workspace dependencies to use published core..."
+cd "$ROOT_DIR"
+bun install
 echo ""
 
 # Publish CLI
