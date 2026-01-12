@@ -1,14 +1,15 @@
 {
   "name": "task-o-matic",
-  "version": "0.0.35",
+  "version": "0.1.0",
   "description": "CLI for Task-O-Matic",
   "bin": {
     "task-o-matic": "dist/cli/bin.js"
   },
   "scripts": {
-    "build": "tsc",
+    "clean": "rm -rf dist tsconfig.tsbuildinfo",
+    "build": "tsc && chmod +x dist/cli/bin.js",
     "check-types": "tsc --noEmit",
-    "prepublishOnly": "npm run build && chmod +x dist/cli/bin.js",
+    "prepublishOnly": "bun run build",
     "start": "node dist/cli/bin.js",
     "dev": "tsx src/cli/bin.ts",
     "test": "mocha -r tsx/cjs src/test/commands.test.ts"

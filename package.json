@@ -5,13 +5,13 @@
     "packages/*"
   ],
   "scripts": {
-    "clean": "rm -rf dist tsconfig.tsbuildinfo",
-    "build": "bun run --filter='./packages/*' build",
+    "clean": "bun run --filter='./packages/*' clean",
+    "build": "bun run --filter task-o-matic-core build && bun run --filter task-o-matic build",
     "check-types": "bun run --filter='./packages/*' check-types",
     "test": "bun run --filter='./packages/*' test",
     "dev": "bun run --filter task-o-matic dev",
     "start": "bun run --filter task-o-matic start",
-    "prepare": "bun run build && chmod +x packages/cli/dist/cli/bin.js",
+    "prepare": "bun run build",
     "verify-work": "bun run check-types && bun run prepare && bun run test",
     "bump:patch": "cd packages/core && npm version patch --no-git-tag-version && cd ../../packages/cli && npm version patch --no-git-tag-version",
     "bump:minor": "cd packages/core && npm version minor --no-git-tag-version && cd ../../packages/cli && npm version minor --no-git-tag-version",
