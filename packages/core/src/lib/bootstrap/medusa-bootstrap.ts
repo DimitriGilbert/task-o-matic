@@ -1,9 +1,10 @@
-import { writeFileSync, mkdirSync, existsSync } from "fs";
-import { join } from "path";
-import chalk from "chalk";
-import { exec } from "child_process";
-import { promisify } from "util";
-import { randomBytes } from "crypto";
+import { exec } from "node:child_process";
+import { randomBytes } from "node:crypto";
+import { existsSync, mkdirSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
+import { promisify } from "node:util";
+
+import { logger } from "../logger";
 
 const execAsync = promisify(exec);
 
@@ -21,14 +22,14 @@ export async function bootstrapMedusaProject(
   options: MedusaBootstrapOptions
 ): Promise<{ success: boolean; message: string }> {
   try {
-    console.log(
-      chalk.blue(`\n🚀 Bootstrapping MedusaJS project: ${options.projectName}`)
+    logger.info(
+      `\n🚀 Bootstrapping MedusaJS project: ${options.projectName}`
     );
 
     // Create project directory
     if (!existsSync(options.projectPath)) {
       mkdirSync(options.projectPath, { recursive: true });
-      console.log(chalk.green(`  ✓ Created project directory`));
+      logger.success(`  ✓ Created project directory`);
     }
 
     // Build create-medusa-app command with correct package runner
@@ -50,30 +51,26 @@ export async function bootstrapMedusaProject(
     // Use the project path as the target directory
     const createCmd = `${packageRunner} create-medusa-app${versionFlag} ${options.projectPath} ${dbFlag} ${skipInstallFlag} --skip-db --no-browser`;
 
-    console.log(
-      chalk.cyan(
-        `\n  📦 Running create-medusa-app with ${options.packageManager}...`
-      )
+    logger.progress(
+      `\n  📦 Running create-medusa-app with ${options.packageManager}...`
     );
     await execAsync(createCmd, { cwd: process.cwd() });
-    console.log(chalk.green(`  ✓ MedusaJS project scaffolded`));
+    logger.success(`  ✓ MedusaJS project scaffolded`);
 
     // Generate environment file
     const envContent = generateEnvFile(options);
     writeFileSync(join(options.projectPath, ".env"), envContent);
-    console.log(chalk.green(`  ✓ Created .env file`));
+    logger.success(`  ✓ Created .env file`);
 
     // Generate README
     const readmeContent = generateReadme(options);
     writeFileSync(join(options.projectPath, "README.md"), readmeContent);
-    console.log(chalk.green(`  ✓ Created README.md`));
+    logger.success(`  ✓ Created README.md`);
 
     // Install dependencies if not skipped
     if (!options.skipInstall) {
-      console.log(
-        chalk.cyan(
-          `\n  📦 Installing dependencies with ${options.packageManager}...`
-        )
+      logger.progress(
+        `\n  📦 Installing dependencies with ${options.packageManager}...`
       );
       const installCmd =
         options.packageManager === "npm"
@@ -83,34 +80,32 @@ export async function bootstrapMedusaProject(
           : "bun install";
 
       await execAsync(installCmd, { cwd: options.projectPath });
-      console.log(chalk.green(`  ✓ Dependencies installed`));
+      logger.success(`  ✓ Dependencies installed`);
     }
 
     // Setup database if not skipped
     if (!options.skipDb) {
-      console.log(chalk.cyan(`\n  🗄️  Setting up database...`));
+      logger.progress(`\n  🗄️  Setting up database...`);
       try {
-        const packageRunner =
+        const dbPackageRunner =
           options.packageManager === "npm"
             ? "npx"
             : options.packageManager === "pnpm"
             ? "pnpm dlx"
             : "bunx";
-        await execAsync(`${packageRunner} medusa db:setup`, {
+        await execAsync(`${dbPackageRunner} medusa db:setup`, {
           cwd: options.projectPath,
         });
-        console.log(chalk.green(`  ✓ Database setup complete`));
-      } catch (error) {
-        const packageRunner =
+        logger.success(`  ✓ Database setup complete`);
+      } catch (_error) {
+        const dbPackageRunner =
           options.packageManager === "npm"
             ? "npx"
             : options.packageManager === "pnpm"
             ? "pnpm dlx"
             : "bunx";
-        console.log(
-          chalk.yellow(
-            `  ⚠️  Database setup skipped (run '${packageRunner} medusa db:setup' manually)`
-          )
+        logger.warn(
+          `  ⚠️  Database setup skipped (run '${dbPackageRunner} medusa db:setup' manually)`
         );
       }
     }

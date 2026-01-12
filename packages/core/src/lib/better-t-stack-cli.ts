@@ -3,6 +3,7 @@ import { configManager } from "./config";
 import { writeFileSync, mkdirSync, readFileSync } from "fs";
 // import { glob } from "glob";
 import { join } from "path";
+import { logger } from "./logger";
 
 export class BetterTStackService {
   async createProject(
@@ -15,19 +16,19 @@ export class BetterTStackService {
     message: string;
   }> {
     try {
-      console.log(`🚀 Bootstrapping Better-T-Stack project: ${name}`);
+      logger.info(`🚀 Bootstrapping Better-T-Stack project: ${name}`);
 
       // Change to working directory if provided
       const originalCwd = process.cwd();
       if (workingDirectory) {
         process.chdir(workingDirectory);
-        console.log(`🔥 Changed working directory to: ${workingDirectory}`);
+        logger.info(`🔥 Changed working directory to: ${workingDirectory}`);
       }
 
       // Convert our config to Better-T-Stack API format
       const apiConfig = this.convertToAPIConfig(config);
 
-      console.log(`🔥 Calling Better-T-Stack programmatic API...`);
+      logger.info(`🔥 Calling Better-T-Stack programmatic API...`);
 
       // Use dynamic import with eval to bypass TypeScript module resolution
       // The module exports `init` as a named export, but depending on how it's bundled,
@@ -72,7 +73,7 @@ export class BetterTStackService {
             await this.copyDocumentation(projectDir);
           }
         } catch (error) {
-          console.error("⚠ Post-bootstrap enhancements failed:", error);
+          logger.error(`⚠ Post-bootstrap enhancements failed: ${error}`);
           // Don't fail the whole process, just log warning
         }
 
@@ -173,7 +174,7 @@ export class BetterTStackService {
     const { glob } = await import("glob");
     // const { readFileSync, writeFileSync } = await import("fs");
 
-    console.log("🔍 Adding check-types scripts to packages...");
+    logger.info("🔍 Adding check-types scripts to packages...");
 
     // Find all package.json files in apps and backend directories
     const packageFiles = await glob(
@@ -192,12 +193,12 @@ export class BetterTStackService {
         if (!content.scripts["check-types"]) {
           content.scripts["check-types"] = "tsc --noEmit";
           writeFileSync(file, JSON.stringify(content, null, 2) + "\n");
-          console.log(
+          logger.success(
             `  ✓ Added check-types to ${file.split("/").slice(-3).join("/")}`
           );
         }
       } catch (err) {
-        console.warn(`  ⚠ Failed to update ${file}:`, err);
+        logger.warn(`  ⚠ Failed to update ${file}: ${err}`);
       }
     }
   }
@@ -206,7 +207,7 @@ export class BetterTStackService {
     const { copyFileSync, mkdirSync, existsSync } = await import("fs");
     const { resolve, dirname } = await import("path");
 
-    console.log("📚 Copying documentation...");
+    logger.info("📚 Copying documentation...");
 
     try {
       // Source: docs/agents/cli.md in the current package
@@ -241,12 +242,12 @@ export class BetterTStackService {
         }
 
         copyFileSync(sourcePath, destPath);
-        console.log(`  ✓ Copied documentation to docs/task-o-matic.md`);
+        logger.success(`  ✓ Copied documentation to docs/task-o-matic.md`);
       } else {
-        console.warn("  ⚠ Could not locate source documentation file");
+        logger.warn("  ⚠ Could not locate source documentation file");
       }
     } catch (err) {
-      console.warn("  ⚠ Failed to copy documentation:", err);
+      logger.warn(`  ⚠ Failed to copy documentation: ${err}`);
     }
   }
 }
@@ -334,7 +335,7 @@ export class BetterTStackIntegration {
         // (e.g., just cli + tui with no web/native)
         mkdirSync(projectPath, { recursive: true });
         mkdirSync(join(projectPath, "apps"), { recursive: true });
-        console.log(`📁 Created monorepo structure at ${projectPath}`);
+        logger.info(`📁 Created monorepo structure at ${projectPath}`);
       }
 
       // Step 2: AFTER Better-T-Stack creates the structure, add custom frontends

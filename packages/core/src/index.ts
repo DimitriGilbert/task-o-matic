@@ -1,7 +1,6 @@
 export * from "./types";
 export * from "./lib/config";
 export * from "./lib/logger";
-export * from "./lib/hooks/logger";
 export * from "./lib/better-t-stack-cli";
 export * from "./lib/validation";
 export * from "./lib/context-builder";
@@ -23,13 +22,14 @@ export * from "./lib/benchmark/types";
 
 export * from "./utils/ai-service-factory";
 export * from "./utils/task-o-matic-error";
-export * from "./utils/streaming-options";
 
 export * from "./lib/hooks";
 
+// Moved to CLI:
+// - ./utils/streaming-options
+// - ./utils/display-helpers
+// - ./lib/hooks/logger
 
-// export * from "./utils/command-error-handler"; // Moved to CLI
-export * from "./utils/display-helpers";
 export * from "./utils/model-executor-parser";
 export * from "./utils/model-parser";
 

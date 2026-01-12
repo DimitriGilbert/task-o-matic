@@ -3,6 +3,7 @@ import { Task, TaskContext, BTSConfig, TaskDocumentation } from "../types";
 import { TaskRepository } from "./storage/types";
 import { configManager } from "./config";
 import { readFileSync, existsSync, readdirSync, statSync } from "fs";
+import { logger } from "./logger";
 
 export interface FileStats {
   mtime: number;
@@ -176,9 +177,8 @@ export class ContextBuilder {
       fallbackConfig._source = "fallback"; // Track source
       return fallbackConfig;
     } catch (error) {
-      console.warn(
-        "Failed to load stack configuration, using defaults:",
-        error
+      logger.warn(
+        `Failed to load stack configuration, using defaults: ${error}`
       );
       fallbackConfig._source = "fallback"; // Track source
       return fallbackConfig;
@@ -204,9 +204,8 @@ export class ContextBuilder {
       const contentPath = join(this.taskOMatic, task.contentFile);
       return (await this.callbacks.readFile(contentPath)) || undefined;
     } catch (error) {
-      console.warn(
-        `Failed to read task content file ${task.contentFile}:`,
-        error
+      logger.warn(
+        `Failed to read task content file ${task.contentFile}: ${error}`
       );
     }
     return undefined;
@@ -266,7 +265,7 @@ export class ContextBuilder {
 
       return (await this.callbacks.readFile(fullPath)) || undefined;
     } catch (error) {
-      console.warn(`Failed to read PRD file ${prdFile}:`, error);
+      logger.warn(`Failed to read PRD file ${prdFile}: ${error}`);
       return undefined;
     }
   }
@@ -319,7 +318,7 @@ export class ContextBuilder {
             );
           }
         } catch (error) {
-          console.warn(`Failed to read PRD directory ${prdPath}:`, error);
+          logger.warn(`Failed to read PRD directory ${prdPath}: ${error}`);
         }
       }
     }

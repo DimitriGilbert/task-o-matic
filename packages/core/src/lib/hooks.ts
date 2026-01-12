@@ -101,6 +101,8 @@ class HookRegistry {
       try {
         await handler(payload);
       } catch (error) {
+        // NOTE: Using console.error here intentionally - this is the hooks system
+        // that the logger depends on, so we can't use logger here (circular dependency)
         console.error(`Error in hook handler for event ${type}:`, error);
       }
     });

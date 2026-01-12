@@ -11,6 +11,7 @@ import {
   formatStorageError,
   createStandardError,
 } from "../../utils/task-o-matic-error";
+import { logger } from "../logger";
 
 interface TasksData {
   tasks: Task[];
@@ -125,7 +126,7 @@ export class FileSystemStorage implements TaskRepository {
       }
       return JSON.parse(content);
     } catch (error) {
-      console.error("Failed to read tasks file:", error);
+      logger.error(`Failed to read tasks file: ${error}`);
       return { tasks: [], nextId: 1 };
     }
   }
@@ -445,7 +446,7 @@ export class FileSystemStorage implements TaskRepository {
       if (!content) return [];
       return JSON.parse(content);
     } catch (error) {
-      console.error("Failed to read AI metadata file:", error);
+      logger.error(`Failed to read AI metadata file: ${error}`);
       return [];
     }
   }
@@ -546,7 +547,7 @@ export class FileSystemStorage implements TaskRepository {
     try {
       return await this.callbacks.read(contentFileName);
     } catch (error) {
-      console.error(`Failed to read task content for ${taskId}:`, error);
+      logger.error(`Failed to read task content for ${taskId}: ${error}`);
       return null;
     }
   }
@@ -576,7 +577,7 @@ export class FileSystemStorage implements TaskRepository {
     try {
       return await this.callbacks.read(filePath);
     } catch (error) {
-      console.error(`Failed to read documentation file ${fileName}:`, error);
+      logger.error(`Failed to read documentation file ${fileName}: ${error}`);
       return null;
     }
   }
@@ -589,7 +590,7 @@ export class FileSystemStorage implements TaskRepository {
         .filter((f) => f.endsWith(".md") || f.endsWith(".txt"))
         .map((f) => (f.startsWith("docs/") ? f.substring(5) : f));
     } catch (error) {
-      console.error("Failed to list documentation files:", error);
+      logger.error(`Failed to list documentation files: ${error}`);
       return [];
     }
   }
@@ -662,15 +663,15 @@ export class FileSystemStorage implements TaskRepository {
             try {
               await this.callbacks.delete(file);
               cleanedCount++;
-              console.log(`Cleaned up orphaned content file: ${file}`);
+              logger.info(`Cleaned up orphaned content file: ${file}`);
             } catch (error) {
-              console.error(`Failed to delete orphaned file ${file}:`, error);
+              logger.error(`Failed to delete orphaned file ${file}: ${error}`);
             }
           }
         }
       }
     } catch (error) {
-      console.error("Failed to cleanup orphaned content:", error);
+      logger.error(`Failed to cleanup orphaned content: ${error}`);
     }
 
     return cleanedCount;
@@ -856,7 +857,7 @@ export class FileSystemStorage implements TaskRepository {
     try {
       return await this.callbacks.read(documentationFileName);
     } catch (error) {
-      console.error(`Failed to read task documentation for ${taskId}:`, error);
+      logger.error(`Failed to read task documentation for ${taskId}: ${error}`);
       return null;
     }
   }

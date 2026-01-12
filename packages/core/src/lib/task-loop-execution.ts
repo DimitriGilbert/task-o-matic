@@ -1,14 +1,13 @@
-import { taskService } from "../services/tasks";
-import {
+import type {
   ExecuteLoopOptions,
   ExecuteLoopResult,
-  ExecutorTool,
   Task,
   TaskExecutionConfig,
 } from "../types";
-import { executeTaskCore } from "./task-execution-core";
+import { logger } from "./logger";
 import { sendNotifications } from "./notifications";
-import chalk from "chalk";
+import { taskService } from "../services/tasks";
+import { executeTaskCore } from "./task-execution-core";
 
 /**
  * Execute multiple tasks in a loop with retry and verification
@@ -38,21 +37,19 @@ export async function executeTaskLoop(
     notifyTargets,
   } = config;
 
-  console.log(chalk.blue.bold("\n🔄 Starting Task Loop Execution\n"));
-  console.log(chalk.cyan(`Executor Tool: ${tool}`));
-  if (model) console.log(chalk.cyan(`Executor Model: ${model}`));
-  console.log(chalk.cyan(`Max Retries per Task: ${maxRetries}`));
-  console.log(
-    chalk.cyan(
-      `Verification Commands: ${
-        verificationCommands.length > 0
-          ? verificationCommands.join(", ")
-          : "None"
-      }`
-    )
+  logger.info("\n🔄 Starting Task Loop Execution\n");
+  logger.progress(`Executor Tool: ${tool}`);
+  if (model) logger.progress(`Executor Model: ${model}`);
+  logger.progress(`Max Retries per Task: ${maxRetries}`);
+  logger.progress(
+    `Verification Commands: ${
+      verificationCommands.length > 0
+        ? verificationCommands.join(", ")
+        : "None"
+    }`
   );
-  console.log(chalk.cyan(`Auto Commit: ${autoCommit ? "Yes" : "No"}`));
-  console.log(chalk.cyan(`Dry Run: ${dry ? "Yes" : "No"}\n`));
+  logger.progress(`Auto Commit: ${autoCommit ? "Yes" : "No"}`);
+  logger.progress(`Dry Run: ${dry ? "Yes" : "No"}\n`);
 
   // Get tasks to execute
   let tasksToExecute: Task[] = [];
@@ -64,7 +61,7 @@ export async function executeTaskLoop(
       if (task) {
         tasksToExecute.push(task);
       } else {
-        console.warn(chalk.yellow(`⚠️  Task ${taskId} not found, skipping`));
+        logger.warn(`⚠️  Task ${taskId} not found, skipping`);
       }
     }
   } else {
@@ -81,14 +78,12 @@ export async function executeTaskLoop(
     tasksToExecute = tasksToExecute.filter((t) => t.status !== "completed");
     const filtered = beforeCount - tasksToExecute.length;
     if (filtered > 0) {
-      console.log(
-        chalk.dim(`   (Skipped ${filtered} already-completed task(s))\n`)
-      );
+      logger.info(`   (Skipped ${filtered} already-completed task(s))\n`);
     }
   }
 
   if (tasksToExecute.length === 0) {
-    console.log(chalk.yellow("⚠️  No tasks to execute (all may be completed)"));
+    logger.warn("⚠️  No tasks to execute (all may be completed)");
     const emptyResult: ExecuteLoopResult = {
       totalTasks: 0,
       completedTasks: 0,
@@ -101,9 +96,7 @@ export async function executeTaskLoop(
     return emptyResult;
   }
 
-  console.log(
-    chalk.blue(`📋 Found ${tasksToExecute.length} task(s) to execute\n`)
-  );
+  logger.info(`📋 Found ${tasksToExecute.length} task(s) to execute\n`);
 
   const taskResults: ExecuteLoopResult["taskResults"] = [];
   let completedTasks = 0;
@@ -113,12 +106,10 @@ export async function executeTaskLoop(
   for (let i = 0; i < tasksToExecute.length; i++) {
     const task = tasksToExecute[i];
 
-    console.log(
-      chalk.blue.bold(
-        `\n${"=".repeat(60)}\n📌 Task ${i + 1}/${tasksToExecute.length}: ${
-          task.title
-        } (${task.id})\n${"=".repeat(60)}\n`
-      )
+    logger.info(
+      `\n${"=".repeat(60)}\n📌 Task ${i + 1}/${tasksToExecute.length}: ${
+        task.title
+      } (${task.id})\n${"=".repeat(60)}\n`
     );
 
     // Build unified task execution config
@@ -154,17 +145,13 @@ export async function executeTaskLoop(
 
       if (succeeded) {
         completedTasks++;
-        console.log(
-          chalk.green.bold(
-            `\n✅ Task ${task.title} completed successfully after ${result.attempts.length} attempt(s)\n`
-          )
+        logger.success(
+          `\n✅ Task ${task.title} completed successfully after ${result.attempts.length} attempt(s)\n`
         );
       } else {
         failedTasks++;
-        console.log(
-          chalk.red.bold(
-            `\n❌ Task ${task.title} failed after ${result.attempts.length} attempt(s)\n`
-          )
+        logger.error(
+          `\n❌ Task ${task.title} failed after ${result.attempts.length} attempt(s)\n`
         );
       }
 
@@ -181,12 +168,10 @@ export async function executeTaskLoop(
       }
     } catch (error) {
       failedTasks++;
-      console.error(
-        chalk.red.bold(
-          `\n❌ Task ${task.title} failed with error: ${
-            error instanceof Error ? error.message : "Unknown error"
-          }\n`
-        )
+      logger.error(
+        `\n❌ Task ${task.title} failed with error: ${
+          error instanceof Error ? error.message : "Unknown error"
+        }\n`
       );
 
       taskResults.push({
@@ -204,17 +189,13 @@ export async function executeTaskLoop(
   const duration = Date.now() - startTime;
 
   // Print summary
-  console.log(
-    chalk.blue.bold(
-      `\n${"=".repeat(60)}\n📊 Execution Summary\n${"=".repeat(60)}`
-    )
+  logger.info(
+    `\n${"=".repeat(60)}\n📊 Execution Summary\n${"=".repeat(60)}`
   );
-  console.log(chalk.cyan(`Total Tasks: ${tasksToExecute.length}`));
-  console.log(chalk.green(`✅ Completed: ${completedTasks}`));
-  console.log(chalk.red(`❌ Failed: ${failedTasks}`));
-  console.log(
-    chalk.cyan(`⏱  Duration: ${(duration / 1000).toFixed(2)} seconds\n`)
-  );
+  logger.progress(`Total Tasks: ${tasksToExecute.length}`);
+  logger.success(`✅ Completed: ${completedTasks}`);
+  logger.error(`❌ Failed: ${failedTasks}`);
+  logger.progress(`⏱  Duration: ${(duration / 1000).toFixed(2)} seconds\n`);
 
   const result: ExecuteLoopResult = {
     totalTasks: tasksToExecute.length,

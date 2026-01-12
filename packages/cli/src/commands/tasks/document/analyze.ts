@@ -1,14 +1,15 @@
-import { Command } from "commander";
 import chalk from "chalk";
+import { Command } from "commander";
 import { taskService } from "task-o-matic-core";
-import { createStreamingOptions } from "task-o-matic-core";
+
 import {
   displayDocumentationAnalysis,
   displayResearchSummary,
 } from "../../../cli/display/common";
-import { withProgressTracking } from "../../../utils/progress-tracking";
+import type { DocumentCommandOptions } from "../../../types/cli-options";
 import { wrapCommandHandler } from "../../../utils/command-error-handler";
-import { DocumentCommandOptions } from "../../../types/cli-options";
+import { withProgressTracking } from "../../../utils/progress-tracking";
+import { createStreamingOptions } from "../../../utils/streaming-options";
 
 export const documentCommand = new Command("document")
   .description(

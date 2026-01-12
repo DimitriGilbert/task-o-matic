@@ -1,13 +1,14 @@
-import { Command } from "commander";
 import chalk from "chalk";
+import { Command } from "commander";
 import { taskService } from "task-o-matic-core";
-import { createStreamingOptions } from "task-o-matic-core";
-import { withProgressTracking } from "../../utils/progress-tracking";
-import { validateMutuallyExclusive } from "../../utils/cli-validators";
+
+import type { EnhanceCommandOptions } from "../../types/cli-options";
 import { executeBulkOperation } from "../../utils/bulk-operations";
-import { confirmBulkOperation } from "../../utils/confirmation";
-import { EnhanceCommandOptions } from "../../types/cli-options";
+import { validateMutuallyExclusive } from "../../utils/cli-validators";
 import { wrapCommandHandler } from "../../utils/command-error-handler";
+import { confirmBulkOperation } from "../../utils/confirmation";
+import { withProgressTracking } from "../../utils/progress-tracking";
+import { createStreamingOptions } from "../../utils/streaming-options";
 
 export const enhanceCommand = new Command("enhance")
   .description("Enhance an existing task with AI using Context7 documentation")

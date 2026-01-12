@@ -1,9 +1,10 @@
-import { writeFileSync, mkdirSync, existsSync } from "fs";
-import { join } from "path";
-import chalk from "chalk";
-import { exec } from "child_process";
-import { promisify } from "util";
+import { exec } from "node:child_process";
+import { existsSync, mkdirSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
+import { promisify } from "node:util";
+
 import type { CliDependencyLevel } from "../../types";
+import { logger } from "../logger";
 
 const execAsync = promisify(exec);
 
@@ -20,12 +21,12 @@ export async function bootstrapCliProject(
   options: CliBootstrapOptions
 ): Promise<{ success: boolean; message: string }> {
   try {
-    console.log(chalk.blue(`\n🚀 Bootstrapping CLI project: ${options.projectName}`));
+    logger.info(`\n🚀 Bootstrapping CLI project: ${options.projectName}`);
 
     // Create project directory
     if (!existsSync(options.projectPath)) {
       mkdirSync(options.projectPath, { recursive: true });
-      console.log(chalk.green(`  ✓ Created project directory`));
+      logger.success(`  ✓ Created project directory`);
     }
 
     // Create directory structure
@@ -45,75 +46,75 @@ export async function bootstrapCliProject(
       dirs.push("src/test");
     }
 
-    dirs.forEach(dir => {
+    for (const dir of dirs) {
       const fullPath = join(options.projectPath, dir);
       mkdirSync(fullPath, { recursive: true });
-    });
-    console.log(chalk.green(`  ✓ Created directory structure`));
+    }
+    logger.success(`  ✓ Created directory structure`);
 
     // Generate files
     writeFileSync(
       join(options.projectPath, "package.json"),
       generatePackageJson(options)
     );
-    console.log(chalk.green(`  ✓ Created package.json`));
+    logger.success(`  ✓ Created package.json`);
 
     writeFileSync(
       join(options.projectPath, "tsconfig.json"),
       generateTsConfig(options.dependencyLevel === "full" || options.dependencyLevel === "task-o-matic")
     );
-    console.log(chalk.green(`  ✓ Created tsconfig.json`));
+    logger.success(`  ✓ Created tsconfig.json`);
 
     writeFileSync(
       join(options.projectPath, "src/cli/bin.ts"),
-      generateBinTemplate(options.projectName)
+      generateBinTemplate()
     );
-    console.log(chalk.green(`  ✓ Created src/cli/bin.ts`));
+    logger.success(`  ✓ Created src/cli/bin.ts`);
 
     writeFileSync(
       join(options.projectPath, "src/index.ts"),
       generateIndexTemplate(options.projectName)
     );
-    console.log(chalk.green(`  ✓ Created src/index.ts`));
+    logger.success(`  ✓ Created src/index.ts`);
 
     writeFileSync(
       join(options.projectPath, "src/commands/index.ts"),
       generateCommandsIndexTemplate()
     );
-    console.log(chalk.green(`  ✓ Created src/commands/index.ts`));
+    logger.success(`  ✓ Created src/commands/index.ts`);
 
     writeFileSync(
       join(options.projectPath, "src/commands/example.ts"),
       generateExampleCommandTemplate()
     );
-    console.log(chalk.green(`  ✓ Created src/commands/example.ts`));
+    logger.success(`  ✓ Created src/commands/example.ts`);
 
     writeFileSync(
       join(options.projectPath, "src/types/index.ts"),
       generateTypesTemplate()
     );
-    console.log(chalk.green(`  ✓ Created src/types/index.ts`));
+    logger.success(`  ✓ Created src/types/index.ts`);
 
     writeFileSync(
       join(options.projectPath, "README.md"),
       generateReadmeTemplate(options)
     );
-    console.log(chalk.green(`  ✓ Created README.md`));
+    logger.success(`  ✓ Created README.md`);
 
     writeFileSync(
       join(options.projectPath, ".gitignore"),
       generateGitignoreTemplate()
     );
-    console.log(chalk.green(`  ✓ Created .gitignore`));
+    logger.success(`  ✓ Created .gitignore`);
 
     // Install dependencies
-    console.log(chalk.cyan(`\n  📦 Installing dependencies with ${options.packageManager}...`));
+    logger.progress(`\n  📦 Installing dependencies with ${options.packageManager}...`);
     const installCmd = options.packageManager === "npm" ? "npm install" :
                       options.packageManager === "pnpm" ? "pnpm install" :
                       "bun install";
 
     await execAsync(installCmd, { cwd: options.projectPath });
-    console.log(chalk.green(`  ✓ Dependencies installed`));
+    logger.success(`  ✓ Dependencies installed`);
 
     return {
       success: true,
@@ -214,7 +215,7 @@ function getScripts(options: CliBootstrapOptions): Record<string, string> {
   return scripts;
 }
 
-function generateBinTemplate(projectName: string): string {
+function generateBinTemplate(): string {
   return `#!/usr/bin/env node
 import { runCLI } from "../index.js";
 

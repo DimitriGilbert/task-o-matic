@@ -1,31 +1,23 @@
-import { Command } from "commander";
+import { existsSync, mkdirSync, copyFileSync, renameSync } from "node:fs";
+import { join } from "node:path";
+
 import chalk from "chalk";
-import { taskService } from "task-o-matic-core";
-import { displaySubtaskCreation } from "../../cli/display/task";
-import { withProgressTracking } from "../../utils/progress-tracking";
-import { validateMutuallyExclusive } from "../../utils/cli-validators";
-import { executeBulkOperation } from "../../utils/bulk-operations";
-import { confirmBulkOperation } from "../../utils/confirmation";
-import { SplitCommandOptions } from "../../types/cli-options";
-import { wrapCommandHandler } from "../../utils/command-error-handler";
-import { runAIParallel } from "../utils/ai-parallel";
-import { prdCommand } from "../prd";
+import { Command } from "commander";
 import {
-  createStreamingOptions,
-  parseModelString,
+  configManager,
   getAIOperations,
+  parseModelString,
+  taskService,
 } from "task-o-matic-core";
-import { SplitTaskResult, ParsedAITask } from "task-o-matic-core";
-import {
-  writeFileSync,
-  existsSync,
-  mkdirSync,
-  copyFileSync,
-  renameSync,
-  unlinkSync,
-} from "fs";
-import { join } from "path";
-import { configManager } from "task-o-matic-core";
+
+import { displaySubtaskCreation } from "../../cli/display/task";
+import type { SplitCommandOptions } from "../../types/cli-options";
+import { executeBulkOperation } from "../../utils/bulk-operations";
+import { validateMutuallyExclusive } from "../../utils/cli-validators";
+import { wrapCommandHandler } from "../../utils/command-error-handler";
+import { withProgressTracking } from "../../utils/progress-tracking";
+import { createStreamingOptions } from "../../utils/streaming-options";
+import { runAIParallel } from "../utils/ai-parallel";
 
 export const splitCommand = new Command("split")
   .description("Split a task into smaller subtasks using AI")

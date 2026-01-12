@@ -8,6 +8,7 @@ import {
 } from "fs";
 import { configManager } from "../config";
 import { BenchmarkRun } from "./types";
+import { logger } from "../logger";
 
 export class BenchmarkStorage {
   private getBenchmarkDir(): string {
@@ -102,7 +103,7 @@ export class BenchmarkStorage {
         results,
       };
     } catch (error) {
-      console.error(`Failed to load benchmark run ${id}:`, error);
+      logger.error(`Failed to load benchmark run ${id}: ${error}`);
       return null;
     }
   }

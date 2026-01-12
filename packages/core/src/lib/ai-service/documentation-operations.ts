@@ -12,6 +12,7 @@ import { TASK_ENHANCEMENT_SYSTEM_PROMPT } from "../../prompts";
 import { getContextBuilder, getStorage } from "../../utils/ai-service-factory";
 import { filesystemTools } from "./filesystem-tools";
 import { BaseOperations } from "./base-operations";
+import { logger } from "../logger";
 
 export class DocumentationOperations extends BaseOperations {
   async enhanceTaskWithDocumentation(
@@ -147,19 +148,17 @@ ${existingResearchContext}`,
           const toolResults = await result.toolResults;
 
           if (toolCalls.length > 0) {
-            console.log(
-              "AI made tool calls:",
-              toolCalls.map((tc) => ({ tool: tc?.toolName, input: tc?.input }))
+            logger.info(
+              `AI made tool calls: ${JSON.stringify(toolCalls.map((tc) => ({ tool: tc?.toolName, input: tc?.input })))}`
             );
           }
 
           if (toolResults.length > 0) {
-            console.log(
-              "Tool results received:",
-              toolResults.map((tr) => ({
+            logger.info(
+              `Tool results received: ${JSON.stringify(toolResults.map((tr) => ({
                 tool: tr?.toolName,
                 output: tr?.output,
-              }))
+              })))}`
             );
           }
 
@@ -325,9 +324,8 @@ ${existingResearchContext}`,
                             files.push(docFile);
                           }
                         } catch (error) {
-                          console.error(
-                            "Failed to save Context7 documentation:",
-                            error
+                          logger.error(
+                            `Failed to save Context7 documentation: ${error}`
                           );
                         }
                       })();
@@ -364,7 +362,7 @@ ${existingResearchContext}`,
               );
               files.push(taskDocFile);
             } catch (error) {
-              console.error("Failed to save task documentation:", error);
+              logger.error(`Failed to save task documentation: ${error}`);
             }
           }
 

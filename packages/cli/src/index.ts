@@ -5,17 +5,19 @@
  * It can be imported and used by the binary or for testing.
  */
 
-import { Command } from "commander";
 import chalk from "chalk";
-import { configCommand } from "./commands/config";
-import { tasksCommand } from "./commands/tasks";
-import { prdCommand } from "./commands/prd";
-import { initCommand } from "./commands/init";
-import { promptCommand } from "./commands/prompt";
-import { workflowCommand } from "./commands/workflow";
+import { Command } from "commander";
+import { configManager } from "task-o-matic-core";
+
 import { benchmarkCommand } from "./commands/benchmark";
+import { configCommand } from "./commands/config";
+import { initCommand } from "./commands/init";
 import { installCommand } from "./commands/install";
-import { configManager, registerLoggerHooks } from "task-o-matic-core";
+import { prdCommand } from "./commands/prd";
+import { promptCommand } from "./commands/prompt";
+import { tasksCommand } from "./commands/tasks";
+import { workflowCommand } from "./commands/workflow";
+import { registerLoggerHooks } from "./utils/logger-hooks";
 
 const program = new Command();
 

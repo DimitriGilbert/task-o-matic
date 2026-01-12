@@ -23,6 +23,7 @@ import {
   DeleteTaskResult,
 } from "../types/results";
 import { hooks } from "../lib/hooks";
+import { logger } from "../lib/logger";
 import { createMetricsStreamingOptions } from "../utils/streaming-utils";
 import { getErrorMessage } from "../utils/error-utils";
 import { requireTask } from "../utils/storage-utils";
@@ -186,9 +187,8 @@ export class TaskService {
         );
       } catch (error) {
         // Log warning but don't fail task creation
-        console.warn(
-          "Warning: Could not build context:",
-          getErrorMessage(error)
+        logger.warn(
+          `Warning: Could not build context: ${getErrorMessage(error)}`
         );
         // Continue with empty context
         context = { stack: undefined, existingResearch: {} };
@@ -944,7 +944,7 @@ export class TaskService {
         };
         await getStorage().saveTaskAIMetadata(subtaskMetadata);
       } catch (err) {
-        console.error(`[DEBUG] Failed to create subtask ${i + 1}:`, err);
+        logger.error(`[DEBUG] Failed to create subtask ${i + 1}: ${err}`);
         throw err;
       }
     }

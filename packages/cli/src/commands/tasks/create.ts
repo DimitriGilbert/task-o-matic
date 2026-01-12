@@ -1,10 +1,11 @@
 import { Command } from "commander";
 import { taskService } from "task-o-matic-core";
-import { createStreamingOptions } from "task-o-matic-core";
-import { displayError } from "../../cli/display/progress";
+
 import { displayEnhancementResult } from "../../cli/display/common";
+import { displayError } from "../../cli/display/progress";
 import { displayCreatedTask } from "../../cli/display/task";
 import { withProgressTracking } from "../../utils/progress-tracking";
+import { createStreamingOptions } from "../../utils/streaming-options";
 
 export const createCommand = new Command("create")
   .description("Create a new task with AI enhancement using Context7")

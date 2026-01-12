@@ -1,36 +1,39 @@
 #!/usr/bin/env node
 
-import { Command } from "commander";
+import { existsSync, readFileSync } from "node:fs";
+import { resolve } from "node:path";
+
 import chalk from "chalk";
-import { readFileSync, existsSync } from "fs";
-import { resolve } from "path";
-import { workflowService } from "task-o-matic-core";
-import { configManager } from "task-o-matic-core";
-import { prdService } from "task-o-matic-core";
-import { runBetterTStackCLI } from "task-o-matic-core";
+import { Command } from "commander";
 import inquirer from "inquirer";
 import {
-  confirmPrompt,
-  selectPrompt,
-  multiSelectPrompt,
-  textInputPrompt,
-  editorPrompt,
-  passwordPrompt,
-} from "../utils/workflow-prompts";
-import { providerDefaults } from "task-o-matic-core";
-import { createStreamingOptions } from "task-o-matic-core";
-import { displayProgress, displayError } from "../cli/display/progress";
-import type {
-  WorkflowState,
-  WorkflowAutomationOptions,
+  configManager,
+  createStandardError,
+  prdService,
+  providerDefaults,
+  runBetterTStackCLI,
+  TaskOMaticErrorCodes,
+  workflowService,
 } from "task-o-matic-core";
 import type {
-  Task,
-  ExecuteLoopOptions,
   ExecuteLoopConfig,
+  ExecuteLoopOptions,
   ExecutorTool,
+  Task,
+  WorkflowAutomationOptions,
+  WorkflowState,
 } from "task-o-matic-core";
-import { createStandardError, TaskOMaticErrorCodes } from "task-o-matic-core";
+
+import { displayError, displayProgress } from "../cli/display/progress";
+import { createStreamingOptions } from "../utils/streaming-options";
+import {
+  confirmPrompt,
+  editorPrompt,
+  multiSelectPrompt,
+  passwordPrompt,
+  selectPrompt,
+  textInputPrompt,
+} from "../utils/workflow-prompts";
 
 export const workflowCommand = new Command("workflow")
   .description(

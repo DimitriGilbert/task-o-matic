@@ -1,6 +1,7 @@
-import { ExternalExecutor, ExecutorConfig } from "../../types";
-import chalk from "chalk";
-import { spawn } from "child_process";
+import { spawn } from "node:child_process";
+
+import type { ExecutorConfig, ExternalExecutor } from "../../types";
+import { logger } from "../logger";
 
 export class KiloExecutor implements ExternalExecutor {
   name = "kilo";
@@ -28,16 +29,16 @@ export class KiloExecutor implements ExternalExecutor {
     // Add model if specified
     if (finalConfig.model) {
       args.push("-mo", finalConfig.model);
-      console.log(chalk.cyan(`🤖 Using model: ${finalConfig.model}`));
+      logger.progress(`🤖 Using model: ${finalConfig.model}`);
     }
 
     // Add session resumption if specified
     if (finalConfig.continueLastSession) {
       args.push("-c");
-      console.log(chalk.cyan("🔄 Continuing last session"));
+      logger.progress("🔄 Continuing last session");
     } else if (finalConfig.sessionId) {
       args.push("-s", finalConfig.sessionId);
-      console.log(chalk.cyan(`🔄 Resuming session: ${finalConfig.sessionId}`));
+      logger.progress(`🔄 Resuming session: ${finalConfig.sessionId}`);
     }
 
     // Run in autonomous mode (non-interactive) for automation
@@ -50,8 +51,8 @@ export class KiloExecutor implements ExternalExecutor {
     args.push(message);
 
     if (dry) {
-      console.log(chalk.cyan(`🔧 Using executor: ${this.name}`));
-      console.log(chalk.cyan(`kilocode ${args.join(" ")}`));
+      logger.progress(`🔧 Using executor: ${this.name}`);
+      logger.progress(`kilocode ${args.join(" ")}`);
       return;
     }
 
@@ -64,17 +65,17 @@ export class KiloExecutor implements ExternalExecutor {
     await new Promise<void>((resolve, reject) => {
       child.on("close", (code: number) => {
         if (code === 0) {
-          console.log("✅ Kilo Code execution completed successfully");
+          logger.success("✅ Kilo Code execution completed successfully");
           resolve();
         } else {
           const error = new Error(`Kilo Code exited with code ${code}`);
-          console.error(`❌ ${error.message}`);
+          logger.error(`❌ ${error.message}`);
           reject(error);
         }
       });
 
       child.on("error", (error: Error) => {
-        console.error(`❌ Failed to launch Kilo Code: ${error.message}`);
+        logger.error(`❌ Failed to launch Kilo Code: ${error.message}`);
         reject(error);
       });
     });

@@ -8,6 +8,7 @@ import {
   createStandardError,
   TaskOMaticErrorCodes,
 } from "../utils/task-o-matic-error";
+import { logger } from "./logger";
 
 export interface Config {
   ai: AIConfig;
@@ -247,7 +248,7 @@ export class ConfigManager {
         this.config = validateConfig(mergedConfig);
       }
     } catch (error) {
-      console.warn("Failed to read or validate config, using defaults:", error);
+      logger.warn(`Failed to read or validate config, using defaults: ${error}`);
       // Even defaults should be validated
       this.config = validateConfig(defaultConfig);
     }
@@ -271,7 +272,7 @@ export class ConfigManager {
         JSON.stringify(this.config, null, 2)
       );
     } catch (error) {
-      console.error("Failed to save config:", error);
+      logger.error(`Failed to save config: ${error}`);
       throw error;
     }
   }

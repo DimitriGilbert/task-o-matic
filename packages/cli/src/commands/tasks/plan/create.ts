@@ -1,11 +1,12 @@
-import { Command } from "commander";
 import chalk from "chalk";
+import { Command } from "commander";
 import { taskService } from "task-o-matic-core";
-import { createStreamingOptions } from "task-o-matic-core";
+
 import { displayPlanCreation } from "../../../cli/display/plan";
-import { withProgressTracking } from "../../../utils/progress-tracking";
+import type { PlanCommandOptions } from "../../../types/cli-options";
 import { wrapCommandHandler } from "../../../utils/command-error-handler";
-import { PlanCommandOptions } from "../../../types/cli-options";
+import { withProgressTracking } from "../../../utils/progress-tracking";
+import { createStreamingOptions } from "../../../utils/streaming-options";
 
 export const planCommand = new Command("plan")
   .description("Create detailed implementation plan for a task or subtask")

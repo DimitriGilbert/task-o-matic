@@ -1,4 +1,4 @@
-import { hooks } from "../hooks";
+import { hooks } from "task-o-matic-core";
 import chalk from "chalk";
 
 export function registerLoggerHooks() {

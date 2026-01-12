@@ -153,13 +153,8 @@ export { PromptBuilder } from "./prompt-builder";
  */
 export { formatStackInfo } from "../utils/stack-formatter";
 
-/**
- * Streaming options builders
- */
-export {
-  createStreamingOptions,
-  createStreamingOptionsWithCustomHandlers,
-} from "../utils/streaming-options";
+// Streaming options builders moved to CLI package
+// import from packages/cli/src/utils/streaming-options.ts instead
 
 // ============================================================================
 // Validation

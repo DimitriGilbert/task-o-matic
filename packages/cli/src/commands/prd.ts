@@ -1,31 +1,35 @@
 #!/usr/bin/env node
 
-import { Command } from "commander";
-import chalk from "chalk";
-import inquirer from "inquirer";
 import {
-  readFileSync,
-  writeFileSync,
   existsSync,
   mkdirSync,
+  readFileSync,
   unlinkSync,
-} from "fs";
-import { prdService } from "task-o-matic-core";
-import { createStreamingOptions, parseModelString } from "task-o-matic-core";
-import { displayProgress, displayError } from "../cli/display/progress";
-import { taskService } from "task-o-matic-core";
-import { join } from "path";
-import { runAIParallel, combinePRDs } from "./utils/ai-parallel";
-import { Task } from "task-o-matic-core";
+  writeFileSync,
+} from "node:fs";
+import path, { join } from "node:path";
+
+import chalk from "chalk";
+import { Command } from "commander";
+import inquirer from "inquirer";
+import {
+  configManager,
+  createStandardError,
+  isValidAIProvider,
+  parseModelString,
+  prdService,
+  TaskOMaticErrorCodes,
+  taskService,
+} from "task-o-matic-core";
+import type { Task } from "task-o-matic-core";
+
+import { displayError, displayProgress } from "../cli/display/progress";
+import { createStreamingOptions } from "../utils/streaming-options";
+import { combinePRDs, runAIParallel } from "./utils/ai-parallel";
 
 export const prdCommand = new Command("prd").description(
   "Manage PRDs and generate tasks"
 );
-
-import { createStandardError, TaskOMaticErrorCodes } from "task-o-matic-core";
-import { isValidAIProvider } from "task-o-matic-core";
-import { configManager } from "task-o-matic-core";
-import path from "path";
 
 // Create PRD command
 prdCommand

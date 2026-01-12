@@ -1,5 +1,5 @@
 import chalk from "chalk";
-import { StreamingOptions } from "../types";
+import { StreamingOptions } from "task-o-matic-core";
 
 export function createStreamingOptions(
   enabled: boolean = false,

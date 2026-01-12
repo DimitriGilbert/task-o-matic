@@ -1,6 +1,7 @@
-import { ExternalExecutor, ExecutorConfig } from "../../types";
-import chalk from "chalk";
-import { spawn } from "child_process";
+import { spawn } from "node:child_process";
+
+import type { ExecutorConfig, ExternalExecutor } from "../../types";
+import { logger } from "../logger";
 
 export class OpencodeExecutor implements ExternalExecutor {
   name = "opencode";
@@ -28,28 +29,28 @@ export class OpencodeExecutor implements ExternalExecutor {
     // Add model if specified
     if (finalConfig.model) {
       args.push("-m", finalConfig.model);
-      console.log(chalk.cyan(`🤖 Using model: ${finalConfig.model}`));
+      logger.progress(`🤖 Using model: ${finalConfig.model}`);
     }
 
     // Add session resumption if specified
     if (finalConfig.continueLastSession) {
       args.push("-c");
-      console.log(chalk.cyan("🔄 Continuing last session"));
+      logger.progress("🔄 Continuing last session");
     } else if (finalConfig.sessionId) {
       args.push("-s", finalConfig.sessionId);
-      console.log(chalk.cyan(`🔄 Resuming session: ${finalConfig.sessionId}`));
+      logger.progress(`🔄 Resuming session: ${finalConfig.sessionId}`);
     }
 
     // Use 'run' subcommand with message as positional argument
     args.push("run", message);
 
     if (dry) {
-      console.log(chalk.cyan(`🔧 Using executor: ${this.name}`));
+      logger.progress(`🔧 Using executor: ${this.name}`);
       // Quote arguments that contain spaces for display
       const quotedArgs = args.map((arg) =>
         arg.includes(" ") ? `"${arg.replace(/"/g, '\\"')}"` : arg
       );
-      console.log(chalk.cyan(`opencode ${quotedArgs.join(" ")}`));
+      logger.progress(`opencode ${quotedArgs.join(" ")}`);
       return;
     }
 
@@ -62,17 +63,17 @@ export class OpencodeExecutor implements ExternalExecutor {
     await new Promise<void>((resolve, reject) => {
       child.on("close", (code: number) => {
         if (code === 0) {
-          console.log("✅ Opencode execution completed successfully");
+          logger.success("✅ Opencode execution completed successfully");
           resolve();
         } else {
           const error = new Error(`Opencode exited with code ${code}`);
-          console.error(`❌ ${error.message}`);
+          logger.error(`❌ ${error.message}`);
           reject(error);
         }
       });
 
       child.on("error", (error: Error) => {
-        console.error(`❌ Failed to launch opencode: ${error.message}`);
+        logger.error(`❌ Failed to launch opencode: ${error.message}`);
         reject(error);
       });
     });

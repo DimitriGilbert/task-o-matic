@@ -1,4 +1,5 @@
 import { RetryConfig } from "../../types";
+import { logger } from "../logger";
 
 export class RetryHandler {
   private getRetryConfig(): RetryConfig {
@@ -75,9 +76,8 @@ export class RetryHandler {
           maxDelay
         );
 
-        console.warn(
-          `${operationName} failed (attempt ${attempt}/${maxAttempts}), retrying in ${delayMs}ms:`,
-          error
+        logger.warn(
+          `${operationName} failed (attempt ${attempt}/${maxAttempts}), retrying in ${delayMs}ms: ${error}`
         );
         await this.delay(delayMs);
       }

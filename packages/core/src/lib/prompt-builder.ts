@@ -4,6 +4,7 @@ import { configManager } from "./config";
 import { ContextBuilder } from "./context-builder";
 import { getContextBuilder } from "../utils/ai-service-factory";
 import { join } from "path";
+import { logger } from "./logger";
 
 export interface PromptBuilderOptions {
   name: string;
@@ -61,7 +62,7 @@ export class PromptBuilder {
 
     // Log missing optional variables for user awareness
     if (validation.missingOptional.length > 0) {
-      console.warn(
+      logger.warn(
         `Note: Missing optional variables: ${validation.missingOptional.join(
           ", "
         )}`
@@ -87,7 +88,7 @@ export class PromptBuilder {
         );
 
         if (optionalUnreplaced.length > 0) {
-          console.warn(
+          logger.warn(
             `Note: Optional variables not replaced: ${optionalUnreplaced.join(
               ", "
             )}`
@@ -153,7 +154,7 @@ export class PromptBuilder {
 
       return context.prdContent;
     } catch (error) {
-      console.warn("Could not auto-detect PRD content:", error);
+      logger.warn(`Could not auto-detect PRD content: ${error}`);
       return undefined;
     }
   }
@@ -189,9 +190,8 @@ export class PromptBuilder {
         // Return formatted context instead of just description
         return contextBuilder.formatContextForAI(context);
       } catch (error) {
-        console.warn(
-          "Could not build rich task context, using basic description:",
-          error
+        logger.warn(
+          `Could not build rich task context, using basic description: ${error}`
         );
         return taskDescription;
       }
@@ -238,7 +238,7 @@ export class PromptBuilder {
 
       return "Not detected";
     } catch (error) {
-      console.warn("Could not detect stack info using ContextBuilder:", error);
+      logger.warn(`Could not detect stack info using ContextBuilder: ${error}`);
       return "Not detected";
     }
   }
@@ -280,7 +280,7 @@ export class PromptBuilder {
           contextParts.push(`\n**Available Scripts:** ${scripts.join(", ")}`);
         }
       } catch (error) {
-        console.warn("Could not parse package.json:", error);
+        logger.warn(`Could not parse package.json: ${error}`);
       }
     }
 
@@ -317,7 +317,7 @@ export class PromptBuilder {
         );
       }
     } catch (error) {
-      console.warn("Could not read project structure:", error);
+      logger.warn(`Could not read project structure: ${error}`);
     }
 
     // Detect frameworks and tools

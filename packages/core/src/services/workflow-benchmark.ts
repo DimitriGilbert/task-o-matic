@@ -5,6 +5,7 @@ import { AIOptions } from "../utils/ai-config-builder";
 import { StreamingOptions, Task } from "../types";
 import { WorkflowBenchmarkInput, WorkflowBenchmarkResult } from "../lib/benchmark/types";
 import { WorkflowAutomationOptions } from "../types/workflow-options";
+import { logger } from "../lib/logger";
 
 /**
  * WorkflowBenchmarkService - Executes complete workflows for benchmarking
@@ -220,7 +221,7 @@ export class WorkflowBenchmarkService {
       }
     } catch (error) {
       // Ignore cleanup errors
-      console.warn(`Warning: Could not clean up temp directory ${projectDir}`);
+      logger.warn(`Warning: Could not clean up temp directory ${projectDir}`);
     }
   }
 
@@ -263,9 +264,9 @@ export class WorkflowBenchmarkService {
             const message = typeof msg === 'string' ? msg : 
               'message' in msg ? msg.message : 
               'text' in msg ? msg.text : 'Progress update';
-            console.log(`  ${message}`);
+            logger.progress(`  ${message}`);
           },
-          onError: (err) => console.error(`  Error: ${err.message || err}`),
+          onError: (err) => logger.error(`  Error: ${err.message || err}`),
         },
       });
       
@@ -278,7 +279,7 @@ export class WorkflowBenchmarkService {
         
         const targetPrdFile = join(taskOMaticDir, "prd.md");
         writeFileSync(targetPrdFile, selectedResult.output.prdContent);
-        console.log(`  ✓ PRD copied to ${targetPrdFile}`);
+        logger.success(`  ✓ PRD copied to ${targetPrdFile}`);
       }
       
       // Step 3: Import tasks if available
@@ -300,11 +301,11 @@ export class WorkflowBenchmarkService {
               }
             );
           } catch (error) {
-            console.warn(`  Warning: Could not import task "${task.title}"`);
+            logger.warn(`  Warning: Could not import task "${task.title}"`);
           }
         }
         
-        console.log(`  ✓ Imported ${selectedResult.output.tasks.length} tasks`);
+        logger.success(`  ✓ Imported ${selectedResult.output.tasks.length} tasks`);
       }
       
       return {

@@ -1,6 +1,7 @@
-import { ExternalExecutor, ExecutorConfig } from "../../types";
-import chalk from "chalk";
-import { spawn } from "child_process";
+import { spawn } from "node:child_process";
+
+import type { ExecutorConfig, ExternalExecutor } from "../../types";
+import { logger } from "../logger";
 
 export class ClaudeCodeExecutor implements ExternalExecutor {
   name = "claude";
@@ -28,16 +29,16 @@ export class ClaudeCodeExecutor implements ExternalExecutor {
     // Add model if specified
     if (finalConfig.model) {
       args.push("--model", finalConfig.model);
-      console.log(chalk.cyan(`🤖 Using model: ${finalConfig.model}`));
+      logger.progress(`🤖 Using model: ${finalConfig.model}`);
     }
 
     // Add session resumption if specified
     if (finalConfig.continueLastSession) {
       args.push("-c");
-      console.log(chalk.cyan("🔄 Continuing last session"));
+      logger.progress("🔄 Continuing last session");
     } else if (finalConfig.sessionId) {
       args.push("-r", finalConfig.sessionId);
-      console.log(chalk.cyan(`🔄 Resuming session: ${finalConfig.sessionId}`));
+      logger.progress(`🔄 Resuming session: ${finalConfig.sessionId}`);
     }
 
     // Add --print for non-interactive mode (required for automation)
@@ -50,8 +51,8 @@ export class ClaudeCodeExecutor implements ExternalExecutor {
     args.push(message);
 
     if (dry) {
-      console.log(chalk.cyan(`🔧 Using executor: ${this.name}`));
-      console.log(chalk.cyan(`claude ${args.join(" ")}`));
+      logger.progress(`🔧 Using executor: ${this.name}`);
+      logger.progress(`claude ${args.join(" ")}`);
       return;
     }
 
@@ -64,17 +65,17 @@ export class ClaudeCodeExecutor implements ExternalExecutor {
     await new Promise<void>((resolve, reject) => {
       child.on("close", (code: number) => {
         if (code === 0) {
-          console.log("✅ Claude Code execution completed successfully");
+          logger.success("✅ Claude Code execution completed successfully");
           resolve();
         } else {
           const error = new Error(`Claude Code exited with code ${code}`);
-          console.error(`❌ ${error.message}`);
+          logger.error(`❌ ${error.message}`);
           reject(error);
         }
       });
 
       child.on("error", (error: Error) => {
-        console.error(`❌ Failed to launch Claude Code: ${error.message}`);
+        logger.error(`❌ Failed to launch Claude Code: ${error.message}`);
         reject(error);
       });
     });
