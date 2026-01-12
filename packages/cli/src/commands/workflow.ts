@@ -14,6 +14,8 @@ import {
   runBetterTStackCLI,
   TaskOMaticErrorCodes,
   workflowService,
+  parseTryModels,
+  ModelAttemptConfig,
 } from "task-o-matic-core";
 import type {
   ExecuteLoopConfig,
@@ -160,6 +162,21 @@ export const workflowCommand = new Command("workflow")
   .option("--execute-plan-model <model>", "Model for planning")
   .option("--execute-review", "Enable review phase")
   .option("--execute-review-model <model>", "Model for review")
+  // Verification & Robustness
+  .option(
+    "--verify <command>",
+    "Verification command to run after each task (can be used multiple times)",
+    (value: string, previous: string[] = []) => [...previous, value]
+  )
+  .option(
+    "--validate <command>",
+    "Alias for --verify (validation command, can be used multiple times)",
+    (value: string, previous: string[] = []) => [...previous, value]
+  )
+  .option(
+    "--try-models <models>",
+    "Progressive model/executor configs for each retry (e.g., 'gpt-4o-mini,gpt-4o,claude:sonnet-4')"
+  )
   .action(async (cliOptions) => {
     try {
       // Load .env from current working directory
@@ -250,6 +267,41 @@ export const workflowCommand = new Command("workflow")
             config.plan = true;
             if (options.executePlanModel) {
               config.planModel = options.executePlanModel;
+            }
+          }
+
+          // Handle verification commands
+          const verificationCommands = [
+            ...(options.verificationCommands || []),
+            ...(options.validate || []),
+          ];
+
+          if (verificationCommands.length > 0) {
+            config.verificationCommands = verificationCommands;
+            console.log(
+              chalk.cyan(
+                `✓ Verification enabled: ${verificationCommands.length} command(s)`
+              )
+            );
+          }
+
+          // Handle tryModels
+          if (options.tryModels) {
+            try {
+              config.tryModels = parseTryModels(options.tryModels);
+              console.log(
+                chalk.cyan(
+                  `✓ Progressive model escalation enabled: ${config.tryModels.length} level(s)`
+                )
+              );
+            } catch (error) {
+              console.warn(
+                chalk.yellow(
+                  `⚠ Failed to parse --try-models: ${
+                    error instanceof Error ? error.message : String(error)
+                  }. Ignoring.`
+                )
+              );
             }
           }
 

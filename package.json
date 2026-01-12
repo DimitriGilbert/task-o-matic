@@ -20,8 +20,11 @@
     "publish:cli": "cd packages/cli && bun publish",
     "publish:core:beta": "cd packages/core && bun publish --tag beta",
     "publish:cli:beta": "cd packages/cli && bun publish --tag beta",
-    "release": "bun run verify-work && bun run publish:core && bun run publish:cli",
-    "release:beta": "bun run verify-work && bun run publish:core:beta && bun run publish:cli:beta"
+    "release": "./scripts/release.sh",
+    "release:patch": "./scripts/release.sh --patch",
+    "release:minor": "./scripts/release.sh --minor",
+    "release:major": "./scripts/release.sh --major",
+    "release:beta": "./scripts/release.sh --beta"
   },
   "devDependencies": {
     "@types/inquirer": "^9.0.9",

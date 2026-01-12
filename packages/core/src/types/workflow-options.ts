@@ -88,6 +88,11 @@ export interface WorkflowAutomationOptions extends StreamingAIOptions {
   executePlanModel?: string; // Model for planning
   executeReview?: boolean; // Enable review phase
   executeReviewModel?: string; // Model for review
+
+  // NEW: Verification & Robustness
+  verificationCommands?: string[]; // Verification commands to run after tasks
+  validate?: string[]; // Alias for verificationCommands
+  tryModels?: string; // Comma-separated list of models for retry escalation (e.g. "gpt-4o,claude-3-5-sonnet")
 }
 
 export interface WorkflowState {
