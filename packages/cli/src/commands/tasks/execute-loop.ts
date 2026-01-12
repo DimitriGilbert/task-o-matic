@@ -12,7 +12,7 @@ import {
   VALID_EXECUTORS,
 } from "task-o-matic-core";
 import { ExecuteLoopCommandOptions } from "../../types/cli-options";
-import { wrapCommandHandler } from "task-o-matic-core";
+import { wrapCommandHandler } from "../../utils/command-error-handler";
 import { textInputPrompt } from "../../utils/workflow-prompts";
 
 export const executeLoopCommand = new Command("execute-loop")

@@ -7,7 +7,7 @@ import { validateMutuallyExclusive } from "../../utils/cli-validators";
 import { executeBulkOperation } from "../../utils/bulk-operations";
 import { confirmBulkOperation } from "../../utils/confirmation";
 import { EnhanceCommandOptions } from "../../types/cli-options";
-import { wrapCommandHandler } from "task-o-matic-core";
+import { wrapCommandHandler } from "../../utils/command-error-handler";
 
 export const enhanceCommand = new Command("enhance")
   .description("Enhance an existing task with AI using Context7 documentation")

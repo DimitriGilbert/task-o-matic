@@ -7,7 +7,7 @@ import { validateMutuallyExclusive } from "../../utils/cli-validators";
 import { executeBulkOperation } from "../../utils/bulk-operations";
 import { confirmBulkOperation } from "../../utils/confirmation";
 import { SplitCommandOptions } from "../../types/cli-options";
-import { wrapCommandHandler } from "task-o-matic-core";
+import { wrapCommandHandler } from "../../utils/command-error-handler";
 import { runAIParallel } from "../utils/ai-parallel";
 import { prdCommand } from "../prd";
 import {

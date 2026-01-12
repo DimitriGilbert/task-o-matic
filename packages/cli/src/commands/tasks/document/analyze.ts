@@ -7,7 +7,7 @@ import {
   displayResearchSummary,
 } from "../../../cli/display/common";
 import { withProgressTracking } from "../../../utils/progress-tracking";
-import { wrapCommandHandler } from "task-o-matic-core";
+import { wrapCommandHandler } from "../../../utils/command-error-handler";
 import { DocumentCommandOptions } from "../../../types/cli-options";
 
 export const documentCommand = new Command("document")

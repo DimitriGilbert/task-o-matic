@@ -61,7 +61,6 @@ This is an AI-powered task management CLI that can be used as both a standalone 
 ### Package Structure
 - **Library Export** (`dist/lib/index.js`): Main library entry point for programmatic use
 - **CLI Binary** (`dist/cli/bin.js`): CLI executable
-- **MCP Server** (`dist/mcp/server.js`): MCP server binary
 - **Type Exports** (`dist/types/index.js`): TypeScript definitions
 
 ### AI Integration
@@ -95,11 +94,6 @@ All data is stored locally in `.task-o-matic/` directory:
 - Supports environment variables: `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `OPENROUTER_API_KEY`
 - Project-local config overrides environment variables
 - AI operations include retry logic and error handling
-
-### MCP Integration
-- Implements Model Context Protocol for AI tool access
-- Provides task management tools to AI models
-- Can be used standalone or embedded in AI workflows
 
 ### Task Management Features
 - Hierarchical tasks with parent-child relationships

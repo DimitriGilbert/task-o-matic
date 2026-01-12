@@ -8,7 +8,7 @@ import {
   VALID_EXECUTORS,
 } from "task-o-matic-core";
 import { ExecuteCommandOptions } from "../../types/cli-options";
-import { wrapCommandHandler } from "task-o-matic-core";
+import { wrapCommandHandler } from "../../utils/command-error-handler";
 import { textInputPrompt } from "../../utils/workflow-prompts";
 
 export const executeCommand = new Command("execute")

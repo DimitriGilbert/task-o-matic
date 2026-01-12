@@ -1,7 +1,7 @@
 import { Command } from "commander";
 import chalk from "chalk";
 import { taskService } from "task-o-matic-core";
-import { wrapCommandHandler } from "task-o-matic-core";
+import { wrapCommandHandler } from "../../../utils/command-error-handler";
 import { formatTaskNotFoundError } from "task-o-matic-core";
 import { AddDocumentationCommandOptions } from "../../../types/cli-options";
 

@@ -1,7 +1,7 @@
 import { Command } from "commander";
 import { taskService } from "task-o-matic-core";
 import { displayPlanDeletion } from "../../../cli/display/plan";
-import { wrapCommandHandler } from "task-o-matic-core";
+import { wrapCommandHandler } from "../../../utils/command-error-handler";
 import { DeletePlanCommandOptions } from "../../../types/cli-options";
 
 export const deletePlanCommand = new Command("delete-plan")

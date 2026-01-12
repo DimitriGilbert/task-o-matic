@@ -27,7 +27,8 @@ export * from "./utils/streaming-options";
 
 export * from "./lib/hooks";
 
-export * from "./utils/command-error-handler";
+
+// export * from "./utils/command-error-handler"; // Moved to CLI
 export * from "./utils/display-helpers";
 export * from "./utils/model-executor-parser";
 export * from "./utils/model-parser";

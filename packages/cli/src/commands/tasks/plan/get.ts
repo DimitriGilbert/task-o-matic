@@ -2,7 +2,7 @@ import { Command } from "commander";
 import chalk from "chalk";
 import { taskService } from "task-o-matic-core";
 import { displayPlanView } from "../../../cli/display/plan";
-import { wrapCommandHandler } from "task-o-matic-core";
+import { wrapCommandHandler } from "../../../utils/command-error-handler";
 import { GetPlanCommandOptions } from "../../../types/cli-options";
 
 export const getPlanCommand = new Command("get-plan")
