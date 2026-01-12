@@ -2,13 +2,20 @@
 
 AI-powered task management for CLI, TUI, and web applications. Parse PRDs, enhance tasks with AI, and integrate task management into your applications using local file storage only. No backend connectivity required.
 
+## 📦 Monorepo Structure
+
+This project is organized as a monorepo with two packages:
+
+- **[`task-o-matic-core`](packages/core/README.md)** - Core library for TUI, web apps, and custom integrations
+- **[`task-o-matic`](packages/cli/README.md)** - Command-line interface for terminal usage
+
 ## ✨ Features
 
 - 🤖 **AI-Powered**: Parse PRDs and enhance tasks using multiple AI providers
 - 🎭 **Interactive Workflow**: Guided setup from project init to task generation with AI assistance
 - ❓ **PRD Question/Refine**: AI generates clarifying questions and can answer them automatically
 - 🧠 **AI Reasoning Support**: Enable advanced reasoning for better PRD refinement
-- 📦 **Multi-Purpose Package**: Use as CLI tool, library, or MCP server
+- 📦 **Dual-Package Architecture**: Separate Core library and CLI for flexible integration
 - 📁 **Project-Local Storage**: All data stored locally in `.task-o-matic/` directory
 - 🎯 **Task Management**: Full CRUD operations with AI enhancement
 - 📋 **PRD Processing**: Convert Product Requirements Documents into actionable tasks
@@ -33,12 +40,16 @@ npm install -g task-o-matic
 npx task-o-matic init
 ```
 
+See [`packages/cli/README.md`](packages/cli/README.md) for detailed CLI usage.
+
 ### As a Library (for TUI/Web Apps)
 
 ```bash
-# Install in your project
-npm install task-o-matic
+# Install the core library in your project
+npm install task-o-matic-core
 ```
+
+See [`packages/core/README.md`](packages/core/README.md) for detailed library usage.
 
 ### For Development
 
@@ -52,56 +63,63 @@ npm run build
 
 ## 🏗️ Architecture & Mindset
 
-### Package Structure
+### Monorepo Structure
 
 ```
 task-o-matic/
-├── dist/              # Compiled output (published)
-│   ├── lib/           # Library entry point + core exports
-│   ├── cli/           # CLI binary
-│   ├── services/      # Business logic layer (WorkflowService, PRDService, TaskService)
-│   ├── commands/      # CLI commands
-│   ├── mcp/           # MCP server
-│   └── types/         # TypeScript definitions
-├── src/
-│   ├── lib/           # Core library (Storage, Config, AI, etc.)
-│   │   └── index.ts   # Main library exports
-│   ├── services/      # WorkflowService, PRDService, TaskService (framework-agnostic)
-│   ├── cli/           # CLI-specific logic
-│   │   └── bin.ts     # CLI binary entry point
-│   ├── commands/      # Commander.js command implementations
-│   ├── mcp/           # MCP server implementation
-│   ├── prompts/       # AI prompt templates
-│   ├── types/         # TypeScript type definitions
-│   └── utils/         # Shared utilities
+├── packages/
+│   ├── core/           # Core library (task-o-matic-core)
+│   │   ├── src/
+│   │   │   ├── lib/           # Core library (Storage, Config, AI, etc.)
+│   │   │   ├── services/      # WorkflowService, PRDService, TaskService
+│   │   │   ├── prompts/       # AI prompt templates
+│   │   │   ├── types/         # TypeScript type definitions
+│   │   │   └── utils/         # Shared utilities
+│   │   └── dist/              # Compiled output
+│   └── cli/            # CLI interface (task-o-matic)
+│       ├── src/
+│       │   ├── cli/           # CLI-specific logic
+│       │   ├── commands/      # Commander.js command implementations
+│       │   └── types/         # CLI type definitions
+│       └── dist/              # Compiled output
 └── docs/              # Documentation
 ```
 
 ### Core Components
 
-- **Service Layer** (`WorkflowService`, `PRDService`, `TaskService`): Framework-agnostic business logic
-- **AI Service**: Uses Vercel AI SDK for multi-provider support with reasoning capabilities
-- **Local Storage**: JSON-based file storage in `.task-o-matic/` directory
-- **Configuration**: Project-local config with AI provider settings
-- **Prompt Templates**: Structured AI prompts for consistent results
+- **[`task-o-matic-core`](packages/core/README.md)**: Core library containing services, AI operations, storage, and utilities
+  - Service Layer (`WorkflowService`, `PRDService`, `TaskService`): Framework-agnostic business logic
+  - AI Service: Uses Vercel AI SDK for multi-provider support with reasoning capabilities
+  - Local Storage: JSON-based file storage in `.task-o-matic/` directory
+  - Configuration: Project-local config with AI provider settings
+  - Prompt Templates: Structured AI prompts for consistent results
+
+- **[`task-o-matic`](packages/cli/README.md)**: CLI interface that depends on the core package
+  - Command definitions using Commander.js
+  - Interactive prompts and user input
+  - Display utilities for terminal output
+  - Shell completion support
 
 ### Design Philosophy
 
-- **Separation of Concerns**: CLI, Services, and Core are cleanly separated
-- **Framework-Agnostic**: Services can be used in any environment (CLI, TUI, web)
+- **Separation of Concerns**: Core library and CLI are cleanly separated
+- **Framework-Agnostic**: Core services can be used in any environment (CLI, TUI, web)
 - **Project-Local**: Each project manages its own tasks and configuration
 - **AI-Enhanced**: Use AI to improve clarity and break down complexity
 - **Developer-Friendly**: Simple, intuitive APIs with helpful output
 - **Self-Contained**: No external dependencies, everything works offline
+- **Monorepo Benefits**: Shared codebase, easier maintenance, consistent versioning
 
 ## 🚀 Quick Start
 
 ### Library Usage (TUI/Web Apps)
 
+For detailed library usage, see [`packages/core/README.md`](packages/core/README.md).
+
 #### Installation
 
 ```bash
-npm install task-o-matic
+npm install task-o-matic-core
 ```
 
 #### Basic Example
@@ -113,7 +131,7 @@ import {
   PRDService,
   type Task,
   type AIConfig,
-} from "task-o-matic";
+} from "task-o-matic-core";
 
 // Use the workflow service for complete project setup
 const workflowService = new WorkflowService();
@@ -161,8 +179,8 @@ console.log("Task created:", taskResult.task);
 #### TUI Integration Example
 
 ```typescript
-import { TaskService } from "task-o-matic";
-import type { ProgressCallback } from "task-o-matic";
+import { TaskService } from "task-o-matic-core";
+import type { ProgressCallback } from "task-o-matic-core";
 
 const taskService = new TaskService();
 
@@ -195,7 +213,7 @@ const result = await taskService.createTask({
 #### PRD Question/Refine Example
 
 ```typescript
-import { PRDService } from "task-o-matic";
+import { PRDService } from "task-o-matic-core";
 
 const prdService = new PRDService();
 
@@ -232,7 +250,7 @@ result.questions.forEach((q, i) => {
 #### Using Utility Factories
 
 ```typescript
-import { getStorage, getAIOperations, buildAIConfig } from "task-o-matic";
+import { getStorage, getAIOperations, buildAIConfig } from "task-o-matic-core";
 
 // Get singleton instances
 const storage = getStorage();
@@ -251,7 +269,7 @@ const allTasks = await storage.getAllTasks();
 
 #### TypeScript Support
 
-The package includes full TypeScript type definitions:
+The core package includes full TypeScript type definitions:
 
 ```typescript
 import type {
@@ -273,10 +291,12 @@ import type {
   WorkflowBenchmarkResult,
   BenchmarkConfig,
   BenchmarkResult,
-} from "task-o-matic";
+} from "task-o-matic-core";
 ```
 
 ### CLI Usage
+
+For detailed CLI usage, see [`packages/cli/README.md`](packages/cli/README.md).
 
 #### 1. Initialize Your Project
 
@@ -737,14 +757,18 @@ git clone https://github.com/DimitriGilbert/task-o-matic.git
 cd task-o-matic
 npm install
 
-# Build everything (library + CLI + MCP server)
+# Build all packages
 npm run build
 
-# Build and watch for changes
-npm run build:watch
+# Build specific package
+cd packages/core && npm run build
+cd packages/cli && npm run build
 
-# Clean build artifacts
-npm run clean
+# Type checking
+npm run check-types
+
+# Run tests
+npm run test
 ```
 
 ### Development Mode
@@ -753,9 +777,6 @@ npm run clean
 # Run the CLI in development mode
 npm run dev
 
-# Run the MCP server in development
-npm run dev:mcp
-
 # Type checking (without compilation)
 npm run check-types
 
@@ -763,38 +784,35 @@ npm run check-types
 npm run test
 ```
 
-### Testing Your Changes
-
-```bash
-# Link for local testing
-npm link
-
-# Use the linked package
-task-o-matic --version
-
-# In another project
-cd /path/to/test-project
-npm link task-o-matic
-
-# Test library import
-node -e "const {TaskService} = require('task-o-matic'); console.log('Works!');"
-```
-
 ### Package Structure
 
-The package is structured for both CLI and library use:
+The monorepo is structured with two packages:
 
+**Core Package** (`packages/core/package.json`):
 ```json
 {
-  "main": "./dist/lib/index.js", // CommonJS library entry
-  "types": "./dist/lib/index.d.ts", // TypeScript definitions
-  "bin": {
-    "task-o-matic": "./dist/cli/bin.js", // CLI binary
-    "task-o-matic-mcp": "./dist/mcp/server.js" // MCP server binary
-  },
+  "name": "task-o-matic-core",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
   "exports": {
-    ".": "./dist/lib/index.js", // Main library export
-    "./types": "./dist/types/index.js" // Type-only exports
+    ".": {
+      "types": "./dist/index.d.ts",
+      "require": "./dist/index.js",
+      "default": "./dist/index.js"
+    }
+  }
+}
+```
+
+**CLI Package** (`packages/cli/package.json`):
+```json
+{
+  "name": "task-o-matic",
+  "bin": {
+    "task-o-matic": "dist/cli/bin.js"
+  },
+  "dependencies": {
+    "task-o-matic-core": "workspace:*"
   }
 }
 ```

@@ -10,7 +10,18 @@
     "check-types": "bun run --filter='./packages/*' check-types",
     "test": "bun run --filter='./packages/*' test",
     "dev": "bun run --filter task-o-matic dev",
-    "start": "bun run --filter task-o-matic start"
+    "start": "bun run --filter task-o-matic start",
+    "prepare": "bun run build && chmod +x packages/cli/dist/cli/bin.js",
+    "verify-work": "bun run check-types && bun run prepare && bun run test",
+    "bump:patch": "cd packages/core && npm version patch --no-git-tag-version && cd ../../packages/cli && npm version patch --no-git-tag-version",
+    "bump:minor": "cd packages/core && npm version minor --no-git-tag-version && cd ../../packages/cli && npm version minor --no-git-tag-version",
+    "bump:beta": "cd packages/core && npm version prerelease --preid=beta --no-git-tag-version && cd ../../packages/cli && npm version prerelease --preid=beta --no-git-tag-version",
+    "publish:core": "cd packages/core && bun publish",
+    "publish:cli": "cd packages/cli && bun publish",
+    "publish:core:beta": "cd packages/core && bun publish --tag beta",
+    "publish:cli:beta": "cd packages/cli && bun publish --tag beta",
+    "release": "bun run verify-work && bun run publish:core && bun run publish:cli",
+    "release:beta": "bun run verify-work && bun run publish:core:beta && bun run publish:cli:beta"
   },
   "devDependencies": {
     "@types/inquirer": "^9.0.9",

@@ -50,7 +50,7 @@ constructor(dependencies: TaskServiceDependencies = {})
 
 **Example: Basic Initialization**
 ```typescript
-import { TaskService } from "task-o-matic";
+import { TaskService } from "task-o-matic-core";
 
 // Default initialization with all dependencies
 const taskService = new TaskService();

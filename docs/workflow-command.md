@@ -207,10 +207,10 @@ At each step, choose the "AI-assisted" option to:
 
 ## Library Usage
 
-The workflow is now available as a reusable service:
+The workflow is now available as a reusable service in the core package:
 
 ```typescript
-import { WorkflowService } from "task-o-matic";
+import { WorkflowService } from "task-o-matic-core";
 
 const workflowService = new WorkflowService();
 

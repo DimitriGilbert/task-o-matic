@@ -1,8 +1,12 @@
 # VAULT-TEC TASK-O-MATIC SYSTEM
 ## S.P.E.C.I.A.L. Project Management for the Modern Wasteland
 
-> **Welcome, Vault Dweller!**  
+> **Welcome, Vault Dweller!**
 > You've discovered the **Vault-Tec Task-O-Matic System** - pre-war technology designed to help you manage projects in even the most challenging post-apocalyptic environments. This advanced system uses artificial intelligence to break down complex projects into manageable tasks, ensuring your vault (or software project) runs at peak efficiency.
+
+> **📦 Monorepo Structure**: This system is organized as a monorepo with two packages:
+> - **[`task-o-matic-core`](../packages/core/README.md)** - Core library for TUI, web apps, and custom integrations
+> - **[`task-o-matic`](../packages/cli/README.md)** - Command-line interface for terminal usage
 
 ---
 
@@ -34,12 +38,19 @@ The Task-O-Matic System is built on the revolutionary **S.P.E.C.I.A.L.** framewo
 
 ### Installation (System Setup)
 
+**For CLI Usage:**
 ```bash
-# Install the Task-O-Matic System globally
+# Install the Task-O-Matic CLI globally
 npm install -g task-o-matic
 
 # Or use with npx for temporary access
 npx task-o-matic init
+```
+
+**For Library Usage (TUI/Web Apps):**
+```bash
+# Install the core library in your project
+npm install task-o-matic-core
 ```
 
 ### First Project (Vault Initialization)
@@ -137,7 +148,7 @@ System setup and optimal performance tuning.
 
 ## 🛠️ LIBRARY USAGE (PROGRAMMATIC ACCESS)
 
-For developers who want to integrate the Task-O-Matic System into their own applications (TUI, web apps, or custom tools):
+For developers who want to integrate the Task-O-Matic System into their own applications (TUI, web apps, or custom tools), see [`packages/core/README.md`](../packages/core/README.md) for detailed documentation.
 
 ```typescript
 import {
@@ -147,7 +158,7 @@ import {
   BenchmarkService,
   type Task,
   type AIConfig,
-} from "task-o-matic";
+} from "task-o-matic-core";
 
 // Complete workflow setup (recommended for new projects)
 const workflowService = new WorkflowService();
@@ -324,7 +335,7 @@ git clone https://github.com/DimitriGilbert/task-o-matic.git
 cd task-o-matic
 npm install
 
-# Build the system
+# Build all packages
 npm run build
 
 # Run in development mode
@@ -338,17 +349,21 @@ npm run test
 
 ```
 task-o-matic/
-├── dist/              # Compiled system files
-│   ├── lib/           # Core library exports
-│   ├── cli/           # Command interface
-│   ├── services/      # Business logic
-│   └── mcp/           # MCP server
-├── src/
-│   ├── lib/           # Core system components
-│   ├── services/      # Service implementations
-│   ├── cli/           # CLI interface
-│   ├── commands/      # Command implementations
-│   └── types/         # TypeScript definitions
+├── packages/
+│   ├── core/           # Core library (task-o-matic-core)
+│   │   ├── src/
+│   │   │   ├── lib/           # Core library (Storage, Config, AI, etc.)
+│   │   │   ├── services/      # WorkflowService, PRDService, TaskService
+│   │   │   ├── prompts/       # AI prompt templates
+│   │   │   ├── types/         # TypeScript type definitions
+│   │   │   └── utils/         # Shared utilities
+│   │   └── dist/              # Compiled output
+│   └── cli/            # CLI interface (task-o-matic)
+│       ├── src/
+│       │   ├── cli/           # CLI-specific logic
+│       │   ├── commands/      # Commander.js command implementations
+│       │   └── types/         # CLI type definitions
+│       └── dist/              # Compiled output
 └── docs/              # System documentation
 ```
 

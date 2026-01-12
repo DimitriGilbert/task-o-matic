@@ -48,7 +48,7 @@ constructor(dependencies: PRDServiceDependencies = {})
 
 **Example: Basic Initialization**
 ```typescript
-import { PRDService } from "task-o-matic";
+import { PRDService } from "task-o-matic-core";
 
 // Default initialization
 const prdService = new PRDService();
