@@ -15,7 +15,7 @@
     },
     "packages/cli": {
       "name": "task-o-matic",
-      "version": "0.0.35",
+      "version": "0.1.1-beta.1",
       "bin": {
         "task-o-matic": "dist/cli/bin.js",
       },
@@ -34,7 +34,7 @@
     },
     "packages/core": {
       "name": "task-o-matic-core",
-      "version": "0.0.35",
+      "version": "0.1.1-beta.1",
       "dependencies": {
         "@ai-sdk/anthropic": "^2.0.44",
         "@ai-sdk/google": "^2.0.31",
@@ -45,7 +45,6 @@
         "@openrouter/ai-sdk-provider": "^1.2.0",
         "ai": "^5.0.92",
         "axios": "^1.7.9",
-        "chalk": "^5.4.1",
         "create-better-t-stack": "^3.13.0",
         "dotenv": "^16.4.7",
         "glob": "^13.0.0",

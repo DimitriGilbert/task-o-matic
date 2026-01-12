@@ -114,6 +114,12 @@ if [ "$SKIP_VERIFY" = false ]; then
     echo ""
 fi
 
+# Reinstall to update workspace: references in lockfile
+echo "Updating workspace dependencies..."
+cd "$ROOT_DIR"
+bun install
+echo ""
+
 # Publish core
 echo "Publishing core@$NEW_CORE_VERSION..."
 cd "$ROOT_DIR/packages/core"
