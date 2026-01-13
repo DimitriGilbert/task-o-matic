@@ -6,7 +6,7 @@
   ],
   "scripts": {
     "clean": "bun run --filter='./packages/*' clean",
-    "build": "bun run --filter task-o-matic-core build && bun run --filter task-o-matic build",
+    "build": "bun run clean && bun run --filter task-o-matic-core build && bun run --filter task-o-matic build",
     "check-types": "bun run --filter='./packages/*' check-types",
     "test": "bun run --filter='./packages/*' test",
     "dev": "bun run --filter task-o-matic dev",

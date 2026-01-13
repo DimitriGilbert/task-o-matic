@@ -33,7 +33,10 @@ export class BetterTStackService {
       // Use dynamic import via Function constructor to bypass TypeScript module resolution
       // and ensure it works in both CJS and ESM contexts
       // eslint-disable-next-line @typescript-eslint/no-implied-eval, @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-assignment
-      const dynamicImport = new Function("specifier", "return import(specifier)");
+      const dynamicImport = new Function(
+        "specifier",
+        "return import(specifier)"
+      );
       // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call
       const btsModule = await dynamicImport("create-better-t-stack");
 
@@ -397,16 +400,18 @@ export class BetterTStackIntegration {
       database: isConvex
         ? "none"
         : (options.database as BTSConfig["database"]) || "sqlite",
-      auth: options.noAuth
+      auth: (options.noAuth || options.backend === "none"
         ? "none"
-        : (options.auth as BTSConfig["auth"]) || "better-auth",
+        : options.auth || "better-auth") as BTSConfig["auth"],
       addons: (options.addons as BTSConfig["addons"]) || ["turborepo"],
       runtime: (isConvex || backend === "self"
         ? "none"
         : options.runtime || "node") as BTSConfig["runtime"],
       api: (options.api as BTSConfig["api"]) || "none",
       payments: (options.payment as BTSConfig["payments"]) || "none",
-      orm: (isConvex ? "none" : options.orm || "drizzle") as BTSConfig["orm"],
+      orm: (isConvex || options.database === "none"
+        ? "none"
+        : options.orm || "drizzle") as BTSConfig["orm"],
       dbSetup: (isConvex
         ? "none"
         : options.dbSetup || "none") as BTSConfig["dbSetup"],
