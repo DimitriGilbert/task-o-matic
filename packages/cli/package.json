@@ -1,6 +1,6 @@
 {
   "name": "task-o-matic",
-  "version": "0.1.1-beta.3",
+  "version": "0.1.1-beta.15",
   "description": "CLI for Task-O-Matic",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -14,6 +14,11 @@
   "bin": {
     "task-o-matic": "dist/cli/bin.js"
   },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
   "scripts": {
     "clean": "rm -rf dist tsconfig.tsbuildinfo",
     "build": "tsc && chmod +x dist/cli/bin.js",
@@ -27,6 +32,7 @@
     "task-o-matic-core": "workspace:*",
     "chalk": "^5.4.1",
     "commander": "^14.0.2",
+    "create-better-t-stack": "^3.15.0",
     "inquirer": "^12.11.0"
   },
   "devDependencies": {

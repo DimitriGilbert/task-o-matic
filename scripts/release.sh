@@ -2,7 +2,7 @@
 set -e
 
 # Release script for task-o-matic monorepo
-# Ensures core is published and available before publishing CLI
+# Architecture: Standard Monorepo (Core Lib + CLI Wrapper)
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(dirname "$SCRIPT_DIR")"
@@ -61,7 +61,7 @@ if [ "$SKIP_BUMP" = true ]; then
     NEW_CORE_VERSION="$CORE_VERSION"
     NEW_CLI_VERSION="$CLI_VERSION"
 else
-    # Bump versions using node to avoid npm workspace: protocol issues
+    # Bump versions using node
     echo "Bumping versions ($BUMP_TYPE)..."
 
     bump_version() {
@@ -108,15 +108,19 @@ echo ""
 
 # Verify/build
 if [ "$SKIP_VERIFY" = false ]; then
-    echo "Running verification..."
+    echo "Running verification and build..."
     cd "$ROOT_DIR"
-    bun run verify-work
+    # Ensure dependencies are installed
+    bun install
+    # Run tests
+    bun run test
     echo ""
 fi
 
 # Publish core
 echo "Publishing core@$NEW_CORE_VERSION..."
 cd "$ROOT_DIR/packages/core"
+bun run build # Ensure dist exists
 if [ "$BETA" = true ]; then
     bun publish --tag beta
 else
@@ -126,6 +130,7 @@ echo ""
 
 # Wait for core to be available on npm
 echo "Waiting for core@$NEW_CORE_VERSION to be available on npm..."
+# Note: npm registry can be slow. We wait up to 60s.
 MAX_ATTEMPTS=30
 ATTEMPT=0
 while [ $ATTEMPT -lt $MAX_ATTEMPTS ]; do
@@ -150,21 +155,34 @@ while [ $ATTEMPT -lt $MAX_ATTEMPTS ]; do
 done
 echo ""
 
-# NOW reinstall to update workspace: references to the NEW core version
-echo "Updating workspace dependencies to use published core..."
-cd "$ROOT_DIR"
-bun install
+# CRITICAL: Replace workspace:* with actual version in CLI package.json before publishing
+# This ensures npx installs the correct version of core from npm
+echo "Setting CLI dependency to task-o-matic-core@$NEW_CORE_VERSION..."
+node -e "
+const p = require('$ROOT_DIR/packages/cli/package.json');
+p.dependencies['task-o-matic-core'] = '$NEW_CORE_VERSION';
+require('fs').writeFileSync('$ROOT_DIR/packages/cli/package.json', JSON.stringify(p, null, 2) + '\n');
+"
 echo ""
 
 # Publish CLI
 echo "Publishing cli@$NEW_CLI_VERSION..."
 cd "$ROOT_DIR/packages/cli"
+bun run build # Ensure dist exists
 if [ "$BETA" = true ]; then
-    bun publish --tag beta
+    npm publish --tag beta
 else
-    bun publish
+    npm publish
 fi
 echo ""
+
+# Restore workspace:* in CLI package.json after publishing
+echo "Restoring workspace:* dependency..."
+node -e "
+const p = require('$ROOT_DIR/packages/cli/package.json');
+p.dependencies['task-o-matic-core'] = 'workspace:*';
+require('fs').writeFileSync('$ROOT_DIR/packages/cli/package.json', JSON.stringify(p, null, 2) + '\n');
+"
 
 echo "Release complete!"
 echo "  task-o-matic-core@$NEW_CORE_VERSION"

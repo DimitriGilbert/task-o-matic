@@ -30,10 +30,12 @@ export class BetterTStackService {
 
       logger.info(`🔥 Calling Better-T-Stack programmatic API...`);
 
-      // Use dynamic import with eval to bypass TypeScript module resolution
-      // The module exports `init` as a named export, but depending on how it's bundled,
-      // it might be directly on the module or wrapped in a default export
-      const btsModule = await eval(`import("create-better-t-stack")`);
+      // Use dynamic import via Function constructor to bypass TypeScript module resolution
+      // and ensure it works in both CJS and ESM contexts
+      // eslint-disable-next-line @typescript-eslint/no-implied-eval, @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-assignment
+      const dynamicImport = new Function("specifier", "return import(specifier)");
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call
+      const btsModule = await dynamicImport("create-better-t-stack");
 
       // Handle different module structures and API versions
       // The package renamed 'init' to 'create' in a recent update
