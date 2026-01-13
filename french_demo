@@ -1,0 +1,498 @@
+#!/bin/bash
+# @parseArger-begin
+# @parseArger-help "I send an SOS to the world" --option "help" --short-option "h"
+# @parseArger-verbose --option "verbose" --level "0" --quiet-option "quiet"
+_has_colors=0
+if [ -t 1 ]; then # Check if stdout is a terminal
+	ncolors=$(tput colors 2>/dev/null)
+	if [ -n "$ncolors" ] && [ "$ncolors" -ge 8 ]; then
+		_has_colors=1
+	fi
+fi
+# @parseArger-declarations
+# @parseArger opt provider "ai provider" --default-value "openrouter"
+# @parseArger opt model "ai model" --default-value "xiaomi/mimo-v2-flash:free"
+# @parseArger opt workspace "dir to work in" --default-value "le-croissant-workspace"
+# @parseArger opt reasoning "token reasoning" --default-value "4000"
+# @parseArger opt bin "exec command" --repeat
+# @parseArger flag question "use ai to ask question on the prd"
+# @parseArger flag stream "stream ai output" --on
+# @parseArger-declarations-end
+
+# @parseArger-utils
+_helpHasBeenPrinted=1;
+_SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)";
+# @parseArger-utils-end
+
+# @parseArger-parsing
+
+__cli_arg_count=$#;
+
+die()
+{
+	local _ret=1
+    if [[ -n "$2" ]] && [[ "$2" =~ ^[0-9]+$ ]]; then
+   	_ret="$2"
+    fi
+	test "${_PRINT_HELP:-no}" = yes && print_help >&2
+	log "$1" -3 >&2
+	exit "${_ret}"
+}
+
+
+begins_with_short_option()
+{
+	local first_option all_short_options=''
+	first_option="${1:0:1}"
+	test "$all_short_options" = "${all_short_options/$first_option/}" && return 1 || return 0
+}
+
+# POSITIONALS ARGUMENTS
+_positionals=();
+_optional_positionals=();
+# OPTIONALS ARGUMENTS
+_arg_provider="openrouter"
+_arg_model="xiaomi/mimo-v2-flash:free"
+_arg_workspace="le-croissant-workspace"
+_arg_reasoning="4000"
+_arg_bin=()
+# FLAGS
+_arg_question="off"
+_arg_stream="on"
+# NESTED
+_verbose_level="0";
+
+
+
+print_help()
+{
+	_triggerSCHelp=1;
+
+	if [[ "$_helpHasBeenPrinted" == "1" ]]; then
+		_helpHasBeenPrinted=0;
+		echo -e "I send an SOS to the world:"
+	echo -e "	--provider <provider>: ai provider [default: ' openrouter ']"
+	echo -e "	--model <model>: ai model [default: ' xiaomi/mimo-v2-flash:free ']"
+	echo -e "	--workspace <workspace>: dir to work in [default: ' le-croissant-workspace ']"
+	echo -e "	--reasoning <reasoning>: token reasoning [default: ' 4000 ']"
+	echo -e "	--bin <bin>: exec command, repeatable"
+	echo -e "	--question|--no-question: use ai to ask question on the prd"
+	echo -e "	--stream|--no-stream: stream ai output, on by default (use --no-stream to turn it off)"
+	echo -e "Usage :
+	$0 [--provider <value>] [--model <value>] [--workspace <value>] [--reasoning <value>] [--bin <value>] [--[no-]question] [--[no-]stream]";
+	fi
+
+}
+
+log() {
+	local _arg_msg="${1}";
+	local _arg_level="${2:-0}";
+	if [ "${_arg_level}" -le "${_verbose_level}" ]; then
+		case "$_arg_level" in
+			-3)
+				_arg_COLOR="\033[0;31m";
+				;;
+			-2)
+				_arg_COLOR="\033[0;33m";
+				;;
+			-1)
+				_arg_COLOR="\033[1;33m";
+				;;
+			1)
+				_arg_COLOR="\033[0;32m";
+				;;
+			2)
+				_arg_COLOR="\033[1;36m";
+				;;
+			3)
+				_arg_COLOR="\033[0;36m";
+				;;
+			*)
+				_arg_COLOR="\033[0m";
+				;;
+		esac
+		if [ "${_has_colors}" == "1" ]; then
+			echo -e "${_arg_COLOR}${_arg_msg}\033[0m";
+		else
+			echo "${_arg_msg}";
+		fi
+	fi
+}
+
+parse_commandline()
+{
+	_positionals_count=0
+	while test $# -gt 0
+	do
+		_key="$1"
+		case "$_key" in
+			--provider)
+				test $# -lt 2 && die "Missing value for the option: '$_key'" 1
+				_arg_provider="$2"
+				shift
+				;;
+			--provider=*)
+				_arg_provider="${_key##--provider=}"
+				;;
+			
+			--model)
+				test $# -lt 2 && die "Missing value for the option: '$_key'" 1
+				_arg_model="$2"
+				shift
+				;;
+			--model=*)
+				_arg_model="${_key##--model=}"
+				;;
+			
+			--workspace)
+				test $# -lt 2 && die "Missing value for the option: '$_key'" 1
+				_arg_workspace="$2"
+				shift
+				;;
+			--workspace=*)
+				_arg_workspace="${_key##--workspace=}"
+				;;
+			
+			--reasoning)
+				test $# -lt 2 && die "Missing value for the option: '$_key'" 1
+				_arg_reasoning="$2"
+				shift
+				;;
+			--reasoning=*)
+				_arg_reasoning="${_key##--reasoning=}"
+				;;
+			
+			--bin)
+				test $# -lt 2 && die "Missing value for the option: '$_key'" 1
+				_arg_bin+=("$2")
+				shift
+				;;
+			--bin=*)
+				_arg_bin+=("${_key##--bin=}")
+				;;
+			
+			--question)
+				_arg_question="on"
+				;;
+			--no-question)
+				_arg_question="off"
+				;;
+			--stream)
+				_arg_stream="on"
+				;;
+			--no-stream)
+				_arg_stream="off"
+				;;
+			-h|--help)
+				print_help;
+				exit 0;
+				;;
+			-h*)
+				print_help;
+				exit 0;
+				;;
+			--verbose)
+					if [ $# -lt 2 ];then
+						_verbose_level="$((_verbose_level + 1))";
+					else
+						_verbose_level="$2";
+						shift;
+					fi
+					;;
+				--quiet)
+					if [ $# -lt 2 ];then
+						_verbose_level="$((_verbose_level - 1))";
+					else
+						_verbose_level="-$2";
+						shift;
+					fi
+					;;
+				
+				*)
+				_last_positional="$1"
+				_positionals+=("$_last_positional")
+				_positionals_count=$((_positionals_count + 1))
+				;;
+		esac
+		shift
+	done
+}
+
+
+handle_passed_args_count()
+{
+	local _required_args_string=""
+	if [ "${_positionals_count}" -gt 0 ] && [ "$_helpHasBeenPrinted" == "1" ];then
+		_PRINT_HELP=yes die "FATAL ERROR: There were spurious positional arguments --- we expect at most 0 (namely: $_required_args_string), but got ${_positionals_count} (the last one was: '${_last_positional}').\n\t${_positionals[*]}" 1
+	fi
+	if [ "${_positionals_count}" -lt 0 ] && [ "$_helpHasBeenPrinted" == "1" ];then
+		_PRINT_HELP=yes die "FATAL ERROR: Not enough positional arguments - we require at least 0 (namely: $_required_args_string), but got only ${_positionals_count}.
+	${_positionals[*]}" 1;
+	fi
+}
+
+
+assign_positional_args()
+{
+	local _positional_name _shift_for=$1;
+	_positional_names="";
+	shift "$_shift_for"
+	for _positional_name in ${_positional_names};do
+		test $# -gt 0 || break;
+		eval "if [ \"\$_one_of${_positional_name}\" != \"\" ];then [[ \"\${_one_of${_positional_name}[*]}\" =~ \"\${1}\" ]];fi" || die "${_positional_name} must be one of: $(eval "echo \"\${_one_of${_positional_name}[*]}\"")" 1;
+		eval "$_positional_name=\${1}" || die "Error during argument parsing, possibly an ParseArger bug." 1;
+		shift;
+	done
+}
+
+print_debug()
+{
+	print_help
+	# shellcheck disable=SC2145
+	echo "DEBUG: $0 $@";
+	
+	echo -e "	provider: ${_arg_provider}";
+	echo -e "	model: ${_arg_model}";
+	echo -e "	workspace: ${_arg_workspace}";
+	echo -e "	reasoning: ${_arg_reasoning}";
+	echo -e "	bin: ${_arg_bin[*]}";
+	echo -e "	question: ${_arg_question}";
+	echo -e "	stream: ${_arg_stream}";
+
+}
+
+
+on_interrupt() {
+	die Process aborted! 130;
+}
+
+
+parse_commandline "$@";
+handle_passed_args_count;
+assign_positional_args 1 "${_positionals[@]}";
+trap on_interrupt INT;
+
+
+
+# @parseArger-parsing-end
+# print_debug "$@"
+# @parseArger-end
+
+if [ ${#_arg_bin[@]} -eq 0 ]; then
+	_arg_bin=("../packages/cli/dist/cli/bin.js")
+fi
+
+Deafult_AI_provider="$_arg_provider"
+Default_AI_model="$_arg_model"
+
+# Helper function to build AI options array conditionally
+build_ai_opts() {
+    local opts=()
+    if [ "$_arg_stream" = "on" ]; then
+        opts+=("--stream")
+    fi
+    if [ "$_arg_reasoning" != "0" ] && [ -n "$_arg_reasoning" ]; then
+        opts+=("--ai-reasoning" "$_arg_reasoning")
+    fi
+    echo "${opts[@]}"
+}
+
+# Helper function for tasks commands (uses --reasoning instead of --ai-reasoning)
+build_task_ai_opts() {
+    local opts=()
+    if [ "$_arg_stream" = "on" ]; then
+        opts+=("--stream")
+    fi
+    if [ "$_arg_reasoning" != "0" ] && [ -n "$_arg_reasoning" ]; then
+        opts+=("--reasoning" "$_arg_reasoning")
+    fi
+    echo "${opts[@]}"
+}
+
+# ASCII art of a croissant. Because, why not?
+echo "      .---. "
+echo "     /    _ "
+echo "    |   (_)  |"
+echo "     \      /"
+echo "      '----' "
+echo "Bonjour, my friend! Welcome to ze 'task-o-matic' French demo."
+echo "Today, we build something... 'très important'."
+echo "An app to find ze perfect croissant. Because, life is too short for bad croissants, non?"
+echo "---"
+echo ""
+
+# Step 1: Create workspace
+echo "Step 1: We prepare ze workspace. A clean canvas for our masterpiece!"
+WORKSPACE_DIR="$_arg_workspace"
+
+if [ -d "$WORKSPACE_DIR" ]; then
+    echo "Ah, ze workspace exists. Let us clean it first!"
+    rm -rf "$WORKSPACE_DIR"
+fi
+
+echo "Creating workspace: $WORKSPACE_DIR"
+mkdir -p "$WORKSPACE_DIR"
+
+echo "Copying .env file to workspace..."
+if [ -f ".env" ]; then
+    cp .env "$WORKSPACE_DIR/.env"
+    source .env
+    echo "✅ .env file copied to workspace!"
+else
+    echo "⚠️  No .env file found in current directory"
+    echo "Creating example .env in workspace..."
+    cat > "$WORKSPACE_DIR/.env" << EOENV
+AI_PROVIDER=${AI_PROVIDER:-$Deafult_AI_provider}
+AI_MODEL=${AI_MODEL:-$Default_AI_model}
+OPENROUTER_API_KEY=your_openrouter_key_here
+EOENV
+    echo "📝 Please edit $WORKSPACE_DIR/.env with your API key"
+fi
+
+echo "Entering ze workspace..."
+cd "$WORKSPACE_DIR"
+echo "---"
+echo ""
+
+# Step 2: Create PRD
+echo "Step 2: Ze 'Product Requirements Document', or... ze plan for battle!"
+echo "Creating our masterpiece: prd_croissant.md"
+cat > prd_croissant.md << EOF
+# Project: Le Croissant Magique (The Magic Croissant)
+
+## Vision
+An application for ze true croissant connoisseurs. No more industrial pastries! We want butter, flaky layers, and love!
+
+## Features
+1.  **Map of Boulangeries**: Show all ze bakeries of Paris on an interactive map.
+2.  **Croissant Rating**: Users can rate croissants with 5 stars (shaped like croissants, of course).
+3.  **'Croissant of ze Day'**: Every day, ze app suggests ze best find, like a well-kept secret.
+4.  **'Pure Butter' Filter**: A filter to see only bakeries using real butter. Zis is non-negotiable.
+
+## Technical Requirements
+- A simple and chic interface.
+- It must work even during a transport strike (so, a good offline map is essential).
+- Ze AI should be able to detect a croissant from a photo to verify its quality (maybe later, we are not magicians).
+EOF
+echo "Voilà! It is simple, it is clear, it is French."
+echo "---"
+echo ""
+
+# Step 3: Initialize task-o-matic
+echo "Step 3: We initialize task-o-matic in our workspace!"
+"${_arg_bin[@]}" init init --project-name le-croissant-magique --package-manager bun
+echo "Configuration... It is done. Ze AI is ready."
+echo "Let's see if ze project is ready to run..."
+if [ -f "le-croissant-magique/package.json" ]; then
+    echo "✅ package.json found!"
+    echo "Dependencies installed: $(ls le-croissant-magique/node_modules 2>/dev/null | wc -l) packages"
+else
+    echo "❌ package.json not found!"
+    exit 1
+fi
+echo "---"
+echo ""
+
+# # Step 4: Configure AI
+# echo "Step 4: We ask ze AI for 'elp. But, you know, politely."
+# echo "Setting AI provider to our best value model..."
+# "${_arg_bin[@]}" config set-ai-provider "${AI_PROVIDER:-$Deafult_AI_provider}" "${AI_MODEL:-$Default_AI_model}"
+# echo "✅ AI configured with ${AI_MODEL:-$Default_AI_model} @ ${AI_PROVIDER:-$Deafult_AI_provider}"
+# echo "---"
+# echo ""
+
+mv .env le-croissant-magique/.env
+cd le-croissant-magique
+
+# Adjust relative paths in bin array since we changed directories
+for i in "${!_arg_bin[@]}"; do
+    if [[ "${_arg_bin[$i]}" == "../"* ]]; then
+        _arg_bin[$i]="../${_arg_bin[$i]}"
+    fi
+done
+
+# Step 4.5: Question flow (optional) - refine PRD with clarifying questions
+if [ "$_arg_question" = "on" ]; then
+    echo "Step 4.5: Ah! Ze --question flag! Let us ask ze AI for clarifying questions."
+    echo "Zis will 'elp us refine ze PRD before parsing. Very thorough, like a proper French chef!"
+    echo ""
+    # Build AI options for the refine command
+    read -ra AI_OPTS <<< "$(build_ai_opts)"
+    # prd refine generates questions, prompts user interactively, then reworks the PRD
+    "${_arg_bin[@]}" prd refine --file ../prd_croissant.md --output ../prd_croissant.md "${AI_OPTS[@]}"
+    echo ""
+    echo "Magnifique! Ze PRD 'as been refined with your answers!"
+    echo "---"
+    echo ""
+fi
+
+# Step 5: Parse ze PRD
+echo "Step 5: Ze moment of truth! We give ze PRD to ze AI."
+echo "Let's see if ze machine understands 'l'art du croissant'."
+# Build AI options dynamically based on flags
+read -ra AI_OPTS <<< "$(build_ai_opts)"
+"${_arg_bin[@]}" prd parse --file ../prd_croissant.md "${AI_OPTS[@]}"
+echo ""
+
+echo "---"
+echo ""
+
+# Step 6: List ze tasks
+# echo "Step 6: And 'ere is ze work! Let us look at ze tasks ze AI 'as created for us."
+# echo "Magnifique! It is almost like it is wearing a little beret."
+# "${_arg_bin[@]}" tasks list
+# echo "---"
+# echo ""
+
+# Step 7: Enhance ALL ze tasks
+# echo "Step 7: We make ALL ze tasks better! Like adding more butter to ALL ze croissants!"
+# echo "First, let us see what tasks we have to enhance..."
+# # "${_arg_bin[@]}" tasks list
+# echo ""
+# echo "Now we enhance EACH AND EVERY task... like a very patient baker!"
+# echo "Ze AI will make all our tasks more sophisticated with Context7 documentation!"
+# read -ra TASK_AI_OPTS <<< "$(build_task_ai_opts)"
+# "${_arg_bin[@]}" tasks enhance --all "${TASK_AI_OPTS[@]}"
+# echo ""
+# echo "Voilà! ALL tasks are now more... sophisticated. Like a French wine cellar!"
+# echo "---"
+# echo ""
+
+# Step 8: Split ALL ze tasks
+echo "Step 8: Now we split ALL ze tasks into smaller, bite-sized pieces!"
+echo "Because big tasks are like... how you say... 'intimidating', non?"
+echo "Ze AI will break down every task into manageable subtasks!"
+# Build task AI options dynamically based on flags
+read -ra TASK_AI_OPTS <<< "$(build_task_ai_opts)"
+"${_arg_bin[@]}" tasks split --all "${TASK_AI_OPTS[@]}"
+echo ""
+echo "Magnifique! Now we have many small tasks to conquer. Like eating a croissant one flaky layer at a time!"
+echo "Let us see ze final result..."
+"${_arg_bin[@]}" tasks list
+echo "---"
+echo ""
+# echo "Now we enhance each task one by one... like a patient baker!"
+# echo "Note: In a real scenario, you would enhance each task by ID like:"
+# echo "$_arg_bin tasks enhance --task-id <task-id> --stream"
+# echo "For now, let us create a new enhanced task to demonstrate!"
+# read -ra TASK_AI_OPTS <<< "$(build_task_ai_opts)"
+# "${_arg_bin[@]}" tasks create --title "Enhanced Croissant Map Feature" --content "Create an interactive map showing all bakeries with real-time croissant quality ratings" --ai-enhance "${TASK_AI_OPTS[@]}"
+echo ""
+echo "Voilà! Ze task is now more... sophisticated. Like a French wine!"
+echo "---"
+echo ""
+
+echo "✅ Better-T-Stack project created! Let us explore..."
+echo ""
+echo "Project structure:"
+ls -la le-croissant-magique/
+echo ""
+
+echo ""
+echo "🎉 It is finished! Mission accomplished. Your Better-T-Stack project awaits!"
+echo "📍 Location: $(pwd)/le-croissant-magique"
+echo "💰 Note: We used ${AI_MODEL:-$Default_AI_model} from ${AI_PROVIDER:-$Deafult_AI_provider}"
+echo "🔧 Your .env file is in: $(pwd)/.env"
+echo "Now, it is time for a real croissant, non?"
+echo "---"
+echo ""
