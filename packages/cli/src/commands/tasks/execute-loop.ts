@@ -44,6 +44,7 @@ export const executeLoopCommand = new Command("execute-loop")
     "--try-models <models>",
     "Progressive model/executor configs for each retry (e.g., 'gpt-4o-mini,gpt-4o,claude:sonnet-4')"
   )
+  .option("-m, --model <model>", "Model to force for execution")
   .option(
     "--verify <command>",
     "Verification command to run after each task (can be used multiple times)",
@@ -162,6 +163,7 @@ export const executeLoopCommand = new Command("execute-loop")
             verificationCommands: verifications,
             autoCommit: options.autoCommit,
             tryModels,
+            model: options.model,
             plan: options.plan,
             planModel: options.planModel,
             reviewPlan: options.reviewPlan,

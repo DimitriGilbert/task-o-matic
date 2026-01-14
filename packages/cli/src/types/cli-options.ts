@@ -137,6 +137,7 @@ export interface ExecuteLoopCommandOptions extends DryRunOptions {
   tool: string;
   maxRetries?: number;
   tryModels?: string;
+  model?: string;
   verify?: string[];
   validate?: string[];
   message?: string;
