@@ -6,6 +6,7 @@ import { existsSync, readFileSync } from "fs";
 import { exec } from "child_process";
 import { promisify } from "util";
 import { commitFile } from "./git-utils";
+import { parseExecutorModelString } from "../utils/model-executor-parser";
 
 const execAsync = promisify(exec);
 
@@ -14,6 +15,7 @@ const execAsync = promisify(exec);
  */
 export interface PlanningConfig {
   planModel?: string; // Format: "executor:model" or just "model"
+  planTool?: string; // Explicit tool selection
   reviewPlan?: boolean; // Enable human review loop
   autoCommit?: boolean; // Auto-commit the plan file
   dry?: boolean; // Dry run mode
@@ -42,29 +44,74 @@ export async function executePlanningPhase(
     command: string
   ) => Promise<{ stdout: string; stderr: string }> = execAsync
 ): Promise<PlanningResult> {
-  const { planModel, reviewPlan, autoCommit, dry, onPlanReview } = config;
+  const { planModel, planTool, reviewPlan, autoCommit, dry, onPlanReview } =
+    config;
 
   logger.info(`\n🧠 Starting Planning Phase for Task: ${task.title}`);
 
   const planFileName = `task-${task.id}-plan.md`;
 
   // Parse executor and model from planModel string
-  const planExecutor = planModel
-    ? (planModel.split(":")[0] as ExecutorTool)
-    : defaultTool;
-  const planModelName = planModel ? planModel.split(":")[1] : undefined;
+  const defaultExecutor = defaultTool;
+  let planExecutor = (planTool as ExecutorTool) || defaultExecutor;
+  let planModelName = planModel;
+
+  // Only parse planModel for executor if planTool is NOT explicitly set
+  // This allows "opencode:gpt-4o" to set both, but "--plan-tool claude" to override the executor part
+  if (planModel && !planTool) {
+    const result = parseExecutorModelString(planModel);
+    if (result.executor) {
+      planExecutor = result.executor;
+    }
+    planModelName = result.model;
+  } else if (planModel) {
+    // If planTool IS set, just use planModel as the model name (stripping potential executor prefix if user was confusing)
+    const result = parseExecutorModelString(planModel);
+    planModelName = result.model;
+  }
+
+  // Build the planning prompt with all available context
+  const fullContent =
+    task.content || task.description || "No description provided.";
+
+  // Format documentation if available
+  let docsSection = "";
+  if (task.documentation) {
+    docsSection = `
+Documentation Context:
+${task.documentation.recap}
+
+referenced_files:
+${task.documentation.files?.map((f) => `- ${f}`).join("\n") || "None"}
+`;
+  }
+
+  // Add file path reference if available
+  let fileReference = "";
+  if (task.contentFile) {
+    fileReference = `\n(Task Content File: ${task.contentFile})\n`;
+  }
 
   let planningPrompt = `You are a senior software architect. Analyze the following task and create a detailed implementation plan.
 
-Task: ${task.title}
-Description: ${task.description || "No description provided."}
+Task Title: ${task.title}
+${fileReference}
+
+Task Description/Summary:
+${task.description || "No summary provided."}
+
+Detailed Task Requirements:
+${fullContent}
+${docsSection}
 
 Requirements:
-1. Analyze the task requirements.
-2. Create a detailed step-by-step implementation plan.
-3. Identify necessary file changes.
-4. Write this plan to a file named "${planFileName}" in the current directory.
-5. Do NOT implement the code yet, just create the plan file.
+1. FOCUS SOLELY ON THIS TASK. Do not plan for future tasks or subtasks unless explicitly required. (if unsure verify .task-o-matic/tasks.json)
+2. Analyze the task requirements and any provided documentation.
+3. If a task file was provided, CHECK IT for more details if needed.
+4. Create a detailed step-by-step implementation plan.
+5. Identify necessary file changes.
+6. Write this plan to a file named "${planFileName}" in the current directory.
+7. Do NOT implement the code yet, just create the plan file.
 
 Please create the "${planFileName}" file now.`;
 

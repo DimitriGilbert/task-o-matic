@@ -123,6 +123,7 @@ export interface ExecuteCommandOptions extends DryRunOptions {
   tryModels?: string;
   plan?: boolean;
   planModel?: string;
+  planTool?: string;
   reviewPlan?: boolean;
   review?: boolean;
   reviewModel?: string;
@@ -145,6 +146,7 @@ export interface ExecuteLoopCommandOptions extends DryRunOptions {
   autoCommit?: boolean;
   plan?: boolean;
   planModel?: string;
+  planTool?: string;
   reviewPlan?: boolean;
   review?: boolean;
   reviewModel?: string;

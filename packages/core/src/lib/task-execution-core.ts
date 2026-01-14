@@ -46,6 +46,7 @@ export async function executeTaskCore(
     tryModels,
     enablePlanPhase = false,
     planModel,
+    planTool,
     reviewPlan = false,
     enableReviewPhase = false,
     reviewModel,
@@ -76,8 +77,31 @@ export async function executeTaskCore(
   let planContent: string | undefined;
 
   if (enablePlanPhase) {
-    const planningResult = await executePlanningPhase(task, tool, {
+    // Ensure full task content is loaded if offloaded to file
+    if (task.contentFile && (!task.content || task.content.length < 50)) {
+      try {
+        const fullContent = await taskService.getTaskContent(task.id);
+        if (fullContent) {
+          task.content = fullContent;
+          logger.info(`📄 Loaded full content for task ${task.id}`);
+        }
+      } catch (error) {
+        logger.warn(
+          `⚠️ Failed to load full content for task ${task.id}: ${
+            error instanceof Error ? error.message : String(error)
+          }`
+        );
+      }
+    }
+
+    // Fallback: Use explicit planTool, or valid executor part from planModel, or default to main tool
+    // We pass undefined as defaultTool to let executePlanningPhase handle the logic if needed,
+    // or we resolve it here. Let's resolve it here for clarity.
+    const effectivePlanTool = (planTool as ExecutorTool) || tool;
+
+    const planningResult = await executePlanningPhase(task, effectivePlanTool, {
       planModel,
+      planTool,
       reviewPlan,
       autoCommit: enableAutoCommit,
       dry,
@@ -213,7 +237,7 @@ async function executeTaskWithRetry(
   while (currentAttempt <= maxRetries) {
     // Determine which executor and model to use for this attempt
     let currentExecutor = tool;
-    let currentModel: string | undefined;
+    let currentModel: string | undefined = config.executorConfig?.model;
 
     if (tryModels && tryModels.length > 0) {
       const modelConfigIndex = Math.min(

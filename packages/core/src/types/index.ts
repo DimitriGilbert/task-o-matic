@@ -479,6 +479,7 @@ export interface ExecuteTaskOptions {
   tryModels?: ModelAttemptConfig[]; // Progressive model escalation
   plan?: boolean; // Generate implementation plan
   planModel?: string; // Model/executor for planning
+  planTool?: string; // Tool/executor for planning
   reviewPlan?: boolean; // Enable human plan review
   review?: boolean; // Enable AI code review
   reviewModel?: string; // Model/executor for review
@@ -518,6 +519,7 @@ export interface ExecuteLoopConfig {
   tryModels?: ModelAttemptConfig[]; // Progressive model/executor configs for each attempt
   plan?: boolean; // Generate a plan before execution
   planModel?: string; // Model/executor to use for planning (e.g. "opencode:gpt-4o")
+  planTool?: string; // Tool/executor to use for planning
   reviewPlan?: boolean; // Pause for human review of the plan
   review?: boolean; // Run AI review after execution
   reviewModel?: string; // Model/executor to use for review
@@ -586,6 +588,7 @@ export interface TaskExecutionConfig {
   tryModels?: ModelAttemptConfig[]; // Progressive model/executor configs
   enablePlanPhase?: boolean; // Generate implementation plan
   planModel?: string; // Model/executor for planning (format: "executor:model" or "model")
+  planTool?: string; // Tool/executor for planning
   reviewPlan?: boolean; // Enable human plan review
   enableReviewPhase?: boolean; // Enable AI code review
   reviewModel?: string; // Model/executor for review (format: "executor:model" or "model")

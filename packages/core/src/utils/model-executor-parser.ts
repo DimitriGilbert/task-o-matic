@@ -36,30 +36,55 @@ export function parseTryModels(value: string): ModelAttemptConfig[] {
   return value.split(",").map((item) => {
     const trimmed = item.trim();
 
-    // Check if it includes executor specification (executor:model format)
-    if (trimmed.includes(":")) {
-      const [executor, model] = trimmed.split(":");
+    const result = parseExecutorModelString(trimmed);
 
-      if (!VALID_EXECUTORS.includes(executor as ExecutorTool)) {
-        throw createStandardError(
-          TaskOMaticErrorCodes.INVALID_INPUT,
-          `Invalid executor "${executor}" in --try-models. Must be one of: ${VALID_EXECUTORS.join(
-            ", "
-          )}`
-        );
-      }
-
+    if (result.executor) {
       return {
-        executor: executor as ExecutorTool,
-        model: model.trim(),
+        executor: result.executor,
+        model: result.model,
       };
     }
 
     // Just a model name - use default executor
     return {
-      model: trimmed,
+      model: result.model,
     };
   });
+}
+
+/**
+ * Parse a model string that might include an executor prefix
+ * Handles cases like:
+ * - "opencode:gpt-4o" -> { executor: "opencode", model: "gpt-4o" }
+ * - "gpt-4o" -> { executor: undefined, model: "gpt-4o" }
+ * - "model:with:colons" -> { executor: undefined, model: "model:with:colons" }
+ *
+ * @param value - string to parse
+ * @returns Object with executor (if valid) and model
+ */
+export function parseExecutorModelString(value: string): {
+  executor?: ExecutorTool;
+  model: string;
+} {
+  const firstColonIndex = value.indexOf(":");
+
+  if (firstColonIndex === -1) {
+    return { model: value };
+  }
+
+  const potentialExecutor = value.substring(0, firstColonIndex);
+  const rest = value.substring(firstColonIndex + 1);
+
+  if (validateExecutor(potentialExecutor)) {
+    return {
+      executor: potentialExecutor,
+      model: rest,
+    };
+  }
+
+  return {
+    model: value,
+  };
 }
 
 /**

@@ -58,6 +58,10 @@ export const executeCommand = new Command("execute")
     "--plan-model <model>",
     "Model/executor to use for planning (e.g., 'opencode:gpt-4o' or 'gpt-4o')"
   )
+  .option(
+    "--plan-tool <tool>",
+    "Tool/Executor to use for planning (defaults to --tool)"
+  )
   .option("--review-plan", "Pause for human review of the plan", false)
   .option("--review", "Run AI review after execution", false)
   .option(
@@ -121,6 +125,7 @@ export const executeCommand = new Command("execute")
           tryModels,
           plan: options.plan,
           planModel: options.planModel,
+          planTool: options.planTool,
           reviewPlan: options.reviewPlan,
           review: options.review,
           reviewModel: options.reviewModel,
