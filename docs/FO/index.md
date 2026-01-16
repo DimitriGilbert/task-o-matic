@@ -35,7 +35,7 @@ This index is your master key to survival. Failure to read these technical bulle
 |-------------|-------|----------|--------|-------------------|
 | 005 | **Workflow System - Project Bunker** | `services/workflow-service.md` | ✅ COMPLETE | 🔶 **HIGH** |
 | 006 | **PRD Service - Requirements Containment** | `services/prd-service.md` | ✅ COMPLETE | 🔶 **HIGH** |
-| 007 | **Benchmark Service - Performance Monitoring** | `services/benchmark-service.md` | ✅ COMPLETE | 🔶 **HIGH** |
+| 007 | **Benchmark Service - Performance Monitoring** | `benchmark/overview.md` | ✅ COMPLETE | 🔶 **HIGH** |
 
 ### **SECTION III: FIELD OPERATIONS & INTERFACES**
 *(Deploy after mastering Sections I & II)*
@@ -98,7 +98,7 @@ The task-o-matic survival system is engineered around three fundamental principl
 - **Workflow System** (Bulletin 005): Multi-stage mission coordination
   - Complete project lifecycle management from initialization to execution
   - Document Location: `services/workflow-service.md`
-  - Supporting: `services/workflow-ai-assistant.md`, `services/workflow-benchmark.md`
+  - Supporting: `services/workflow-ai-assistant.md`
 
 - **PRD Service** (Bulletin 006): Requirements containment and processing
   - Transforms requirements into actionable survival plans
@@ -106,7 +106,7 @@ The task-o-matic survival system is engineered around three fundamental principl
 
 - **Benchmark Service** (Bulletin 007): Performance validation
   - Ensures system readiness through model comparison
-  - Document Location: `services/benchmark-service.md`
+  - Document Location: `benchmark/overview.md`
 
 **📡 FIELD INTERFACES**
 - **CLI Terminal** (Bulletin 008-013): Primary field operations interface
@@ -116,7 +116,7 @@ The task-o-matic survival system is engineered around three fundamental principl
   - Task Commands: `cli/tasks-commands.md`
   - Config & Init: `cli/config-init-prompt-commands.md`
   - Plan & Document: `cli/plan-commands.md`, `cli/document-commands.md`
-  - Benchmark: `cli/benchmark-commands.md`
+  - Benchmark: `benchmark/overview.md#field-manual-cli-commands`
 
 - **Supporting Infrastructure** (Bulletin 014-018): System utilities
   - FileSystem Tools: AI-powered code analysis (`lib/filesystem-tools.md`)
@@ -248,7 +248,7 @@ task-o-matic workflow --stream
 - Task management: `cli/tasks-commands.md`
 - Configuration & init: `cli/config-init-prompt-commands.md`
 - Planning & docs: `cli/plan-commands.md`, `cli/document-commands.md`
-- Benchmarking: `cli/benchmark-commands.md`
+- Benchmarking: `benchmark/overview.md#field-manual-cli-commands`
 
 ### **For System Builders (Library Users)**
 
@@ -271,7 +271,7 @@ task-o-matic workflow --stream
 - TaskService: `services/tasks-service.md`
 - WorkflowService: `services/workflow-service.md`
 - PRDService: `services/prd-service.md`
-- BenchmarkService: `services/benchmark-service.md`
+- BenchmarkService: `benchmark/overview.md`
 
 **Library Components:**
 - AI Operations: `lib/ai-operations.md`

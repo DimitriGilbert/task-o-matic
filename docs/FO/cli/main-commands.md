@@ -12,7 +12,7 @@ Citizen, ignoring these main commands is like wandering into the radioactive was
 The main command structure represents the central nervous system of Task-O-Matic operations. Each command serves as a critical survival hub, coordinating different aspects of project management, AI integration, and workflow automation. The architecture follows a hierarchical pattern where main commands delegate to specialized subcommands, creating a modular and extensible system.
 
 **Core Integration Points:**
-- **Service Layer Integration**: All commands interface with core services (TaskService, PRDService, WorkflowService, BenchmarkService)
+- **Service Layer Integration**: All commands interface with core services (TaskService, PRDService, WorkflowService, Benchmark System)
 - **AI Provider Abstraction**: Unified AI operations across multiple providers (OpenRouter, Anthropic, OpenAI, Custom endpoints)
 - **Configuration Management**: Centralized config system with project-local overrides
 - **Error Handling**: Standardized error reporting with TaskOMaticErrorCodes
@@ -1178,330 +1178,136 @@ Solution: Check API keys, network connectivity, and provider status
 - **Cache Data**: 50-200MB for documentation cache
 
 ## BENCHMARK COMMAND
-**Primary Command:** `task-o-matic benchmark [subcommand] [options]`
+**Primary Command:** `task-o-matic bench [subcommand] [options]`
+**Alias:** `task-o-matic benchmark`
 
 ### DESCRIPTION
-The benchmark command provides comprehensive AI model performance testing and comparison capabilities. It supports individual operation benchmarking, workflow benchmarking, and comparative analysis across multiple AI providers and models. This is your intelligence-gathering tool for optimizing AI operations in the wasteland.
+The benchmark command provides comprehensive AI model performance testing and comparison capabilities. It uses parallel execution with **git worktrees** to benchmark multiple models simultaneously. This is your intelligence-gathering tool for optimizing AI operations in the wasteland.
 
-### SUBCOMMANDS AND COMPREHENSIVE OPTIONS
+### SUBCOMMANDS
 
-#### RUN SUBCOMMAND
+#### `bench run`
+Run a new benchmark.
+
+**Usage:**
 ```bash
-task-o-matic benchmark run <operation> [options]
+task-o-matic bench run <type> [options]
 ```
 
-**Required Arguments:**
-- `operation`: Operation to benchmark (e.g., prd-parse, task-breakdown, task-create, prd-create)
+**Types:**
+- `execution`: Benchmark a single task execution
+- `execute-loop`: Benchmark a batch of tasks (e.g., all TODO tasks)
+- `operation`: Benchmark an internal operation (prd-parse, task-create, etc.)
+- `workflow`: Benchmark a full project workflow
 
 **Required Options:**
-```bash
---models <list>    # Comma-separated list of models (provider:model[:reasoning=<tokens>])
-```
+- `--models <models...>`: List of models to benchmark (e.g., `openai:gpt-4o`, `anthropic:claude-3-5-sonnet`)
 
 **General Options:**
+- `--concurrency <n>`: Max parallel worktrees (default: unlimited)
+- `--base-commit <commit>`: Base commit to start from
+- `--max-retries <n>`: Max retries per task (default: 3)
+- `--verify <commands...>`: Verification commands (e.g., `bun test`)
+
+**Type-Specific Options:**
+- `--task <id>`: Task ID (required for `execution`)
+- `--status <status>`: Task status filter (for `execute-loop`)
+- `--operation <id>`: Operation ID (required for `operation`)
+- `--file <path>`: Input file (for `operation`)
+
+**Examples:**
 ```bash
---file <path>        # Input file path (for PRD ops)
---task-id <id>       # Task ID (for Task ops)
---concurrency <number> # Max concurrent requests (default: 5)
---delay <number>       # Delay between requests in ms (default: 250)
---prompt <prompt>      # Override prompt
---message <message>    # User message
---tools               # Enable filesystem tools
---feedback <feedback>  # Feedback (for prd-rework)
+# Compare models on a single task
+task-o-matic bench run execution \
+  --task 7 \
+  --models openai:gpt-4o anthropic:claude-3-5-sonnet \
+  --verify "bun test"
+
+# Benchmark PRD parsing
+task-o-matic bench run operation \
+  --operation prd-parse \
+  --file requirements.md \
+  --models openai:gpt-4o anthropic:claude-3-5-sonnet
 ```
 
-**Task Creation Options:**
-```bash
---title <title>       # Task title (for task-create)
---content <content>    # Task content (for task-create)
---parent-id <id>      # Parent task ID (for task-create)
---effort <effort>    # Effort estimate: small, medium, large (for task-create)
---force               # Force operation (for task-document)
-```
-
-**PRD Creation Options:**
-```bash
---description <desc>     # Project/PRD description (for prd-create, prd-combine)
---output-dir <dir>       # Output directory (for prd-create, prd-combine)
---filename <name>        # Output filename (for prd-create, prd-combine)
-```
-
-**PRD Combine Options:**
-```bash
---prds <list>      # Comma-separated list of PRD file paths (for prd-combine)
-```
-
-**PRD Refine Options:**
-```bash
---question-mode <mode>    # Question mode: user or ai (for prd-refine)
---answers <json>          # JSON string of answers (for prd-refine user mode)
-```
-
-**Model Format Examples:**
-```bash
-# Basic model format
-anthropic:claude-3.5-sonnet
-openai:gpt-4
-openrouter:anthropic/claude-3.5-sonnet
-
-# With reasoning tokens
-openrouter:anthropic/claude-3.5-sonnet:reasoning=2048
-openai:o1-preview:reasoning=4096
-```
-
-**Benchmark Run Examples:**
-```bash
-# Simple benchmark
-task-o-matic benchmark run prd-parse \
-  --models "anthropic:claude-3.5-sonnet,openai:gpt-4" \
-  --file ./requirements.md
-
-# Advanced benchmark with custom settings
-task-o-matic benchmark run task-create \
-  --models "openrouter:anthropic/claude-3.5-sonnet:reasoning=2048,openrouter:openai/gpt-4o" \
-  --title "Create user authentication" \
-  --content "Implement JWT-based authentication system" \
-  --concurrency 3 \
-  --delay 500
-
-# PRD creation benchmark
-task-o-matic benchmark run prd-create \
-  --models "anthropic:claude-3.5-sonnet,openai:gpt-4,google:gemini-pro" \
-  --description "Emergency shelter management system" \
-  --output-dir ./benchmark-results
-
-# Task breakdown with tools
-task-o-matic benchmark run task-breakdown \
-  --models "openrouter:anthropic/claude-3.5-sonnet" \
-  --task-id 123 \
-  --tools
-```
-
-#### LIST SUBCOMMAND
-```bash
-task-o-matic benchmark list
-```
-
-**Description**: Lists all past benchmark runs with timestamps and commands.
-
-**Example Output:**
-```
-Benchmark Runs:
-- 2024-01-15_14-30-22_prd-parse (2024-01-15 2:30:22 PM) - prd-parse
-- 2024-01-15_13-45-10_task-create (2024-01-15 1:45:10 PM) - task-create
-- 2024-01-14_16-20-45_workflow-full (2024-01-14 4:20:45 PM) - workflow-full
-```
-
-#### OPERATIONS SUBCOMMAND
-```bash
-task-o-matic benchmark operations
-```
-
-**Description**: Lists all available benchmark operations grouped by category.
-
-**Example Output:**
-```
-📊 Available Benchmark Operations
-
-Task Operations:
-  task-create          - Create a new task with AI enhancement
-  task-enhance        - Enhance an existing task with AI
-  task-breakdown      - Break task into subtasks using AI
-  task-document       - Fetch and analyze documentation for task
-
-PRD Operations:
-  prd-create          - Generate PRD from product description
-  prd-parse           - Parse PRD into structured tasks
-  prd-rework          - Rework PRD based on feedback
-  prd-combine         - Combine multiple PRDs into master PRD
-
-Workflow Operations:
-  workflow-full       - Complete workflow execution
-  workflow-init       - Project initialization step
-  workflow-prd        - PRD creation and refinement
-```
-
-#### SHOW SUBCOMMAND
-```bash
-task-o-matic benchmark show <id>
-```
-
-**Arguments:**
-- `id`: Run ID to display details for
-
-**Description**: Shows comprehensive details of a specific benchmark run including configuration, results, and performance metrics.
-
-**Example Usage:**
-```bash
-task-o-matic benchmark show 2024-01-15_14-30-22_prd-parse
-```
-
-#### COMPARE SUBCOMMAND
-```bash
-task-o-matic benchmark compare <id>
-```
-
-**Arguments:**
-- `id`: Run ID to compare results for
-
-**Description**: Provides comparative analysis of results within a benchmark run, showing performance differences across models.
-
-#### EXECUTION SUBCOMMAND
-```bash
-task-o-matic benchmark execution [options]
-```
-
-**Required Options:**
-```bash
---task-id <id>         # Task ID to benchmark
---models <list>         # Comma-separated list of models (provider:model)
-```
-
-**Optional Options:**
-```bash
---verify <command>     # Verification command (can be used multiple times)
---max-retries <number>  # Maximum retries per model
---no-keep-branches     # Delete benchmark branches after run
-```
-
-**Execution Benchmark Examples:**
-```bash
-task-o-matic benchmark execution \
-  --task-id 7 \
-  --models "openai:gpt-4o,anthropic:claude-3.5-sonnet" \
-  --verify "bun test" \
-  --max-retries 3
-```
-
-#### EXECUTE-LOOP SUBCOMMAND
-```bash
-task-o-matic benchmark execute-loop [options]
-```
+#### `bench list`
+List past benchmark runs.
 
 **Options:**
+- `--type <type>`: Filter by benchmark type
+- `--status <status>`: Filter by status
+- `--limit <n>`: Limit number of results (default: 10)
+
+**Example:**
 ```bash
---status <status>        # Filter tasks by status
---tag <tag>            # Filter tasks by tag
---ids <ids>            # Comma-separated list of task IDs
---models <list>         # Comma-separated list of models (provider:model) (required)
---verify <command>     # Verification command
---max-retries <number>  # Maximum number of retries per task
---try-models <models>   # Progressive model/executor configs
---no-keep-branches     # Delete benchmark branches after run
+task-o-matic bench list --limit 5
 ```
 
-**Execute-Loop Benchmark Examples:**
+#### `bench show`
+Show detailed results for a specific run.
+
+**Usage:**
 ```bash
-task-o-matic benchmark execute-loop \
-  --status todo \
-  --models "openai:gpt-4o,anthropic:claude-3.5-sonnet" \
-  --verify "bun test" \
-  --max-retries 3
+task-o-matic bench show <run-id>
 ```
 
-#### WORKFLOW SUBCOMMAND
+#### `bench score`
+Manually score a model's result.
+
+**Usage:**
 ```bash
-task-o-matic benchmark workflow [options]
+task-o-matic bench score <run-id> --model <model-id> --score <1-5> [--note <text>]
 ```
 
-**Required Options:**
+**Example:**
 ```bash
---models <list>    # Comma-separated list of models (provider:model[:reasoning=<tokens>])
+task-o-matic bench score bench-exec-123 --model anthropic:claude-3-5-sonnet --score 5 --note "Perfect implementation"
 ```
 
-**Workflow Configuration Options:**
+#### `bench worktrees`
+Manage benchmark worktrees.
+
+**Subcommands:**
+- `list`: List active worktrees
+- `cleanup <run-id>`: Remove worktrees for a run
+
+**Example:**
 ```bash
---concurrency <number>        # Max concurrent requests (default: 3)
---delay <number>             # Delay between requests in ms (default: 1000)
---stream                     # Show streaming AI output
---skip-all                   # Skip all optional steps (use defaults)
---auto-accept                # Auto-accept all AI suggestions
---config-file <path>         # Load workflow options from JSON file
+# View active worktrees
+task-o-matic bench worktrees list
+
+# Clean up after inspection
+task-o-matic bench worktrees cleanup bench-exec-123
 ```
 
-**Step-Specific Options** (same as workflow command):
+#### `bench compare`
+Compare results across models (Visualizer placeholder).
+
+**Usage:**
 ```bash
-# Initialization
---skip-init --project-name <name> --init-method <method> --project-description <desc>
-
-# PRD Definition
---skip-prd --prd-method <method> --prd-file <path> --prd-description <desc>
-
-# PRD Refinement
---skip-refine --refine-method <method> --refine-feedback <feedback>
-
-# Task Generation
---skip-generate --generate-method <method> --generate-instructions <instructions>
-
-# Task Splitting
---skip-split --split-tasks <ids> --split-all --split-method <method>
-```
-
-**Workflow Benchmark Examples:**
-```bash
-# Basic workflow benchmark
-task-o-matic benchmark workflow \
-  --models "anthropic:claude-3.5-sonnet,openai:gpt-4" \
-  --skip-all
-
-# Advanced workflow benchmark
-task-o-matic benchmark workflow \
-  --models "openrouter:anthropic/claude-3.5-sonnet:reasoning=2048,openrouter:openai/gpt-4o,openrouter:google/gemini-2.0-flash-exp" \
-  --concurrency 2 \
-  --delay 2000 \
-  --auto-accept \
-  --skip-refine \
-  --generate-method ai \
-  --split-all
+task-o-matic bench compare <run-id>
 ```
 
 ### BENCHMARK PERFORMANCE METRICS
 
 #### Measured Metrics
-- **Duration**: Total execution time in milliseconds
-- **TTFT (Time to First Token)**: Response latency
-- **Tokens**: Total token usage (prompt + completion)
-- **TPS (Tokens Per Second)**: Processing speed
-- **BPS (Bytes Per Second)**: Data transfer rate
-- **Response Size**: Output size in bytes
-- **Cost**: Estimated API cost in USD
-
-#### Result Analysis
-```bash
-# Example benchmark output table
-Model                                     | Duration | TTFT    | Tokens   | TPS     | BPS     | Size     | Cost
--------------------------------------------|----------|----------|----------|---------|---------|----------|----------
-anthropic:claude-3.5-sonnet                | 2340ms   | 120ms    | 1250     | 0.53    | 89      | 208      | $0.004250
-openai:gpt-4                              | 3120ms   | 180ms    | 980      | 0.31    | 67      | 195      | $0.039200
-openrouter:anthropic/claude-3.5-sonnet     | 2450ms   | 135ms    | 1180     | 0.48    | 85      | 202      | $0.004720
-```
+- **Duration**: Total execution time
+- **Code Metrics**: Lines added/removed, files changed
+- **Verification**: Test pass/fail status, build success
+- **Tokens/Cost**: Token usage and estimated cost (if available)
 
 ### BENCHMARK ERROR HANDLING
 
-#### Common Benchmark Errors
+#### Common Errors
 ```bash
-# Invalid model format
-Error: Invalid model format: invalid-model. Expected provider:model[:reasoning=<tokens>]
-Solution: Use correct format with provider and model
+# Worktree conflict
+Error: Worktree path already exists
+Solution: Run 'bench worktrees cleanup' for the previous run
 
-# Operation not found
-Error: Benchmark operation 'invalid-op' not found
-Solution: Use 'benchmark operations' to see available operations
-
-# Concurrency limits
-Error: Too many concurrent requests
-Solution: Reduce --concurrency value or increase --delay
-
-# API rate limits
-Error: Rate limit exceeded for provider
-Solution: Increase delay between requests or reduce concurrency
+# Model format
+Error: Invalid model format
+Solution: Use provider:model format (e.g., openai:gpt-4o)
 ```
-
-#### Benchmark Recovery Strategies
-1. **Model Validation**: Verify all model strings before running
-2. **Operation Check**: Confirm operation exists with `benchmark operations`
-3. **Rate Limit Handling**: Adjust concurrency and delay parameters
-4. **Partial Failure Handling**: Continue with successful models, retry failed ones
 
 ### TECHNICAL SPECIFICATIONS
 

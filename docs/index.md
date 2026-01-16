@@ -27,7 +27,7 @@ The Task-O-Matic System is built on the revolutionary **S.P.E.C.I.A.L.** framewo
 | **S**trength | **TaskService** | Core task management and project backbone |
 | **P**erception | **PRDService** | Understanding and analyzing project requirements |
 | **E**ndurance | **WorkflowService** | Complete project lifecycle management |
-| **C**harisma | **BenchmarkService** | Performance comparison and optimization |
+| **C**harisma | **Benchmark System** | Performance comparison and optimization |
 | **I**ntelligence | **Storage/FileSystem** | Data persistence and project memory |
 | **A**gility | **AI Operations** | Rapid AI model interactions and responses |
 | **L**uck | **Configuration** | System setup and optimal performance tuning |
@@ -103,9 +103,9 @@ Complete project lifecycle management.
 - Multi-step project initialization
 - End-to-end project automation
 
-#### **C - Charisma: BenchmarkService**
+#### **C - Charisma: Benchmark System**
 Performance comparison and model selection.
-- [Model Benchmarking Documentation](benchmarking.md)
+- [Model Benchmarking Documentation](FO/benchmark/overview.md)
 - Compare AI model performance
 - Workflow benchmarking across models
 - Cost and quality analysis
@@ -155,7 +155,6 @@ import {
   WorkflowService,
   TaskService,
   PRDService,
-  BenchmarkService,
   type Task,
   type AIConfig,
 } from "task-o-matic-core";

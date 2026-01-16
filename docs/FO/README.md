@@ -83,7 +83,7 @@ Both facilities operate from the same codebase, sharing identical capabilities a
 |----------|-------|----------|----------|
 | 005 | **Workflow System - Project Bunker** | `services/workflow-service.md` | 🔶 **HIGH** |
 | 006 | **PRD Service - Requirements Containment** | `services/prd-service.md` | 🔶 **HIGH** |
-| 007 | **Benchmark Service - Performance Monitoring** | `services/benchmark-service.md` | 🔶 **HIGH** |
+| 007 | **Benchmark Service - Performance Monitoring** | `benchmark/overview.md` | 🔶 **HIGH** |
 
 ### SECTION III: FIELD OPERATIONS & INTERFACES
 
@@ -99,7 +99,7 @@ Both facilities operate from the same codebase, sharing identical capabilities a
 |----------|-------|----------|----------|
 | 011 | **Configuration & Init Commands** | `cli/config-init-prompt-commands.md` | 📡 **STANDARD** |
 | 012 | **Plan & Document Commands** | `cli/plan-commands.md`, `cli/document-commands.md` | 📡 **STANDARD** |
-| 013 | **Benchmark Commands** | `cli/benchmark-commands.md` | 📡 **STANDARD** |
+| 013 | **Benchmark Commands** | `benchmark/overview.md#field-manual-cli-commands` | 📡 **STANDARD** |
 | 014 | **Model Provider System** | `lib/model-provider.md` | 📡 **STANDARD** |
 | 015 | **FileSystem Tools** | `lib/filesystem-tools.md` | 📡 **STANDARD** |
 | 016 | **MCP Client** | `lib/mcp-client.md` | 📡 **STANDARD** |
@@ -283,7 +283,7 @@ For detailed information on specific system components and general operations:
 - [AI Integration Guide](../../docs/ai-integration.md) - AI providers and prompts
 - [Project Initialization Guide](../../docs/projects.md) - Project setup and bootstrapping
 - [Streaming Output Guide](../../docs/streaming.md) - Real-time AI streaming
-- [Model Benchmarking Guide](../../docs/benchmarking.md) - Performance comparison
+- [Model Benchmarking Guide](../../docs/FO/benchmark/overview.md) - Performance comparison
 
 ---
 
