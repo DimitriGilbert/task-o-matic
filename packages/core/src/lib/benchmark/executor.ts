@@ -24,6 +24,12 @@ import { logger } from "../logger";
 import { buildAIConfig, type AIOptions } from "../../utils/ai-config-builder";
 import { setupWorkingDirectory } from "../config";
 import type { TaskExecutionConfig, ExecutorTool } from "../../types";
+import { executeTaskCore } from "../task-execution-core";
+import { executeTaskLoop } from "../task-loop-execution";
+import { WorkflowService } from "../../services/workflow";
+import { PRDService } from "../../services/prd";
+import { writeFileSync } from "node:fs";
+import { join } from "node:path";
 
 /**
  * Token tracking from AI operations
@@ -183,9 +189,6 @@ export class BenchmarkExecutor {
       // Setup working directory to the worktree
       await setupWorkingDirectory(worktree.path);
 
-      // Dynamically import to avoid circular dependencies
-      const { executeTaskCore } = await import("../task-execution-core");
-
       // Token tracking
       const tokenTracker: TokenTracker = { prompt: 0, completion: 0 };
 
@@ -274,9 +277,6 @@ export class BenchmarkExecutor {
       // Setup working directory to the worktree
       await setupWorkingDirectory(worktree.path);
 
-      // Dynamically import to avoid circular dependencies
-      const { executeTaskLoop } = await import("../task-loop-execution");
-
       // Token tracking
       const tokenTracker: TokenTracker = { prompt: 0, completion: 0 };
 
@@ -364,9 +364,6 @@ export class BenchmarkExecutor {
       const projectDir = input.projectDir ?? worktree.path;
       await setupWorkingDirectory(projectDir);
 
-      // Dynamically import to avoid circular dependencies
-      const { WorkflowService } = await import("../../services/workflow");
-
       // Token tracking
       const tokenTracker: TokenTracker = { prompt: 0, completion: 0 };
 
@@ -397,13 +394,10 @@ export class BenchmarkExecutor {
 
       // Step 2: Parse PRD if content is provided
       if (input.collectedResponses.prdContent || input.collectedResponses.prdFile) {
-        const { PRDService } = await import("../../services/prd");
         const prdService = new PRDService();
         
         if (input.collectedResponses.prdContent) {
           // If we have PRD content, save it first
-          const { writeFileSync } = await import("node:fs");
-          const { join } = await import("node:path");
           const prdPath = join(projectDir, ".task-o-matic", "prd", "benchmark-prd.md");
           writeFileSync(prdPath, input.collectedResponses.prdContent);
           
@@ -421,8 +415,6 @@ export class BenchmarkExecutor {
 
       // Step 3: Execute tasks if requested
       if (input.collectedResponses.generateTasks) {
-        const { executeTaskLoop } = await import("../task-loop-execution");
-        
         const loopOptions = {
           filters: { status: "todo" as const },
           tool: (input.workflowOptions.executeTool ?? "opencode") as ExecutorTool,

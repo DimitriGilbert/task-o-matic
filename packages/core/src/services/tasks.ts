@@ -38,6 +38,8 @@ import {
   createStandardError,
 } from "../utils/task-o-matic-error";
 import { createBaseAIMetadata } from "../utils/metadata-utils";
+import { resolve } from "path";
+import { existsSync, readFileSync } from "fs";
 
 /**
  * Dependencies for TaskService
@@ -182,17 +184,20 @@ export class TaskService {
       // Build context with error handling (Bug fix 2.2)
       let context: {
         stack?: BTSConfig;
-        existingResearch?: Record<string, Array<{ query: string; doc: string }>>;
+        existingResearch?: Record<
+          string,
+          Array<{ query: string; doc: string }>
+        >;
       };
       try {
         context = await this.contextBuilder.buildContextForNewTask(
           input.title,
-          input.content
+          input.content,
         );
       } catch (error) {
         // Log warning but don't fail task creation
         logger.warn(
-          `Warning: Could not build context: ${getErrorMessage(error)}`
+          `Warning: Could not build context: ${getErrorMessage(error)}`,
         );
         // Continue with empty context
         context = { stack: undefined, existingResearch: {} };
@@ -218,7 +223,7 @@ export class TaskService {
         input.streamingOptions,
         undefined,
         enhancementAIConfig,
-        context.existingResearch
+        context.existingResearch,
       );
 
       const aiConfig = this.modelProvider.getAIConfig();
@@ -252,7 +257,7 @@ export class TaskService {
           | "large"
           | undefined,
       },
-      aiMetadata
+      aiMetadata,
     );
 
     this.hooks.emit("task:progress", {
@@ -295,14 +300,14 @@ export class TaskService {
 
     if (filters.status) {
       filteredTasks = filteredTasks.filter(
-        (task) => task.status === filters.status
+        (task) => task.status === filters.status,
       );
     }
 
     if (filters.tag) {
       const tagToFilter = filters.tag; // Type narrowing
       filteredTasks = filteredTasks.filter(
-        (task) => task.tags && task.tags.includes(tagToFilter)
+        (task) => task.tags && task.tags.includes(tagToFilter),
       );
     }
 
@@ -333,7 +338,7 @@ export class TaskService {
       status?: string;
       effort?: string;
       tags?: string | string[];
-    }
+    },
   ): Promise<Task> {
     const storage = this.storage;
     const existingTask = await storage.getTask(id);
@@ -358,7 +363,7 @@ export class TaskService {
         if (!validTransitions[existingTask.status].includes(updates.status)) {
           throw formatInvalidStatusTransitionError(
             existingTask.status,
-            updates.status
+            updates.status,
           );
         }
       }
@@ -402,7 +407,7 @@ export class TaskService {
 
   async deleteTask(
     id: string,
-    options: { cascade?: boolean; force?: boolean } = {}
+    options: { cascade?: boolean; force?: boolean } = {},
   ): Promise<DeleteTaskResult> {
     const { cascade, force } = options;
     const storage = this.storage;
@@ -431,7 +436,7 @@ export class TaskService {
               "Delete subtasks first, then delete parent task",
             ],
             metadata: { taskId: id, subtaskCount: subtasks.length },
-          }
+          },
         );
       }
       // Orphan subtasks by removing parent reference
@@ -580,7 +585,7 @@ export class TaskService {
         return filteredTasks.sort(
           (a, b) =>
             (effortOrder[a.estimatedEffort || "medium"] || 2) -
-            (effortOrder[b.estimatedEffort || "medium"] || 2)
+            (effortOrder[b.estimatedEffort || "medium"] || 2),
         )[0];
       }
       default:
@@ -663,7 +668,7 @@ export class TaskService {
   async enhanceTask(
     taskId: string,
     aiOptions?: AIOptions,
-    streamingOptions?: StreamingOptions
+    streamingOptions?: StreamingOptions,
   ): Promise<EnhanceTaskResult> {
     const startTime = Date.now();
 
@@ -706,7 +711,7 @@ export class TaskService {
         metricsStreamingOptions,
         undefined,
         enhancementAIConfig,
-        context.existingResearch
+        context.existingResearch,
       );
 
     // Extract metrics after AI call
@@ -722,7 +727,7 @@ export class TaskService {
     if (enhancedContent.length > 200) {
       const contentFile = await this.storage.saveEnhancedTaskContent(
         task.id,
-        enhancedContent
+        enhancedContent,
       );
       await this.storage.updateTask(task.id, {
         contentFile,
@@ -827,7 +832,7 @@ export class TaskService {
     promptOverride?: string,
     messageOverride?: string,
     streamingOptions?: StreamingOptions,
-    enableFilesystemTools?: boolean
+    enableFilesystemTools?: boolean,
   ): Promise<SplitTaskResult> {
     const startTime = Date.now();
 
@@ -855,7 +860,7 @@ export class TaskService {
             "Consider editing existing subtasks instead",
           ],
           metadata: { taskId, subtaskCount: existingSubtasks.length },
-        }
+        },
       );
     }
 
@@ -894,7 +899,7 @@ export class TaskService {
       fullContent,
       stackInfo,
       existingSubtasks,
-      enableFilesystemTools
+      enableFilesystemTools,
     );
 
     // Extract metrics after AI call
@@ -941,7 +946,7 @@ export class TaskService {
             aiConfig,
             promptOverride,
             "Split task into meaningful subtasks with full context and existing subtask awareness",
-            0.9
+            0.9,
           ),
           splitAt: splitTimestamp,
           parentTaskId: taskId,
@@ -961,7 +966,7 @@ export class TaskService {
         aiConfig,
         promptOverride,
         "Split task into meaningful subtasks with full context and existing subtask awareness",
-        0.9
+        0.9,
       ),
       splitAt: splitTimestamp,
       subtasksCreated: createdSubtasks.length,
@@ -1036,7 +1041,7 @@ export class TaskService {
     taskId: string,
     force: boolean = false,
     aiOptions?: AIOptions,
-    streamingOptions?: StreamingOptions
+    streamingOptions?: StreamingOptions,
   ): Promise<DocumentTaskResult> {
     const startTime = Date.now();
 
@@ -1092,7 +1097,7 @@ export class TaskService {
             "Provide task description or details",
           ],
           metadata: { taskId },
-        }
+        },
       );
     }
 
@@ -1114,7 +1119,7 @@ export class TaskService {
       streamingOptions,
       undefined,
       analysisAIConfig,
-      documentations
+      documentations,
     );
 
     let documentation: TaskDocumentation | undefined;
@@ -1133,7 +1138,7 @@ export class TaskService {
       for (const lib of analysis.libraries) {
         const sanitizedLibrary = this.storage.sanitizeForFilename(lib.name);
         const sanitizedQuery = this.storage.sanitizeForFilename(
-          lib.searchQuery
+          lib.searchQuery,
         );
         const docFile = `docs/${sanitizedLibrary}/${sanitizedQuery}.md`;
 
@@ -1157,13 +1162,13 @@ export class TaskService {
           library: tr.toolName,
           content: JSON.stringify(tr.output),
         })) || [],
-        streamingOptions
+        streamingOptions,
       );
 
       documentation = {
         lastFetched: Date.now(),
         libraries: analysis.libraries.map(
-          (lib: { context7Id: string }) => lib.context7Id
+          (lib: { context7Id: string }) => lib.context7Id,
         ),
         recap,
         files: analysis.files || [],
@@ -1239,7 +1244,7 @@ export class TaskService {
   async planTask(
     taskId: string,
     aiOptions?: AIOptions,
-    streamingOptions?: StreamingOptions
+    streamingOptions?: StreamingOptions,
   ): Promise<PlanTaskResult> {
     const startTime = Date.now();
 
@@ -1302,7 +1307,7 @@ export class TaskService {
       planAIConfig,
       undefined,
       undefined,
-      metricsStreamingOptions
+      metricsStreamingOptions,
     );
 
     // Extract metrics after AI call
@@ -1352,7 +1357,7 @@ export class TaskService {
 
   async addTaskDocumentationFromFile(
     taskId: string,
-    filePath: string
+    filePath: string,
   ): Promise<{ filePath: string; task: Task }> {
     const task = await this.getTask(taskId);
     if (!task) {
@@ -1360,9 +1365,6 @@ export class TaskService {
     }
 
     try {
-      const { readFileSync, existsSync } = await import("fs");
-      const { resolve } = await import("path");
-
       const resolvedPath = resolve(filePath);
       if (!existsSync(resolvedPath)) {
         throw createStandardError(
@@ -1376,14 +1378,14 @@ export class TaskService {
               "Use an absolute path or path relative to current directory",
             ],
             metadata: { filePath, resolvedPath },
-          }
+          },
         );
       }
 
       const content = readFileSync(resolvedPath, "utf-8");
       const savedPath = await this.storage.saveTaskDocumentation(
         taskId,
-        content
+        content,
       );
 
       return {
@@ -1398,7 +1400,7 @@ export class TaskService {
       // Wrap other errors
       throw formatStorageError(
         "saveTaskDocumentation",
-        error instanceof Error ? error : undefined
+        error instanceof Error ? error : undefined,
       );
     }
   }
@@ -1406,7 +1408,7 @@ export class TaskService {
   async setTaskPlan(
     taskId: string,
     planText?: string,
-    planFilePath?: string
+    planFilePath?: string,
   ): Promise<{ planFile: string; task: Task }> {
     const task = await this.getTask(taskId);
     if (!task) {
@@ -1417,9 +1419,6 @@ export class TaskService {
 
     if (planFilePath) {
       try {
-        const { readFileSync, existsSync } = await import("fs");
-        const { resolve } = await import("path");
-
         const resolvedPath = resolve(planFilePath);
         if (!existsSync(resolvedPath)) {
           throw createStandardError(
@@ -1433,7 +1432,7 @@ export class TaskService {
                 "Use an absolute path or path relative to current directory",
               ],
               metadata: { planFilePath, resolvedPath },
-            }
+            },
           );
         }
 
@@ -1446,7 +1445,7 @@ export class TaskService {
         // Wrap other errors
         throw formatStorageError(
           "readFileSync",
-          error instanceof Error ? error : undefined
+          error instanceof Error ? error : undefined,
         );
       }
     } else if (planText) {
@@ -1463,7 +1462,7 @@ export class TaskService {
             "Provide planFilePath parameter with path to plan file",
           ],
           metadata: { taskId },
-        }
+        },
       );
     }
 
@@ -1481,7 +1480,7 @@ export class TaskService {
   // ============================================================================
 
   async getTaskPlan(
-    taskId: string
+    taskId: string,
   ): Promise<{ plan: string; createdAt: number; updatedAt: number } | null> {
     return this.storage.getPlan(taskId);
   }

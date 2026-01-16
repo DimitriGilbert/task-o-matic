@@ -309,12 +309,13 @@ describe("BenchmarkOrchestrator", function () {
           config,
           (event: BenchmarkProgressEvent) => events.push(event)
         );
-      } catch {
-        // May fail due to mocking limitations, but events should be captured
+      } catch (error) {
+        // If it fails, we still check if events were emitted
+        console.error("Orchestrator run failed:", error);
       }
 
-      // Events may or may not be captured depending on mock behavior
-      // The important thing is the callback was accepted
+      assert.ok(events.length > 0, "Should have emitted events");
+      assert.ok(events.some((e) => e.type === "start" || e.type === "progress"), "Should have start or progress events");
     });
   });
 });

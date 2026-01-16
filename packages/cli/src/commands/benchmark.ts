@@ -217,8 +217,11 @@ benchmarkCommand
 
       runs.forEach(run => {
         const date = new Date(run.createdAt).toLocaleString();
+        const statusRaw = run.status;
+        const statusColored = statusColor(statusRaw);
+        const statusPadded = statusColored + " ".repeat(Math.max(0, 12 - statusRaw.length));
         console.log(
-          `${run.id.padEnd(30)}${run.type.padEnd(15)}${statusColor(run.status).padEnd(21)}${String(run.config.models.length).padEnd(8)}${date}`
+          `${run.id.padEnd(30)}${run.type.padEnd(15)}${statusPadded}${String(run.config.models.length).padEnd(8)}${date}`
         );
       });
       console.log("");
@@ -266,8 +269,13 @@ benchmarkCommand
 
       run.results.forEach(res => {
         const modelId = res.modelId.length > modelW - 2 ? `${res.modelId.substring(0, modelW - 2)}..` : res.modelId;
-        const status = res.status === "success" ? chalk.green("PASS") : 
-                       res.status === "error" ? chalk.red("ERR") : chalk.yellow("FAIL");
+        
+        const statusRaw = res.status === "success" ? "PASS" : 
+                       res.status === "error" ? "ERR" : "FAIL";
+        const statusColored = res.status === "success" ? chalk.green("PASS") : 
+                              res.status === "error" ? chalk.red("ERR") : chalk.yellow("FAIL");
+        const statusPadded = statusColored + " ".repeat(Math.max(0, statusW - statusRaw.length));
+
         const duration = `${Math.round(res.duration / 1000)}s`;
         const lines = res.metrics.code 
           ? `+${res.metrics.code.linesAdded} / -${res.metrics.code.linesRemoved}`
@@ -277,7 +285,7 @@ benchmarkCommand
         const scoreStr = score ? `${score.score}/5` : "-";
 
         console.log(
-          `${modelId.padEnd(modelW)}${status.padEnd(statusW + 9)}${duration.padEnd(durW)}${lines.padEnd(linesW)}${scoreStr}`
+          `${modelId.padEnd(modelW)}${statusPadded}${duration.padEnd(durW)}${lines.padEnd(linesW)}${scoreStr}`
         );
       });
       console.log("");

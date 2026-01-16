@@ -12,8 +12,18 @@ import {
 import { join, basename, relative } from "path";
 import { getAIOperations, getStorage } from "../utils/ai-service-factory";
 import { buildAIConfig, AIOptions } from "../utils/ai-config-builder";
-import { AIConfig, StreamingOptions, PRDVersion, PRDChange, ProjectAnalysisResult } from "../types";
-import { PRDParseResult, SuggestStackResult, PRDFromCodebaseResult } from "../types/results";
+import {
+  AIConfig,
+  StreamingOptions,
+  PRDVersion,
+  PRDChange,
+  ProjectAnalysisResult,
+} from "../types";
+import {
+  PRDParseResult,
+  SuggestStackResult,
+  PRDFromCodebaseResult,
+} from "../types/results";
 import { configManager, setupWorkingDirectory } from "../lib/config";
 import { isValidAIProvider } from "../lib/validation";
 import { ProgressCallback } from "../types/callbacks";
@@ -24,6 +34,7 @@ import {
   saveStackFile,
 } from "../utils/file-utils";
 import { getProjectAnalysisService } from "./project-analysis";
+import { PromptBuilder } from "../lib/prompt-builder";
 
 /**
  * Dependencies for PRDService
@@ -85,7 +96,7 @@ export class PRDService {
         "Not a task-o-matic project. Run 'task-o-matic init init' first.",
         {
           suggestions: ["Run `task-o-matic init init` in your project root."],
-        }
+        },
       );
     }
 
@@ -138,7 +149,7 @@ export class PRDService {
         `Invalid AI provider: ${input.aiOptions.aiProvider}`,
         {
           suggestions: ["Use a valid AI provider, e.g., 'openai', 'anthropic'"],
-        }
+        },
       );
     }
 
@@ -163,7 +174,7 @@ export class PRDService {
       metricsStreamingOptions,
       undefined, // retryConfig
       workingDir, // Pass working directory to AI operations
-      input.enableFilesystemTools
+      input.enableFilesystemTools,
     );
 
     // Extract metrics after AI call
@@ -304,7 +315,7 @@ export class PRDService {
         `Invalid AI provider: ${input.aiOptions.aiProvider}`,
         {
           suggestions: ["Use a valid AI provider, e.g., 'openai', 'anthropic'"],
-        }
+        },
       );
     }
 
@@ -323,7 +334,7 @@ export class PRDService {
       input.streamingOptions,
       undefined,
       workingDir,
-      input.enableFilesystemTools
+      input.enableFilesystemTools,
     );
 
     input.callbacks?.onProgress?.({
@@ -375,7 +386,7 @@ export class PRDService {
         `Invalid AI provider: ${input.aiOptions.aiProvider}`,
         {
           suggestions: ["Use a valid AI provider, e.g., 'openai', 'anthropic'"],
-        }
+        },
       );
     }
 
@@ -395,7 +406,7 @@ export class PRDService {
       input.streamingOptions,
       undefined, // retryConfig
       workingDir, // Pass working directory to AI operations
-      input.enableFilesystemTools
+      input.enableFilesystemTools,
     );
 
     input.callbacks?.onProgress?.({
@@ -464,7 +475,6 @@ export class PRDService {
 
     // Step 2: Get stack info for context
     const workingDir = input.workingDirectory || process.cwd();
-    const PromptBuilder = (await import("../lib/prompt-builder")).PromptBuilder;
     let stackInfo = "";
     try {
       stackInfo = await PromptBuilder.detectStackInfo(workingDir);
@@ -484,7 +494,7 @@ export class PRDService {
       if (!input.answers || Object.keys(input.answers).length === 0) {
         throw createStandardError(
           TaskOMaticErrorCodes.INVALID_INPUT,
-          "User mode selected but no answers provided. CLI layer should collect answers."
+          "User mode selected but no answers provided. CLI layer should collect answers.",
         );
       }
       answers = input.answers;
@@ -499,7 +509,7 @@ export class PRDService {
 
       // Use questionAIOptions if provided, otherwise use main aiOptions
       const answeringAIConfig = buildAIConfig(
-        input.questionAIOptions || input.aiOptions
+        input.questionAIOptions || input.aiOptions,
       );
 
       answers = await this.aiOperations.answerPRDQuestions(
@@ -509,7 +519,7 @@ export class PRDService {
         {
           stackInfo,
         },
-        input.streamingOptions
+        input.streamingOptions,
       );
     }
 
@@ -585,7 +595,7 @@ export class PRDService {
       aiConfig,
       undefined,
       undefined,
-      metricsStreamingOptions
+      metricsStreamingOptions,
     );
 
     // Get metrics after AI operation
@@ -654,7 +664,7 @@ export class PRDService {
       aiConfig,
       undefined,
       undefined,
-      metricsStreamingOptions
+      metricsStreamingOptions,
     );
 
     // Get metrics after AI operation
@@ -670,7 +680,7 @@ export class PRDService {
     const path = savePRDFile(
       content,
       input.filename || "prd-master.md",
-      input.outputDir
+      input.outputDir,
     );
 
     input.callbacks?.onProgress?.({
@@ -721,7 +731,7 @@ export class PRDService {
         "Cannot specify both --file and --content",
         {
           suggestions: ["Use either --file OR --content, not both."],
-        }
+        },
       );
     }
 
@@ -733,7 +743,7 @@ export class PRDService {
           suggestions: [
             "Provide a PRD file with --file or content with --content.",
           ],
-        }
+        },
       );
     }
 
@@ -760,7 +770,7 @@ export class PRDService {
         `Invalid AI provider: ${input.aiOptions.aiProvider}`,
         {
           suggestions: ["Use a valid AI provider, e.g., 'openai', 'anthropic'"],
-        }
+        },
       );
     }
 
@@ -784,7 +794,7 @@ export class PRDService {
       metricsStreamingOptions,
       undefined, // retryConfig
       workingDir,
-      input.enableFilesystemTools
+      input.enableFilesystemTools,
     );
 
     // Get metrics after AI operation
@@ -861,7 +871,7 @@ export class PRDService {
         `Invalid AI provider: ${input.aiOptions.aiProvider}`,
         {
           suggestions: ["Use a valid AI provider, e.g., 'openai', 'anthropic'"],
-        }
+        },
       );
     }
 
@@ -891,7 +901,7 @@ export class PRDService {
             "Ensure you are in a valid project directory",
             "Check that package.json exists",
           ],
-        }
+        },
       );
     }
 
@@ -905,7 +915,9 @@ export class PRDService {
     // Format analysis data for AI
     const stackInfo = this.formatStackForAI(analysis.stack);
     const structureInfo = this.formatStructureForAI(analysis.structure);
-    const existingFeatures = this.formatFeaturesForAI(analysis.existingFeatures);
+    const existingFeatures = this.formatFeaturesForAI(
+      analysis.existingFeatures,
+    );
     const documentation = this.formatDocsForAI(analysis.documentation);
     const todos = this.formatTodosForAI(analysis.todos);
     const fileTree = this.buildFileTree(analysis.structure);
@@ -930,7 +942,7 @@ export class PRDService {
       aiConfig,
       metricsStreamingOptions,
       undefined,
-      input.enableFilesystemTools
+      input.enableFilesystemTools,
     );
 
     // Get metrics after AI operation
@@ -976,7 +988,9 @@ export class PRDService {
   /**
    * Format detected stack for AI prompt
    */
-  private formatStackForAI(stack: import("../types/project-analysis").DetectedStack): string {
+  private formatStackForAI(
+    stack: import("../types/project-analysis").DetectedStack,
+  ): string {
     const parts: string[] = [];
     parts.push(`- **Language**: ${stack.language}`);
     parts.push(`- **Framework(s)**: ${stack.frameworks.join(", ")}`);
@@ -1000,21 +1014,29 @@ export class PRDService {
     if (stack.buildTools && stack.buildTools.length > 0) {
       parts.push(`- **Build Tools**: ${stack.buildTools.join(", ")}`);
     }
-    parts.push(`- **Detection Confidence**: ${Math.round(stack.confidence * 100)}%`);
+    parts.push(
+      `- **Detection Confidence**: ${Math.round(stack.confidence * 100)}%`,
+    );
     return parts.join("\n");
   }
 
   /**
    * Format project structure for AI prompt
    */
-  private formatStructureForAI(structure: import("../types/project-analysis").ProjectStructure): string {
+  private formatStructureForAI(
+    structure: import("../types/project-analysis").ProjectStructure,
+  ): string {
     const parts: string[] = [];
-    parts.push(`- **Project Type**: ${structure.isMonorepo ? "Monorepo" : "Single Package"}`);
+    parts.push(
+      `- **Project Type**: ${structure.isMonorepo ? "Monorepo" : "Single Package"}`,
+    );
     if (structure.packages && structure.packages.length > 0) {
       parts.push(`- **Packages**: ${structure.packages.join(", ")}`);
     }
     if (structure.sourceDirectories.length > 0) {
-      const dirs = structure.sourceDirectories.map(d => `${d.path} (${d.fileCount} files)`);
+      const dirs = structure.sourceDirectories.map(
+        (d) => `${d.path} (${d.fileCount} files)`,
+      );
       parts.push(`- **Source Directories**: ${dirs.join(", ")}`);
     }
     parts.push(`- **Has Tests**: ${structure.hasTests ? "Yes" : "No"}`);
@@ -1033,39 +1055,49 @@ export class PRDService {
   /**
    * Format detected features for AI prompt
    */
-  private formatFeaturesForAI(features: import("../types/project-analysis").DetectedFeature[]): string {
+  private formatFeaturesForAI(
+    features: import("../types/project-analysis").DetectedFeature[],
+  ): string {
     if (features.length === 0) {
       return "No specific features detected.";
     }
-    return features.map(f => {
-      let text = `### ${f.name}\n`;
-      text += `- **Description**: ${f.description}\n`;
-      text += `- **Category**: ${f.category}\n`;
-      text += `- **Confidence**: ${Math.round(f.confidence * 100)}%\n`;
-      if (f.files.length > 0) {
-        text += `- **Related Files**: ${f.files.slice(0, 5).join(", ")}${f.files.length > 5 ? ` (+${f.files.length - 5} more)` : ""}\n`;
-      }
-      return text;
-    }).join("\n");
+    return features
+      .map((f) => {
+        let text = `### ${f.name}\n`;
+        text += `- **Description**: ${f.description}\n`;
+        text += `- **Category**: ${f.category}\n`;
+        text += `- **Confidence**: ${Math.round(f.confidence * 100)}%\n`;
+        if (f.files.length > 0) {
+          text += `- **Related Files**: ${f.files.slice(0, 5).join(", ")}${f.files.length > 5 ? ` (+${f.files.length - 5} more)` : ""}\n`;
+        }
+        return text;
+      })
+      .join("\n");
   }
 
   /**
    * Format documentation files for AI prompt
    */
-  private formatDocsForAI(docs: import("../types/project-analysis").DocumentationFile[]): string {
+  private formatDocsForAI(
+    docs: import("../types/project-analysis").DocumentationFile[],
+  ): string {
     if (docs.length === 0) {
       return "No documentation files found.";
     }
-    return docs.map(d => {
-      const sizeKB = Math.round(d.size / 1024);
-      return `- **${d.path}** (${d.type}, ${sizeKB}KB)${d.title ? `: ${d.title}` : ""}`;
-    }).join("\n");
+    return docs
+      .map((d) => {
+        const sizeKB = Math.round(d.size / 1024);
+        return `- **${d.path}** (${d.type}, ${sizeKB}KB)${d.title ? `: ${d.title}` : ""}`;
+      })
+      .join("\n");
   }
 
   /**
    * Format TODOs/FIXMEs for AI prompt
    */
-  private formatTodosForAI(todos: import("../types/project-analysis").CodeComment[]): string {
+  private formatTodosForAI(
+    todos: import("../types/project-analysis").CodeComment[],
+  ): string {
     if (todos.length === 0) {
       return "No TODO/FIXME comments found.";
     }
@@ -1077,45 +1109,56 @@ export class PRDService {
       }
       grouped[todo.type].push(todo);
     }
-    
-    return Object.entries(grouped).map(([type, items]) => {
-      const header = `### ${type} (${items.length})\n`;
-      const itemsList = items.slice(0, 10).map(t => 
-        `- \`${t.file}:${t.line}\`: ${t.text}`
-      ).join("\n");
-      const more = items.length > 10 ? `\n_...and ${items.length - 10} more_` : "";
-      return header + itemsList + more;
-    }).join("\n\n");
+
+    return Object.entries(grouped)
+      .map(([type, items]) => {
+        const header = `### ${type} (${items.length})\n`;
+        const itemsList = items
+          .slice(0, 10)
+          .map((t) => `- \`${t.file}:${t.line}\`: ${t.text}`)
+          .join("\n");
+        const more =
+          items.length > 10 ? `\n_...and ${items.length - 10} more_` : "";
+        return header + itemsList + more;
+      })
+      .join("\n\n");
   }
 
   /**
    * Build a simplified file tree string
    */
-  private buildFileTree(structure: import("../types/project-analysis").ProjectStructure): string {
+  private buildFileTree(
+    structure: import("../types/project-analysis").ProjectStructure,
+  ): string {
     const lines: string[] = [];
     lines.push(basename(structure.root) + "/");
-    
+
     // Add source directories
     for (const dir of structure.sourceDirectories) {
       lines.push(`  ${dir.path}/ (${dir.fileCount} files)`);
     }
-    
+
     // Add config files at root
     for (const config of structure.configFiles.slice(0, 10)) {
       lines.push(`  ${config}`);
     }
-    
+
     if (structure.configFiles.length > 10) {
-      lines.push(`  ... and ${structure.configFiles.length - 10} more config files`);
+      lines.push(
+        `  ... and ${structure.configFiles.length - 10} more config files`,
+      );
     }
-    
+
     return lines.join("\n");
   }
 
   /**
    * Resolve PRD file to consistent storage key
    */
-  private async resolvePRDKey(file: string, workingDirectory?: string): Promise<string> {
+  private async resolvePRDKey(
+    file: string,
+    workingDirectory?: string,
+  ): Promise<string> {
     if (workingDirectory) {
       await setupWorkingDirectory(workingDirectory);
     }
@@ -1145,7 +1188,10 @@ export class PRDService {
 
     const prdContent = readFileSync(input.file, "utf-8");
 
-    const relativePath = await this.resolvePRDKey(input.file, input.workingDirectory);
+    const relativePath = await this.resolvePRDKey(
+      input.file,
+      input.workingDirectory,
+    );
 
     // Get latest version to determine next version number
     const latestVersion = await this.storage.getLatestPRDVersion(relativePath);
@@ -1156,9 +1202,10 @@ export class PRDService {
       content: prdContent,
       createdAt: Date.now(),
       changes: input.changes || [],
-      implementedTasks: input.implementedTasks || latestVersion?.implementedTasks || [],
+      implementedTasks:
+        input.implementedTasks || latestVersion?.implementedTasks || [],
       message: input.message,
-      prdFile: relativePath
+      prdFile: relativePath,
     };
 
     await this.storage.savePRDVersion(relativePath, version);
@@ -1173,7 +1220,10 @@ export class PRDService {
     file: string;
     workingDirectory?: string;
   }): Promise<PRDVersion[]> {
-    const relativePath = await this.resolvePRDKey(input.file, input.workingDirectory);
+    const relativePath = await this.resolvePRDKey(
+      input.file,
+      input.workingDirectory,
+    );
 
     const versionData = await this.storage.getPRDVersions(relativePath);
     return versionData?.versions || [];

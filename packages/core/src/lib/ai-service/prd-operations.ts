@@ -1,5 +1,4 @@
 import { streamText } from "ai";
-import type { ToolSet } from "ai";
 import {
   AIConfig,
   Task,
@@ -21,15 +20,13 @@ import {
   PRD_SUGGEST_STACK_SYSTEM_PROMPT,
   PRD_FROM_CODEBASE_SYSTEM_PROMPT,
 } from "../../prompts";
-import { JSONParser } from "./json-parser";
-import { RetryHandler } from "./retry-handler";
-import { ModelProvider } from "./model-provider";
 import { filesystemTools } from "./filesystem-tools";
 import { BaseOperations } from "./base-operations";
 import {
   createStandardError,
   TaskOMaticErrorCodes,
 } from "../../utils/task-o-matic-error";
+import { PRD_QUESTION_SYSTEM_PROMPT } from "../../prompts";
 
 export class PRDOperations extends BaseOperations {
   async parsePRD(
@@ -40,7 +37,7 @@ export class PRDOperations extends BaseOperations {
     streamingOptions?: StreamingOptions,
     retryConfig?: Partial<RetryConfig>,
     workingDirectory?: string,
-    enableFilesystemTools?: boolean
+    enableFilesystemTools?: boolean,
   ): Promise<AIPRDParseResult> {
     // console.log(
     //   `[Library Debug] parsePRD called. Config arg has key: ${!!config?.apiKey} Provider internal key: ${!!this.modelProvider.getAIConfig()
@@ -86,7 +83,7 @@ export class PRDOperations extends BaseOperations {
                   "Verify prompt template exists",
                   "Check variable substitution",
                 ],
-              }
+              },
             );
           }
 
@@ -150,7 +147,7 @@ Use these tools to understand the project structure, existing code patterns, and
             PRD_PARSING_SYSTEM_PROMPT,
             userMessage || enhancedPrompt,
             streamingOptions,
-            { maxAttempts: 1 }
+            { maxAttempts: 1 },
           );
         }
 
@@ -169,7 +166,7 @@ Use these tools to understand the project structure, existing code patterns, and
                 "Check AI response format",
                 "Verify JSON structure",
               ],
-            }
+            },
           );
         }
 
@@ -214,7 +211,7 @@ Use these tools to understand the project structure, existing code patterns, and
                 fullContent += `\n**${key}:** ${JSON.stringify(
                   value,
                   null,
-                  2
+                  2,
                 )}`;
               }
             }
@@ -231,7 +228,7 @@ Use these tools to understand the project structure, existing code patterns, and
               dependencies: task.dependencies || [],
               tags: (task.tags as string[]) || [],
             };
-          }
+          },
         );
 
         return {
@@ -242,7 +239,7 @@ Use these tools to understand the project structure, existing code patterns, and
         };
       },
       retryConfig,
-      "PRD parsing"
+      "PRD parsing",
     );
   }
 
@@ -255,7 +252,7 @@ Use these tools to understand the project structure, existing code patterns, and
     streamingOptions?: StreamingOptions,
     retryConfig?: Partial<RetryConfig>,
     workingDirectory?: string,
-    enableFilesystemTools?: boolean
+    enableFilesystemTools?: boolean,
   ): Promise<string> {
     return this.retryHandler.executeWithRetry(
       async () => {
@@ -298,7 +295,7 @@ Use these tools to understand the project structure, existing code patterns, and
                   "Verify prompt template exists",
                   "Check variable substitution",
                 ],
-              }
+              },
             );
           }
 
@@ -358,12 +355,12 @@ Use these tools to understand the current project structure, existing code patte
             PRD_REWORK_SYSTEM_PROMPT,
             userMessage || prompt,
             streamingOptions,
-            { maxAttempts: 1 }
+            { maxAttempts: 1 },
           );
         }
       },
       retryConfig,
-      "PRD rework"
+      "PRD rework",
     );
   }
 
@@ -375,7 +372,7 @@ Use these tools to understand the current project structure, existing code patte
     streamingOptions?: StreamingOptions,
     retryConfig?: Partial<RetryConfig>,
     workingDirectory?: string,
-    enableFilesystemTools?: boolean
+    enableFilesystemTools?: boolean,
   ): Promise<string[]> {
     return this.retryHandler.executeWithRetry(
       async () => {
@@ -417,14 +414,12 @@ Use these tools to understand the current project structure, existing code patte
                   "Verify prompt template exists",
                   "Check variable substitution",
                 ],
-              }
+              },
             );
           }
 
           prompt = promptResult.prompt!;
         }
-
-        const { PRD_QUESTION_SYSTEM_PROMPT } = await import("../../prompts");
 
         let response: string;
 
@@ -473,7 +468,7 @@ Use these tools to understand the current project structure, existing code patte
             PRD_QUESTION_SYSTEM_PROMPT,
             userMessage || prompt,
             streamingOptions,
-            { maxAttempts: 1 }
+            { maxAttempts: 1 },
           );
         }
 
@@ -490,14 +485,14 @@ Use these tools to understand the current project structure, existing code patte
                 "Check AI response format",
                 "Verify JSON structure",
               ],
-            }
+            },
           );
         }
 
         return parseResult.data?.questions || [];
       },
       retryConfig,
-      "PRD questioning"
+      "PRD questioning",
     );
   }
 
@@ -510,7 +505,7 @@ Use these tools to understand the current project structure, existing code patte
       projectDescription?: string;
     },
     streamingOptions?: StreamingOptions,
-    retryConfig?: Partial<RetryConfig>
+    retryConfig?: Partial<RetryConfig>,
   ): Promise<Record<string, string>> {
     return this.retryHandler.executeWithRetry(
       async () => {
@@ -550,7 +545,7 @@ Use these tools to understand the current project structure, existing code patte
                 "Verify prompt template exists",
                 "Check variable substitution",
               ],
-            }
+            },
           );
         }
 
@@ -566,7 +561,7 @@ Use these tools to understand the current project structure, existing code patte
           systemPromptResult.prompt!,
           promptResult.prompt!,
           streamingOptions,
-          { maxAttempts: 1 }
+          { maxAttempts: 1 },
         );
 
         const parseResult = this.jsonParser.parseJSONFromResponse<{
@@ -584,7 +579,7 @@ Use these tools to understand the current project structure, existing code patte
                 "Check AI response format",
                 "Verify JSON structure",
               ],
-            }
+            },
           );
         }
 
@@ -601,7 +596,7 @@ Use these tools to understand the current project structure, existing code patte
         return answers;
       },
       retryConfig,
-      "PRD question answering"
+      "PRD question answering",
     );
   }
 
@@ -611,7 +606,7 @@ Use these tools to understand the current project structure, existing code patte
     promptOverride?: string,
     userMessage?: string,
     streamingOptions?: StreamingOptions,
-    retryConfig?: Partial<RetryConfig>
+    retryConfig?: Partial<RetryConfig>,
   ): Promise<string> {
     return this.retryHandler.executeWithRetry(
       async () => {
@@ -625,11 +620,11 @@ Use these tools to understand the current project structure, existing code patte
           systemPrompt,
           userContent,
           streamingOptions,
-          { maxAttempts: 1 }
+          { maxAttempts: 1 },
         );
       },
       retryConfig,
-      "PRD generation"
+      "PRD generation",
     );
   }
 
@@ -640,7 +635,7 @@ Use these tools to understand the current project structure, existing code patte
     promptOverride?: string,
     userMessage?: string,
     streamingOptions?: StreamingOptions,
-    retryConfig?: Partial<RetryConfig>
+    retryConfig?: Partial<RetryConfig>,
   ): Promise<string> {
     return this.retryHandler.executeWithRetry(
       async () => {
@@ -662,11 +657,11 @@ Use these tools to understand the current project structure, existing code patte
           systemPrompt,
           userContent,
           streamingOptions,
-          { maxAttempts: 1 }
+          { maxAttempts: 1 },
         );
       },
       retryConfig,
-      "PRD combination"
+      "PRD combination",
     );
   }
 
@@ -682,7 +677,7 @@ Use these tools to understand the current project structure, existing code patte
     streamingOptions?: StreamingOptions,
     retryConfig?: Partial<RetryConfig>,
     workingDirectory?: string,
-    enableFilesystemTools?: boolean
+    enableFilesystemTools?: boolean,
   ): Promise<{ config: BTSConfig; reasoning: string }> {
     return this.retryHandler.executeWithRetry(
       async () => {
@@ -729,7 +724,7 @@ Use these tools to understand the current project structure, existing code patte
                   "Verify prompt template exists",
                   "Check variable substitution",
                 ],
-              }
+              },
             );
           }
 
@@ -787,14 +782,14 @@ Use these tools to understand the current project structure, existing code patte
             PRD_SUGGEST_STACK_SYSTEM_PROMPT,
             userMessage || enhancedPrompt,
             streamingOptions,
-            { maxAttempts: 1 }
+            { maxAttempts: 1 },
           );
         }
 
         // Parse the JSON response
         const parseResult =
           this.jsonParser.parseJSONFromResponse<StackSuggestionResponse>(
-            response
+            response,
           );
 
         if (!parseResult.success) {
@@ -807,7 +802,7 @@ Use these tools to understand the current project structure, existing code patte
                 "Check AI response format",
                 "Verify JSON structure",
               ],
-            }
+            },
           );
         }
 
@@ -815,7 +810,7 @@ Use these tools to understand the current project structure, existing code patte
 
         // Validate and apply defaults to the config
         const validatedConfig = this.validateStackConfig(
-          parsed.config || (parsed as unknown as Partial<BTSConfig>)
+          parsed.config || (parsed as unknown as Partial<BTSConfig>),
         );
 
         return {
@@ -824,7 +819,7 @@ Use these tools to understand the current project structure, existing code patte
         };
       },
       retryConfig,
-      "Stack suggestion"
+      "Stack suggestion",
     );
   }
 
@@ -846,7 +841,7 @@ Use these tools to understand the current project structure, existing code patte
     config?: Partial<AIConfig>,
     streamingOptions?: StreamingOptions,
     retryConfig?: Partial<RetryConfig>,
-    enableFilesystemTools?: boolean
+    enableFilesystemTools?: boolean,
   ): Promise<string> {
     return this.retryHandler.executeWithRetry(
       async () => {
@@ -928,12 +923,12 @@ Based on this analysis, please generate a comprehensive PRD that documents the c
             PRD_FROM_CODEBASE_SYSTEM_PROMPT,
             userContent,
             streamingOptions,
-            { maxAttempts: 1 }
+            { maxAttempts: 1 },
           );
         }
       },
       retryConfig,
-      "PRD from codebase generation"
+      "PRD from codebase generation",
     );
   }
 

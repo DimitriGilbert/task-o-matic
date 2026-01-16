@@ -10,6 +10,7 @@ import * as path from "node:path";
 
 import { configManager } from "../config";
 import { logger } from "../logger";
+import { TaskOMaticError, TaskOMaticErrorCodes } from "../../utils/task-o-matic-error";
 import type {
   BenchmarkRun,
   BenchmarkListOptions,
@@ -99,8 +100,12 @@ export class BenchmarkStore {
     try {
       const content = await fs.readFile(this.indexPath, "utf-8");
       return JSON.parse(content) as BenchmarkIndex;
-    } catch {
-      return { runs: [], version: 1 };
+    } catch (error) {
+      if ((error as any).code === "ENOENT") {
+        return { runs: [], version: 1 };
+      }
+      logger.warn(`Failed to load benchmark index: ${(error as Error).message}`);
+      throw error;
     }
   }
 
@@ -292,7 +297,10 @@ export class BenchmarkStore {
   async addScore(runId: string, score: ModelScore): Promise<void> {
     const run = await this.get(runId);
     if (!run) {
-      throw new Error(`Benchmark run not found: ${runId}`);
+      throw new TaskOMaticError(`Benchmark run not found: ${runId}`, {
+        code: TaskOMaticErrorCodes.STORAGE_ERROR,
+        context: `Attempting to add score to run ${runId}`,
+      });
     }
 
     // Update or add score
@@ -317,7 +325,11 @@ export class BenchmarkStore {
    * @param runId - The run ID to delete
    * @param cleanupWorktrees - Whether to also cleanup worktrees (default: false)
    */
-  async delete(runId: string, cleanupWorktrees: boolean = false): Promise<void> {
+  async delete(
+    runId: string,
+    cleanupWorktrees: boolean = false,
+    cleanupHandler?: (runId: string) => Promise<void>
+  ): Promise<void> {
     // Remove from index
     const index = await this.loadIndex();
     index.runs = index.runs.filter((r) => r.id !== runId);
@@ -332,11 +344,8 @@ export class BenchmarkStore {
     }
 
     // Optionally cleanup worktrees
-    if (cleanupWorktrees) {
-      // Import dynamically to avoid circular dependency
-      const { WorktreeManager } = await import("./worktree-manager");
-      const worktreeManager = new WorktreeManager();
-      await worktreeManager.cleanupRun(runId);
+    if (cleanupWorktrees && cleanupHandler) {
+      await cleanupHandler(runId);
     }
 
     logger.info(`Deleted benchmark run: ${runId}`);
@@ -405,6 +414,30 @@ export class BenchmarkStore {
    * @param result - The model result to add
    */
   async addResult(runId: string, result: BenchmarkModelResult): Promise<void> {
+    const runDir = this.getRunDir(runId);
+    const runPath = path.join(runDir, "run.json");
+
+    let runData: { resultIds: string[] };
+    try {
+      const runContent = await fs.readFile(runPath, "utf-8");
+      runData = JSON.parse(runContent);
+    } catch (error) {
+      if ((error as any).code === "ENOENT") {
+        throw new TaskOMaticError(`Benchmark run not found: ${runId}`, {
+          code: TaskOMaticErrorCodes.STORAGE_ERROR,
+          context: `Attempting to add result to run ${runId}`,
+        });
+      }
+      throw error;
+    }
+
+    if (runData.resultIds.includes(result.modelId)) {
+      logger.warn(
+        `Result for ${result.modelId} already exists in run ${runId}, skipping update.`
+      );
+      return;
+    }
+
     const resultsDir = this.getResultsDir(runId);
     await fs.mkdir(resultsDir, { recursive: true });
 
@@ -414,20 +447,8 @@ export class BenchmarkStore {
     await fs.writeFile(resultPath, JSON.stringify(result, null, 2));
 
     // Update run file with new result ID
-    const runDir = this.getRunDir(runId);
-    const runPath = path.join(runDir, "run.json");
-
-    try {
-      const runContent = await fs.readFile(runPath, "utf-8");
-      const runData = JSON.parse(runContent) as { resultIds: string[] };
-
-      if (!runData.resultIds.includes(result.modelId)) {
-        runData.resultIds.push(result.modelId);
-        await fs.writeFile(runPath, JSON.stringify(runData, null, 2));
-      }
-    } catch {
-      logger.warn(`Failed to update run file with result: ${result.modelId}`);
-    }
+    runData.resultIds.push(result.modelId);
+    await fs.writeFile(runPath, JSON.stringify(runData, null, 2));
 
     // Update index model count
     const index = await this.loadIndex();

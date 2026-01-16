@@ -13,6 +13,7 @@ import { promisify } from "node:util";
 
 import { configManager } from "../config";
 import { logger } from "../logger";
+import { TaskOMaticError, TaskOMaticErrorCodes } from "../../utils/task-o-matic-error";
 
 const execAsync = promisify(exec);
 
@@ -96,8 +97,11 @@ export class WorktreeManager {
     try {
       const content = await fs.readFile(this.manifestPath, "utf-8");
       return JSON.parse(content) as WorktreeManifest;
-    } catch {
-      return { worktrees: {}, version: 1 };
+    } catch (error) {
+      if ((error as any).code === "ENOENT") {
+        return { worktrees: {}, version: 1 };
+      }
+      throw error;
     }
   }
 
@@ -146,8 +150,9 @@ export class WorktreeManager {
         // Clean up the branch and try again
         try {
           await this.execFn(`git branch -D "${branchName}"`, { cwd: this.projectRoot });
-        } catch {
-          // Ignore if branch deletion fails
+        } catch (err) {
+          const errMsg = err instanceof Error ? err.message : String(err);
+          logger.warn(`Failed to delete branch ${branchName}: ${errMsg}`);
         }
         await this.execFn(
           `git worktree add -b "${branchName}" "${worktreePath}" "${baseCommit}"`,
@@ -203,8 +208,9 @@ export class WorktreeManager {
       // Try to remove the directory manually if git command failed
       try {
         await fs.rm(worktree.path, { recursive: true, force: true });
-      } catch {
-        // Ignore
+      } catch (err) {
+        const errMsg = err instanceof Error ? err.message : String(err);
+        logger.warn(`Failed to manually remove worktree ${worktree.path}: ${errMsg}`);
       }
     }
 
@@ -256,7 +262,10 @@ export class WorktreeManager {
     const worktree = manifest.worktrees[name];
 
     if (!worktree) {
-      throw new Error(`Worktree ${name} not found`);
+      throw new TaskOMaticError(`Worktree ${name} not found`, {
+        code: TaskOMaticErrorCodes.STORAGE_ERROR,
+        context: `Attempted to reset worktree ${name}`,
+      });
     }
 
     logger.info(`Resetting worktree: ${name}`);
@@ -307,8 +316,9 @@ export class WorktreeManager {
     // Run git worktree prune first
     try {
       await this.execFn("git worktree prune", { cwd: this.projectRoot });
-    } catch {
-      // Ignore errors from git worktree prune
+    } catch (error) {
+      const errMsg = error instanceof Error ? error.message : String(error);
+      logger.warn(`Failed to prune git worktrees: ${errMsg}`);
     }
 
     // Check each worktree in manifest

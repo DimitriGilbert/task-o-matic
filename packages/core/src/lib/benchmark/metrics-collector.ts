@@ -69,10 +69,14 @@ export class MetricsCollector {
       modifiedFiles: [],
     };
 
+    if (!/^[a-fA-F0-9~^]{4,40}$|^[a-zA-Z0-9._/-~^]+$/.test(baseCommit)) {
+      throw new Error(`Invalid baseCommit format: ${baseCommit}`);
+    }
+
     try {
       // Get diff stats
       const { stdout: statOutput } = await this.execFn(
-        `git diff --stat "${baseCommit}"...HEAD`,
+        `git diff --stat -- "${baseCommit}"...HEAD`,
         { cwd: worktreePath }
       );
 
@@ -93,7 +97,7 @@ export class MetricsCollector {
 
       // Get list of new files
       const { stdout: newFilesOutput } = await this.execFn(
-        `git diff --name-only --diff-filter=A "${baseCommit}"...HEAD`,
+        `git diff --name-only --diff-filter=A -- "${baseCommit}"...HEAD`,
         { cwd: worktreePath }
       );
       metrics.newFiles = newFilesOutput
@@ -102,7 +106,7 @@ export class MetricsCollector {
 
       // Get list of modified files
       const { stdout: modifiedFilesOutput } = await this.execFn(
-        `git diff --name-only --diff-filter=M "${baseCommit}"...HEAD`,
+        `git diff --name-only --diff-filter=M -- "${baseCommit}"...HEAD`,
         { cwd: worktreePath }
       );
       metrics.modifiedFiles = modifiedFilesOutput
@@ -111,7 +115,7 @@ export class MetricsCollector {
 
       // Update filesChanged with accurate count
       const { stdout: allChangedOutput } = await this.execFn(
-        `git diff --name-only "${baseCommit}"...HEAD`,
+        `git diff --name-only -- "${baseCommit}"...HEAD`,
         { cwd: worktreePath }
       );
       const allChanged = allChangedOutput
@@ -121,7 +125,7 @@ export class MetricsCollector {
 
       // Get more accurate line counts using numstat
       const { stdout: numstatOutput } = await this.execFn(
-        `git diff --numstat "${baseCommit}"...HEAD`,
+        `git diff --numstat -- "${baseCommit}"...HEAD`,
         { cwd: worktreePath }
       );
 

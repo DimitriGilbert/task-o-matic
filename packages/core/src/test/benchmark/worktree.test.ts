@@ -4,7 +4,7 @@
  * Tests for WorktreeManager and WorktreePool classes
  */
 
-import assert from "assert";
+import assert from "node:assert";
 
 import type { ExecFn } from "../../lib/benchmark/worktree-manager";
 import { WorktreeManager } from "../../lib/benchmark/worktree-manager";

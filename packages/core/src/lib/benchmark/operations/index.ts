@@ -9,6 +9,8 @@
 import type { BenchmarkableOperation } from "../types";
 import type { AIOptions } from "../../../utils/ai-config-builder";
 import type { StreamingOptions } from "../../../types";
+import { PRDService } from "../../../services/prd";
+import { TaskService } from "../../../services/tasks";
 
 // ============================================================================
 // PRD Operations
@@ -27,7 +29,6 @@ const prdParseOperation: BenchmarkableOperation = {
     aiOptions: AIOptions,
     streamingOptions?: StreamingOptions
   ): Promise<unknown> => {
-    const { PRDService } = await import("../../../services/prd");
     const prdService = new PRDService();
 
     const params = input as { file: string };

@@ -152,7 +152,6 @@ export class WorktreePool {
     }
 
     // Phase 2: Execute all models in parallel (with optional concurrency limit)
-    const executionPromises: Promise<void>[] = [];
     
     const executeModel = async (
       worktree: Worktree,
@@ -217,20 +216,21 @@ export class WorktreePool {
     };
 
     // Build execution queue
+    const taskFactories: (() => Promise<void>)[] = [];
     for (let i = 0; i < worktrees.length; i++) {
       const worktree = worktrees[i];
       const model = models.find((m) => getModelId(m) === worktree.modelId);
       if (model) {
-        executionPromises.push(executeModel(worktree, model, i));
+        taskFactories.push(() => executeModel(worktree, model, i));
       }
     }
 
     // Execute with or without concurrency limit
     if (this.config.maxConcurrent > 0) {
-      await this.executeWithConcurrencyLimit(executionPromises, this.config.maxConcurrent);
+      await this.executeWithConcurrencyLimit(taskFactories, this.config.maxConcurrent);
     } else {
       // Unlimited parallelism
-      await Promise.all(executionPromises);
+      await Promise.all(taskFactories.map((f) => f()));
     }
 
     logger.success(`Completed parallel execution: ${results.size}/${models.length} models`);
@@ -241,22 +241,27 @@ export class WorktreePool {
    * Execute promises with a concurrency limit using a semaphore pattern
    */
   private async executeWithConcurrencyLimit<T>(
-    tasks: Promise<T>[],
+    taskFactories: (() => Promise<T>)[],
     limit: number
   ): Promise<T[]> {
-    const results: T[] = [];
+    const results: T[] = new Array(taskFactories.length);
     let currentIndex = 0;
-    const total = tasks.length;
+    const total = taskFactories.length;
 
     const executeNext = async (): Promise<void> => {
       while (currentIndex < total) {
         const index = currentIndex;
         currentIndex++;
+        
+        if (index >= total) break;
+
         try {
-          const result = await tasks[index];
-          results.push(result);
-        } catch {
-          // Error is already handled in the task itself
+          const result = await taskFactories[index]();
+          results[index] = result;
+        } catch (error) {
+          const err = error instanceof Error ? error : new Error(String(error));
+          logger.error(`Unexpected error in concurrent execution: ${err.message}`);
+          throw err;
         }
       }
     };

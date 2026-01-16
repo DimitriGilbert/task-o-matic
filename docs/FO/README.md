@@ -99,7 +99,7 @@ Both facilities operate from the same codebase, sharing identical capabilities a
 |----------|-------|----------|----------|
 | 011 | **Configuration & Init Commands** | `cli/config-init-prompt-commands.md` | 📡 **STANDARD** |
 | 012 | **Plan & Document Commands** | `cli/plan-commands.md`, `cli/document-commands.md` | 📡 **STANDARD** |
-| 013 | **Benchmark Commands** | `benchmark/overview.md#field-manual-cli-commands` | 📡 **STANDARD** |
+| 013 | **Benchmark Commands** | `benchmark/overview.md` | 📡 **STANDARD** |
 | 014 | **Model Provider System** | `lib/model-provider.md` | 📡 **STANDARD** |
 | 015 | **FileSystem Tools** | `lib/filesystem-tools.md` | 📡 **STANDARD** |
 | 016 | **MCP Client** | `lib/mcp-client.md` | 📡 **STANDARD** |

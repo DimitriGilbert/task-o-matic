@@ -1,4 +1,4 @@
-import assert from "assert";
+import assert from "node:assert";
 import { benchmarkCommand } from "../commands/benchmark";
 import { Command } from "commander";
 
