@@ -1,29 +1,53 @@
-# task-o-matic-core
+# ⛑️ task-o-matic-core
 
-Core library for Task-O-Matic - AI-powered task management for TUI, web applications, and custom integrations.
+**The infrastructure foundation for your survival toolkit**
 
-## Overview
+---
 
-`task-o-matic-core` is the foundational library that provides all the core functionality for task management, PRD processing, AI operations, and workflow automation. It's designed to be framework-agnostic and can be integrated into any Node.js application.
+## ⚠️ ENGINEERING BULLETIN
 
-## Installation
+_Engineers, the core library is the backbone of our entire operation. It's not just a package—it's the foundation upon which we build bunkers, manage supplies, and deploy AI assistance in this post-apocalyptic development landscape._
+
+_Think of `task-o-matic-core` as your blueprint for building custom command interfaces, TUI applications, web dashboards, or any other tool you need to manage projects. All the power, none of the CLI wrapper._
+
+_[The preceding message was brought to you by the Department of Engineering Standards. Remember: Clean architecture is survival architecture.]_
+
+---
+
+## 📦 OVERVIEW
+
+`task-o-matic-core` is the foundational library providing all core functionality for task management, PRD processing, AI operations, and workflow automation. It's framework-agnostic and can be integrated into any Node.js application.
+
+**Key Features:**
+- 🤖 **AI-Powered Task Management**: Create, enhance, split, and manage tasks with AI
+- 📋 **PRD Processing**: Parse, refine, version, and rework Product Requirements Documents
+- 🎯 **Workflow Automation**: Complete project lifecycle orchestration
+- 📊 **Benchmarking**: Compare AI model performance across operations
+- 💾 **Local Storage**: File-based persistence in `.task-o-matic/` directory
+- 🌊 **Streaming Support**: Real-time AI response streaming
+- 🔧 **Multi-Provider AI**: OpenAI, Anthropic, OpenRouter, custom endpoints
+- 📚 **Context7 Integration**: Up-to-date library documentation fetching
+- 🎭 **Framework-Agnostic**: Use in CLI, TUI, web apps, or custom tools
+
+---
+
+## 📦 INSTALLATION
 
 ```bash
 npm install task-o-matic-core
 ```
 
-## Features
+```bash
+bun add task-o-matic-core
+```
 
-- 🤖 **AI-Powered Task Management**: Create, enhance, and manage tasks with AI assistance
-- 📋 **PRD Processing**: Parse and refine Product Requirements Documents
-- 🎯 **Workflow Automation**: Complete project lifecycle management
-- 📊 **Benchmarking**: Compare AI model performance and quality
-- 💾 **Local Storage**: File-based storage in `.task-o-matic/` directory
-- 🌊 **Streaming Support**: Real-time AI response streaming
-- 🔧 **Multi-Provider AI**: Support for OpenAI, Anthropic, OpenRouter, and custom providers
-- 🎭 **Framework-Agnostic**: Use in CLI, TUI, web apps, or any Node.js project
+```bash
+pnpm add task-o-matic-core
+```
 
-## Quick Start
+---
+
+## 🚀 QUICK START: ENGINEERING MODE
 
 ### Basic Task Management
 
@@ -32,10 +56,10 @@ import { TaskService } from "task-o-matic-core";
 
 const taskService = new TaskService();
 
-// Create a task with AI enhancement
+// Create task with AI enhancement
 const result = await taskService.createTask({
-  title: "Implement user authentication",
-  content: "Add login and signup functionality",
+  title: "Install water filtration system",
+  content: "Implement water purification for bunker section B",
   aiEnhance: true,
   aiOptions: {
     aiProvider: "anthropic",
@@ -60,7 +84,7 @@ import { WorkflowService } from "task-o-matic-core";
 const workflowService = new WorkflowService();
 
 const result = await workflowService.initializeProject({
-  projectName: "my-app",
+  projectName: "vault-manager",
   initMethod: "quick",
   bootstrap: true,
   aiOptions: {
@@ -78,96 +102,367 @@ const result = await workflowService.initializeProject({
 console.log("Project initialized:", result.projectName);
 ```
 
-## Core Services
+---
+
+## 🏗️ CORE SERVICES
 
 ### TaskService
 
-Manages task lifecycle including creation, enhancement, splitting, and execution.
+Manages task lifecycle including creation, enhancement, splitting, planning, and execution.
+
+#### Constructor
 
 ```typescript
-import { TaskService } from "task-o-matic-core";
-
 const taskService = new TaskService();
+```
 
-// Create a task
-const createResult = await taskService.createTask({
-  title: "Add payment integration",
-  content: "Integrate Stripe for payment processing",
-  aiEnhance: true,
-  aiOptions: {
-    aiProvider: "openai",
-    aiModel: "gpt-4",
-    aiKey: process.env.OPENAI_API_KEY,
-  },
-});
+#### Core CRUD Operations
 
-// List all tasks
-const tasks = await taskService.listTasks();
+**createTask**
 
-// Get a specific task
-const task = await taskService.getTask(createResult.task.id);
-
-// Update a task
-const updated = await taskService.updateTask(createResult.task.id, {
-  status: "in-progress",
-});
-
-// Split a complex task into subtasks
-const splitResult = await taskService.splitTask({
-  taskId: createResult.task.id,
+```typescript
+const result = await taskService.createTask({
+  title: "Add emergency alert system",
+  content: "Implement real-time emergency notifications",
+  parentId: "task-123",  // Optional: parent task ID
+  effort: "4h",           // Optional: effort estimate
+  aiEnhance: true,        // Enable AI enhancement
   aiOptions: {
     aiProvider: "anthropic",
     aiModel: "claude-3-5-sonnet",
     aiKey: process.env.ANTHROPIC_API_KEY,
   },
-});
-
-// Execute a task
-const executionResult = await taskService.executeTask({
-  taskId: createResult.task.id,
-  aiOptions: {
-    aiProvider: "anthropic",
-    aiModel: "claude-3-5-sonnet",
-    aiKey: process.env.ANTHROPIC_API_KEY,
+  streamingOptions: {
+    enabled: true,
+    onChunk: (chunk) => console.log(chunk),
+    onFinish: ({ text }) => console.log("Enhanced:", text),
+  },
+  callbacks: {
+    onProgress: (event) => console.log(event.message),
   },
 });
 ```
 
-### PRDService
-
-Handles Product Requirements Document parsing, refinement, and question generation.
+**listTasks**
 
 ```typescript
-import { PRDService } from "task-o-matic-core";
+// Get all tasks
+const tasks = await taskService.listTasks();
 
-const prdService = new PRDService();
+// Filter by status
+const todoTasks = await taskService.listTasks({ status: "todo" });
 
-// Parse a PRD file
-const parseResult = await prdService.parsePRD({
-  file: "./requirements.md",
+// Filter by tag
+const criticalTasks = await taskService.listTasks({ tag: "critical" });
+```
+
+**getTask**
+
+```typescript
+const task = await taskService.getTask("task-id-here");
+console.log(task.title, task.status);
+```
+
+**getTaskContent**
+
+```typescript
+const content = await taskService.getTaskContent("task-id-here");
+// Returns task content as string (for large tasks stored separately)
+```
+
+**getTaskAIMetadata**
+
+```typescript
+const metadata = await taskService.getTaskAIMetadata("task-id-here");
+// Returns AI metadata: who enhanced, when, with which model
+```
+
+**updateTask**
+
+```typescript
+const updated = await taskService.updateTask("task-id-here", {
+  title: "New title",
+  description: "New description",
+  status: "in-progress",
+  effort: "8h",
+  tags: ["critical", "security"],
+});
+```
+
+**setTaskStatus**
+
+```typescript
+await taskService.setTaskStatus("task-id-here", "completed");
+```
+
+**deleteTask**
+
+```typescript
+await taskService.deleteTask("task-id-here", {
+  cascade: true,   // Delete all subtasks
+  force: false,    // Require confirmation (in TUI context)
+});
+```
+
+#### Tag Operations
+
+**addTags**
+
+```typescript
+await taskService.addTags("task-id-here", ["urgent", "security"]);
+```
+
+**removeTags**
+
+```typescript
+await taskService.removeTags("task-id-here", ["deprecated"]);
+```
+
+#### Task Navigation
+
+**getNextTask**
+
+```typescript
+const nextTask = await taskService.getNextTask({
+  status: "todo",
+  tag: "critical",
+  effort: "2-4h",  // Filter by effort range
+  priority: "effort", // Sort by: newest, oldest, effort
+});
+```
+
+**getTaskTree**
+
+```typescript
+// Get full task tree
+const fullTree = await taskService.getTaskTree();
+
+// Get subtree starting from specific task
+const subtree = await taskService.getTaskTree("task-id-here");
+```
+
+**getSubtasks**
+
+```typescript
+const subtasks = await taskService.getSubtasks("task-id-here");
+```
+
+#### AI Operations
+
+**enhanceTask**
+
+```typescript
+const result = await taskService.enhanceTask("task-id-here", {
+  aiOptions: {
+    aiProvider: "anthropic",
+    aiModel: "claude-3-5-sonnet",
+    aiKey: process.env.ANTHROPIC_API_KEY,
+    reasoning: 5000, // Enable reasoning tokens
+  },
+  streamingOptions: {
+    enabled: true,
+    onChunk: (chunk) => tuiTextArea.append(chunk),
+    onFinish: ({ text }) => tuiStatusBar.success("Enhanced!"),
+  },
+});
+```
+
+**splitTask**
+
+```typescript
+const result = await taskService.splitTask("task-id-here", {
+  aiOptions: {
+    aiProvider: "anthropic",
+    aiModel: "claude-3-5-sonnet",
+    aiKey: process.env.ANTHROPIC_API_KEY,
+    models: [ // Multi-AI splitting
+      { provider: "anthropic", model: "claude-3.5-sonnet" },
+      { provider: "openai", model: "gpt-4o" },
+    ],
+    combineAI: { provider: "anthropic", model: "claude-3.5-sonnet" },
+  },
+  promptOverride: "Split into 2-4 hour tasks",
+  messageOverride: "Focus on security aspects",
+  streamingOptions: { enabled: true },
+  enableFilesystemTools: true, // Enable AI to read project files
+});
+```
+
+**documentTask**
+
+```typescript
+const result = await taskService.documentTask("task-id-here", {
+  force: false, // Skip if recent documentation exists
   aiOptions: {
     aiProvider: "anthropic",
     aiModel: "claude-3-5-sonnet",
     aiKey: process.env.ANTHROPIC_API_KEY,
   },
+  streamingOptions: { enabled: true },
+});
+```
+
+**planTask**
+
+```typescript
+const result = await taskService.planTask("task-id-here", {
+  aiOptions: {
+    aiProvider: "anthropic",
+    aiModel: "claude-3-5-sonnet",
+    aiKey: process.env.ANTHROPIC_API_KEY,
+  },
+  streamingOptions: { enabled: true },
+});
+```
+
+#### Documentation Operations
+
+**getTaskDocumentation**
+
+```typescript
+const docs = await taskService.getTaskDocumentation("task-id-here");
+```
+
+**addTaskDocumentationFromFile**
+
+```typescript
+await taskService.addTaskDocumentationFromFile("task-id-here", "./docs/api.md");
+```
+
+**setTaskPlan**
+
+```typescript
+// Set from text
+await taskService.setTaskPlan("task-id-here", {
+  planText: "Step 1: Setup\nStep 2: Implement\nStep 3: Test",
+});
+
+// Set from file
+await taskService.setTaskPlan("task-id-here", {
+  planFilePath: "./plans/implementation.md",
+});
+```
+
+#### Plan Operations
+
+**getTaskPlan**
+
+```typescript
+const plan = await taskService.getTaskPlan("task-id-here");
+```
+
+**listTaskPlans**
+
+```typescript
+const plans = await taskService.listTaskPlans();
+```
+
+**deleteTaskPlan**
+
+```typescript
+await taskService.deleteTaskPlan("task-id-here");
+```
+
+---
+
+### PRDService
+
+Handles Product Requirements Document parsing, refinement, question generation, and versioning.
+
+#### Constructor
+
+```typescript
+const prdService = new PRDService();
+```
+
+#### PRD Operations
+
+**parsePRD**
+
+```typescript
+const result = await prdService.parsePRD({
+  file: "./requirements.md",
+  workingDirectory: process.cwd(),
+  enableFilesystemTools: true,
+  aiOptions: {
+    aiProvider: "anthropic",
+    aiModel: "claude-3-5-sonnet",
+    aiKey: process.env.ANTHROPIC_API_KEY,
+    models: [ // Multi-AI parsing
+      { provider: "anthropic", model: "claude-3.5-sonnet" },
+      { provider: "openai", model: "gpt-4o" },
+    ],
+    combineAI: { provider: "anthropic", model: "claude-3.5-sonnet" },
+  },
+  promptOverride: "Focus on security features",
+  messageOverride: "Include emergency protocols",
+  streamingOptions: { enabled: true },
   callbacks: {
-    onProgress: (event) => {
-      console.log(event.message);
-    },
+    onProgress: (event) => console.log(event.message),
   },
 });
 
-console.log("PRD parsed:", parseResult.prd);
+console.log("PRD parsed:", result.prd);
+console.log("Tasks generated:", result.tasks);
+```
 
-// Generate questions and refine PRD with AI answering
-const refineResult = await prdService.refinePRDWithQuestions({
+**generateQuestions**
+
+```typescript
+const result = await prdService.generateQuestions({
+  file: "./requirements.md",
+  workingDirectory: process.cwd(),
+  enableFilesystemTools: true,
+  aiOptions: {
+    aiProvider: "anthropic",
+    aiModel: "claude-3-5-sonnet",
+    aiKey: process.env.ANTHROPIC_API_KEY,
+  },
+  streamingOptions: { enabled: true },
+  callbacks: {
+    onProgress: (event) => console.log(event.message),
+  },
+});
+
+console.log("Questions:", result.questions);
+```
+
+**reworkPRD**
+
+```typescript
+const result = await prdService.reworkPRD({
+  file: "./requirements.md",
+  feedback: "Add more details about security requirements and emergency procedures",
+  output: "./reworked-requirements.md",
+  workingDirectory: process.cwd(),
+  enableFilesystemTools: true,
+  aiOptions: {
+    aiProvider: "anthropic",
+    aiModel: "claude-3-5-sonnet",
+    aiKey: process.env.ANTHROPIC_API_KEY,
+  },
+  streamingOptions: { enabled: true },
+  callbacks: {
+    onProgress: (event) => console.log(event.message),
+  },
+});
+```
+
+**refinePRDWithQuestions**
+
+```typescript
+const result = await prdService.refinePRDWithQuestions({
   file: "./requirements.md",
   questionMode: "ai", // or "user" for interactive
-  questionAIOptions: {
-    // Optional: use a different AI for answering
+  answers: { // Only for user mode
+    "q1": "Answer to question 1",
+    "q2": "Answer to question 2",
+  },
+  questionAIOptions: { // Only for AI mode
     aiProvider: "openrouter",
     aiModel: "anthropic/claude-3-opus",
     aiReasoning: "enabled", // Enable reasoning for better answers
+    aiKey: process.env.OPENROUTER_API_KEY,
   },
   workingDirectory: process.cwd(),
   aiOptions: {
@@ -175,195 +470,477 @@ const refineResult = await prdService.refinePRDWithQuestions({
     aiModel: "claude-3-5-sonnet",
     aiKey: process.env.ANTHROPIC_API_KEY,
   },
+  streamingOptions: { enabled: true },
   callbacks: {
-    onProgress: (event) => {
-      console.log(event.message);
-    },
+    onProgress: (event) => console.log(event.message),
   },
 });
 
-console.log(`Refined PRD with ${refineResult.questions.length} questions`);
-refineResult.questions.forEach((q, i) => {
-  console.log(`Q${i + 1}: ${q}`);
-  console.log(`A${i + 1}: ${refineResult.answers[q]}`);
-});
+console.log(`Refined PRD with ${result.questions.length} questions`);
+```
 
-// Rework PRD with feedback
-const reworkResult = await prdService.reworkPRD({
-  file: "./requirements.md",
-  feedback: "Add more details about security requirements",
+**generatePRD**
+
+```typescript
+const result = await prdService.generatePRD({
+  description: "Build a vault management system for tracking supplies, residents, and security",
+  outputDir: "./prds",
+  filename: "vault-manager-prd.md",
   aiOptions: {
     aiProvider: "anthropic",
     aiModel: "claude-3-5-sonnet",
     aiKey: process.env.ANTHROPIC_API_KEY,
   },
+  streamingOptions: { enabled: true },
+  callbacks: {
+    onProgress: (event) => console.log(event.message),
+  },
 });
 ```
+
+**combinePRDs**
+
+```typescript
+const result = await prdService.combinePRDs({
+  prds: ["./prds/prd1.md", "./prds/prd2.md"],
+  originalDescription: "Original vault manager description",
+  outputDir: "./prds",
+  filename: "combined-prd.md",
+  aiOptions: {
+    aiProvider: "anthropic",
+    aiModel: "claude-3-5-sonnet",
+    aiKey: process.env.ANTHROPIC_API_KEY,
+  },
+  streamingOptions: { enabled: true },
+  callbacks: {
+    onProgress: (event) => console.log(event.message),
+  },
+});
+```
+
+**suggestStack**
+
+```typescript
+const result = await prdService.suggestStack({
+  file: "./requirements.md",
+  // or
+  content: "Vault management system with real-time tracking",
+  projectName: "vault-manager",
+  output: "./stack-suggestion.json",
+  workingDirectory: process.cwd(),
+  save: true, // Save to .task-o-matic/stack.json
+  aiOptions: {
+    aiProvider: "anthropic",
+    aiModel: "claude-3-5-sonnet",
+    aiKey: process.env.ANTHROPIC_API_KEY,
+  },
+  streamingOptions: { enabled: true },
+  callbacks: {
+    onProgress: (event) => console.log(event.message),
+  },
+});
+
+console.log("Suggested stack:", result.stack);
+```
+
+**generateFromCodebase**
+
+```typescript
+const result = await prdService.generateFromCodebase({
+  workingDirectory: process.cwd(),
+  outputFile: "./generated-prd.md",
+  enableFilesystemTools: true,
+  aiOptions: {
+    aiProvider: "anthropic",
+    aiModel: "claude-3-5-sonnet",
+    aiKey: process.env.ANTHROPIC_API_KEY,
+  },
+  streamingOptions: { enabled: true },
+  callbacks: {
+    onProgress: (event) => console.log(event.message),
+  },
+});
+
+console.log("Generated PRD from codebase:", result.prd);
+```
+
+#### PRD Versioning
+
+**createVersion**
+
+```typescript
+const result = await prdService.createVersion({
+  file: "./requirements.md",
+  message: "Added emergency response section",
+  changes: [
+    { type: "add", section: "Emergency Protocols" },
+    { type: "modify", section: "Security", description: "Added biometric auth" },
+  ],
+  implementedTasks: ["task-123", "task-456"],
+  workingDirectory: process.cwd(),
+});
+
+console.log("Version created:", result.version);
+```
+
+**getHistory**
+
+```typescript
+const history = await prdService.getHistory({
+  file: "./requirements.md",
+  workingDirectory: process.cwd(),
+});
+
+history.versions.forEach((version) => {
+  console.log(`Version ${version.number}: ${version.message}`);
+  console.log(`Created: ${new Date(version.timestamp).toISOString()}`);
+  console.log(`Changes: ${version.changes.length}`);
+});
+```
+
+---
 
 ### WorkflowService
 
-Provides complete project lifecycle management from initialization to task generation.
+Provides complete project lifecycle management from initialization to task generation and execution.
+
+#### Constructor
 
 ```typescript
-import { WorkflowService } from "task-o-matic-core";
-
 const workflowService = new WorkflowService();
-
-// Initialize project with quick setup
-const initResult = await workflowService.initializeProject({
-  projectName: "my-saas-app",
-  initMethod: "quick",
-  bootstrap: true,
-  aiOptions: {
-    aiProvider: "anthropic",
-    aiModel: "claude-3-5-sonnet",
-    aiKey: process.env.ANTHROPIC_API_KEY,
-  },
-  callbacks: {
-    onProgress: (event) => {
-      console.log(`Progress: ${event.message}`);
-    },
-  },
-});
-
-// Define PRD from description
-const prdResult = await workflowService.definePRD({
-  method: "ai",
-  description: "A SaaS platform for team collaboration with real-time chat, file sharing, and task management",
-  aiOptions: {
-    aiProvider: "anthropic",
-    aiModel: "claude-3-5-sonnet",
-    aiKey: process.env.ANTHROPIC_API_KEY,
-  },
-  callbacks: {
-    onProgress: (event) => {
-      console.log(event.message);
-    },
-  },
-});
-
-// Refine PRD with questions
-const refineResult = await workflowService.refinePRD({
-  questionMode: "ai",
-  aiOptions: {
-    aiProvider: "anthropic",
-    aiModel: "claude-3-5-sonnet",
-    aiKey: process.env.ANTHROPIC_API_KEY,
-  },
-  callbacks: {
-    onProgress: (event) => {
-      console.log(event.message);
-    },
-  },
-});
-
-// Generate tasks from PRD
-const tasksResult = await workflowService.generateTasks({
-  instructions: "Break down into 2-4 hour tasks",
-  aiOptions: {
-    aiProvider: "anthropic",
-    aiModel: "claude-3-5-sonnet",
-    aiKey: process.env.ANTHROPIC_API_KEY,
-  },
-  callbacks: {
-    onProgress: (event) => {
-      console.log(event.message);
-    },
-  },
-});
-
-// Split complex tasks
-const splitResult = await workflowService.splitTasks({
-  splitAll: true,
-  aiOptions: {
-    aiProvider: "anthropic",
-    aiModel: "claude-3-5-sonnet",
-    aiKey: process.env.ANTHROPIC_API_KEY,
-  },
-  callbacks: {
-    onProgress: (event) => {
-      console.log(event.message);
-    },
-  },
-});
 ```
+
+#### Workflow Methods
+
+**initializeProject**
+
+```typescript
+const result = await workflowService.initializeProject({
+  projectName: "vault-manager",
+  projectDir: process.cwd(),
+  initMethod: "ai", // "quick", "custom", or "ai"
+  projectDescription: "Comprehensive vault management system",
+  stackConfig: {
+    frontend: "next",
+    backend: "hono",
+    database: "postgres",
+    auth: true,
+  },
+  bootstrap: true,
+  includeDocs: true,
+  aiOptions: {
+    aiProvider: "anthropic",
+    aiModel: "claude-3-5-sonnet",
+    aiKey: process.env.ANTHROPIC_API_KEY,
+  },
+  streamingOptions: { enabled: true },
+  callbacks: {
+    onProgress: (event) => console.log(`Progress: ${event.message}`),
+  },
+});
+
+console.log("Project initialized:", result.projectName);
+console.log("PRD created:", result.prdPath);
+```
+
+**definePRD**
+
+```typescript
+const result = await workflowService.definePRD({
+  method: "ai", // "upload", "manual", "ai", or "skip"
+  prdDescription: "Vault management system with real-time tracking",
+  projectDir: process.cwd(),
+  multiGeneration: true,
+  multiGenerationModels: [
+    { provider: "anthropic", model: "claude-3.5-sonnet" },
+    { provider: "openai", model: "gpt-4o" },
+  ],
+  combineAI: { provider: "anthropic", model: "claude-3.5-sonnet" },
+  aiOptions: {
+    aiProvider: "anthropic",
+    aiModel: "claude-3-5-sonnet",
+    aiKey: process.env.ANTHROPIC_API_KEY,
+  },
+  streamingOptions: { enabled: true },
+  callbacks: {
+    onProgress: (event) => console.log(event.message),
+  },
+});
+
+console.log("PRD defined:", result.prdPath);
+```
+
+**refinePRD**
+
+```typescript
+const result = await workflowService.refinePRD({
+  method: "ai", // "manual", "ai", or "skip"
+  prdFile: "./requirements.md",
+  feedback: "Add more security protocols and emergency procedures",
+  projectDir: process.cwd(),
+  aiOptions: {
+    aiProvider: "anthropic",
+    aiModel: "claude-3-5-sonnet",
+    aiKey: process.env.ANTHROPIC_API_KEY,
+  },
+  streamingOptions: { enabled: true },
+  callbacks: {
+    onProgress: (event) => console.log(event.message),
+  },
+});
+
+console.log("PRD refined:", result.prdPath);
+```
+
+**generateTasks**
+
+```typescript
+const result = await workflowService.generateTasks({
+  prdFile: "./requirements.md",
+  method: "standard", // "standard" or "ai"
+  customInstructions: "Break down into 2-4 hour tasks focused on MVP",
+  projectDir: process.cwd(),
+  aiOptions: {
+    aiProvider: "anthropic",
+    aiModel: "claude-3-5-sonnet",
+    aiKey: process.env.ANTHROPIC_API_KEY,
+  },
+  streamingOptions: { enabled: true },
+  callbacks: {
+    onProgress: (event) => console.log(event.message),
+  },
+});
+
+console.log(`Generated ${result.tasks.length} tasks`);
+```
+
+**splitTasks**
+
+```typescript
+const result = await workflowService.splitTasks({
+  taskIds: ["task-1", "task-2", "task-3"],
+  splitMethod: "custom", // "interactive", "standard", or "custom"
+  customInstructions: "Split into 2-4 hour chunks",
+  aiOptions: {
+    aiProvider: "anthropic",
+    aiModel: "claude-3-5-sonnet",
+    aiKey: process.env.ANTHROPIC_API_KEY,
+  },
+  streamingOptions: { enabled: true },
+  callbacks: {
+    onProgress: (event) => console.log(event.message),
+  },
+});
+
+console.log(`Split ${result.splits} tasks`);
+```
+
+**continueProject**
+
+```typescript
+const result = await workflowService.continueProject({
+  projectDir: process.cwd(),
+  action: "update-prd", // ContinueAction options
+  aiOptions: {
+    aiProvider: "anthropic",
+    aiModel: "claude-3-5-sonnet",
+    aiKey: process.env.ANTHROPIC_API_KEY,
+  },
+  streamingOptions: { enabled: true },
+  callbacks: {
+    onProgress: (event) => console.log(event.message),
+  },
+});
+
+console.log("Project continued:", result.status);
+```
+
+**executeTasks**
+
+```typescript
+const { success, result } = await workflowService.executeTasks({
+  options: {
+    status: "todo",
+    tool: "opencode",
+    maxRetries: 3,
+    tryModels: [
+      { provider: "openai", model: "gpt-4o-mini" },
+      { provider: "openai", model: "gpt-4o" },
+      { provider: "anthropic", model: "claude-3.5-sonnet" },
+    ],
+    verify: "bun test",
+    plan: true,
+    review: true,
+    autoCommit: true,
+  },
+  callbacks: {
+    onProgress: (event) => console.log(event.message),
+  },
+});
+
+console.log(`Executed ${result.completed} tasks successfully`);
+```
+
+---
 
 ### BenchmarkService
 
-Compare AI model performance and quality across different operations.
+Compare AI model performance across different operations.
+
+#### Constructor
 
 ```typescript
-import { BenchmarkService } from "task-o-matic-core";
-
 const benchmarkService = new BenchmarkService();
+```
 
-// Benchmark PRD parsing
-const prdBenchmark = await benchmarkService.runBenchmark({
-  type: "prd-parse",
-  input: {
+#### Benchmark Methods
+
+**runBenchmark**
+
+```typescript
+const run = await benchmarkService.runBenchmark(
+  "prd-parse", // operationId
+  {
     file: "./requirements.md",
   },
-  models: [
-    {
-      provider: "openai",
-      model: "gpt-4o",
-      apiKey: process.env.OPENAI_API_KEY,
-    },
-    {
-      provider: "anthropic",
-      model: "claude-3-5-sonnet",
-      apiKey: process.env.ANTHROPIC_API_KEY,
-    },
-  ],
-  concurrency: 2,
-  delay: 1000,
-});
-
-console.log("Benchmark results:", prdBenchmark.results);
-
-// Benchmark task breakdown
-const taskBenchmark = await benchmarkService.runBenchmark({
-  type: "task-breakdown",
-  input: {
-    taskId: "task-id-here",
+  {
+    models: [
+      { provider: "openai", model: "gpt-4o", apiKey: process.env.OPENAI_API_KEY },
+      { provider: "anthropic", model: "claude-3-5-sonnet", apiKey: process.env.ANTHROPIC_API_KEY },
+    ],
+    concurrency: 2,
+    delay: 1000,
   },
-  models: [
-    {
-      provider: "openai",
-      model: "gpt-4o",
-      apiKey: process.env.OPENAI_API_KEY,
+  (event) => {
+    console.log(`Benchmark progress: ${event.message}`);
+  }
+);
+
+console.log("Benchmark results:", run.results);
+```
+
+**runExecutionBenchmark**
+
+```typescript
+const run = await benchmarkService.runExecutionBenchmark(
+  {
+    taskId: "task-123",
+  },
+  {
+    models: [
+      { provider: "openai", model: "gpt-4o", apiKey: process.env.OPENAI_API_KEY },
+      { provider: "anthropic", model: "claude-3-5-sonnet", apiKey: process.env.ANTHROPIC_API_KEY },
+    ],
+    concurrency: 1,
+  },
+  (event) => {
+    console.log(`Benchmark progress: ${event.message}`);
+  }
+);
+
+console.log("Execution benchmark completed:", run.results);
+```
+
+**runExecuteLoopBenchmark**
+
+```typescript
+const run = await benchmarkService.runExecuteLoopBenchmark(
+  {
+    loopOptions: {
+      status: "todo",
+      tool: "opencode",
+      maxRetries: 3,
+      verify: "bun test",
     },
-    {
-      provider: "anthropic",
-      model: "claude-3-5-sonnet",
-      apiKey: process.env.ANTHROPIC_API_KEY,
-    },
-  ],
-  concurrency: 2,
+    keepBranches: false,
+  },
+  {
+    models: [
+      { provider: "openai", model: "gpt-4o", apiKey: process.env.OPENAI_API_KEY },
+    ],
+    concurrency: 1,
+  },
+  (event) => {
+    console.log(`Benchmark progress: ${event.message}`);
+  }
+);
+
+console.log("Execute loop benchmark completed:", run.results);
+```
+
+**runWorkflowBenchmark**
+
+```typescript
+const run = await benchmarkService.runWorkflowBenchmark(
+  {
+    projectName: "vault-manager",
+    projectDescription: "Comprehensive vault management system",
+    initMethod: "ai",
+    prdMethod: "ai",
+    skipRefine: true,
+    splitTasks: [],
+    tempDir: "/tmp/benchmark-workflows",
+  },
+  {
+    models: [
+      { provider: "openai", model: "gpt-4o", apiKey: process.env.OPENAI_API_KEY },
+      { provider: "anthropic", model: "claude-3-5-sonnet", apiKey: process.env.ANTHROPIC_API_KEY },
+    ],
+    concurrency: 1,
+    delay: 2000,
+  },
+  (event) => {
+    console.log(`Benchmark progress: ${event.message}`);
+  }
+);
+
+console.log("Workflow benchmark completed:", run.results);
+```
+
+**getRun**
+
+```typescript
+const run = await benchmarkService.getRun("run-id-here");
+if (run) {
+  console.log("Benchmark details:", run);
+}
+```
+
+**listRuns**
+
+```typescript
+const runs = await benchmarkService.listRuns();
+runs.forEach((run) => {
+  console.log(`${run.id}: ${run.command} (${new Date(run.timestamp).toISOString()})`);
 });
 ```
 
-## Streaming Support
+---
+
+## 🌊 STREAMING SUPPORT
 
 Stream AI responses in real-time for better user experience.
+
+### Basic Streaming
 
 ```typescript
 import { TaskService } from "task-o-matic-core";
 
 const taskService = new TaskService();
 
-// Create task with streaming
 const result = await taskService.createTask({
-  title: "Add payment integration",
+  title: "Add emergency alert system",
   aiEnhance: true,
   streamingOptions: {
     enabled: true,
     onChunk: (chunk) => {
-      // Process each chunk as it arrives
-      console.log(chunk);
+      console.log("Streaming:", chunk);
+    },
+    onReasoning: (text) => {
+      console.log("AI thinking:", text); // For OpenRouter reasoning models
     },
     onFinish: ({ text }) => {
-      console.log("Streaming complete!");
+      console.log("Streaming complete:", text.length, "characters");
     },
   },
   aiOptions: {
@@ -374,41 +951,71 @@ const result = await taskService.createTask({
 });
 ```
 
-## TUI Integration Example
+### TUI Integration Example
 
 ```typescript
 import { TaskService } from "task-o-matic-core";
-import type { ProgressCallback } from "task-o-matic-core";
 
 const taskService = new TaskService();
 
 // Progress callback for TUI updates
-const progressCallback: ProgressCallback = {
+const callbacks = {
   onProgress: (event) => {
-    // Update your TUI with progress
     tuiStatusBar.update(event.message);
   },
 };
 
 // Create task with streaming
 const result = await taskService.createTask({
-  title: "Add payment integration",
+  title: "Implement biometric authentication",
   aiEnhance: true,
   streamingOptions: {
     enabled: true,
     onChunk: (chunk) => {
       // Update TUI in real-time
       tuiTextArea.append(chunk);
+      tuiLayout.render();
+    },
+    onReasoning: (text) => {
+      tuiStatusBar.update(`AI thinking: ${text.substring(0, 50)}...`);
     },
     onFinish: ({ text }) => {
-      tuiStatusBar.success("Task enhanced!");
+      tuiStatusBar.success("Task enhanced successfully!");
+      tuiLayout.render();
     },
   },
-  callbacks: progressCallback,
+  callbacks,
 });
 ```
 
-## Utility Functions
+---
+
+## 📚 CONTEXT7 INTEGRATION
+
+Access up-to-date library documentation automatically.
+
+```typescript
+import { TaskService } from "task-o-matic-core";
+
+const taskService = new TaskService();
+
+// Task enhancement will fetch relevant docs
+const result = await taskService.enhanceTask("task-id-here", {
+  aiOptions: {
+    aiProvider: "anthropic",
+    aiModel: "claude-3-5-sonnet",
+    aiKey: process.env.ANTHROPIC_API_KEY,
+  },
+  // Context7 will automatically fetch docs for libraries in your stack
+});
+
+// Documentation is cached in .task-o-matic/docs/{library-name}/
+// Subsequent calls use cached docs for performance
+```
+
+---
+
+## 🔧 UTILITY FUNCTIONS
 
 Access core utilities directly:
 
@@ -416,13 +1023,18 @@ Access core utilities directly:
 import {
   getStorage,
   getAIOperations,
+  getModelProvider,
+  getContextBuilder,
   buildAIConfig,
   configManager,
+  logger,
 } from "task-o-matic-core";
 
 // Get singleton instances
 const storage = getStorage();
 const aiOps = getAIOperations();
+const modelProvider = getModelProvider();
+const contextBuilder = getContextBuilder();
 
 // Build AI configuration
 const aiConfig = buildAIConfig({
@@ -437,38 +1049,99 @@ const allTasks = await storage.getAllTasks();
 // Use config manager
 await configManager.load();
 const aiProvider = configManager.getAIProvider();
+
+// Use logger
+logger.info("Starting project initialization");
+logger.error("Failed to parse PRD", { error });
 ```
 
-## TypeScript Types
+---
+
+## 📝 TYPESCRIPT TYPES
 
 Full TypeScript type definitions are included:
 
 ```typescript
 import type {
+  // Core Types
   Task,
-  AIConfig,
-  StreamingOptions,
   CreateTaskOptions,
-  PRDParseResult,
+  CreateTaskResult,
+  EnhanceTaskResult,
+  SplitTaskResult,
+  PlanTaskResult,
+  DocumentTaskResult,
+  DeleteTaskResult,
+  TaskListResponse,
   TaskAIMetadata,
-  // Workflow types
-  WorkflowService,
+  TaskDocumentation,
+
+  // AI Types
+  AIConfig,
+  AIOptions,
+  StreamingOptions,
+  StreamingCallbacks,
+  ProviderConfig,
+  AIServiceResponse,
+
+  // PRD Types
+  PRDParseResult,
+  PRDFromCodebaseResult,
+  SuggestStackResult,
+  PRDChange,
+  PRDVersion,
+  PRDVersionData,
+
+  // Workflow Types
   InitializeResult,
   DefinePRDResult,
   RefinePRDResult,
   GenerateTasksResult,
   SplitTasksResult,
-  // Benchmark types
+  ContinueResult,
+  WorkflowOptions,
+  ContinueAction,
+
+  // Benchmark Types
   BenchmarkService,
   BenchmarkConfig,
   BenchmarkResult,
-  // Callback types
+  BenchmarkRun,
+  BenchmarkProgressEvent,
+
+  // Execution Types
+  ExecuteTaskOptions,
+  ExecutionResult,
+  ExecuteLoopOptions,
+  ExecuteLoopResult,
+  ExecuteLoopConfig,
+  TaskExecutionResult,
+
+  // Callback Types
   ProgressCallback,
   StorageCallbacks,
+
+  // Project Analysis Types
+  ProjectAnalysis,
+  ProjectAnalysisOptions,
+  ProjectAnalysisResult,
+  DetectedStack,
+  ProjectStructure,
+
+  // Error Types
+  TaskOMaticError,
+
+  // Services
+  TaskService,
+  WorkflowService,
+  PRDService,
+  BenchmarkService,
 } from "task-o-matic-core";
 ```
 
-## AI Providers
+---
+
+## 🤖 AI PROVIDERS
 
 ### Supported Providers
 
@@ -496,11 +1169,12 @@ const anthropicConfig = buildAIConfig({
   apiKey: process.env.ANTHROPIC_API_KEY,
 });
 
-// OpenRouter
+// OpenRouter with reasoning
 const openrouterConfig = buildAIConfig({
   provider: "openrouter",
   model: "anthropic/claude-3.5-sonnet",
   apiKey: process.env.OPENROUTER_API_KEY,
+  reasoning: 5000, // Enable extended reasoning
 });
 
 // Custom provider
@@ -514,32 +1188,85 @@ const customConfig = buildAIConfig({
 
 ### Model Recommendations
 
-- **PRD Parsing**: `claude-3.5-sonnet` or `gpt-4`
-- **Task Enhancement**: `claude-3-haiku` or `gpt-3.5-turbo`
-- **Task Breakdown**: `claude-3.5-sonnet` for complex tasks
-- **Workflow Testing**: Use benchmarking to find optimal performance
+Based on extensive field testing:
 
-## Storage Structure
+- **PRD Parsing**: `anthropic:claude-3.5-sonnet` or `openai:gpt-4o`
+- **Task Enhancement**: `openai:gpt-4o-mini` or `anthropic:claude-3-haiku`
+- **Task Breakdown**: `anthropic:claude-3.5-sonnet`
+- **Workflow Testing**: Use benchmarking. Let the data decide.
+
+### Multi-AI Operations
+
+Let multiple AI models work together for superior results:
+
+```typescript
+const result = await taskService.splitTask("task-id-here", {
+  aiOptions: {
+    models: [
+      { provider: "anthropic", model: "claude-3.5-sonnet", aiKey: key1 },
+      { provider: "openai", model: "gpt-4o", aiKey: key2 },
+    ],
+    combineAI: {
+      provider: "anthropic",
+      model: "claude-3.5-sonnet",
+      aiKey: key1,
+    },
+  },
+});
+
+// Multiple models approach the problem from different angles
+// The combineAI model synthesizes the best results
+```
+
+---
+
+## 💾 STORAGE STRUCTURE
 
 All data is stored locally in the `.task-o-matic/` directory:
 
 ```
 your-project/
 ├── .task-o-matic/
-│   ├── config.json          # AI configuration
-│   ├── bts-config.json      # Better-T-Stack configuration (if bootstrapped)
-│   ├── tasks/              # Task JSON files
-│   │   ├── {task-id}.json
-│   │   └── ...
-│   ├── prd/                # PRD versions and logs
+│   ├── config.json              # AI configuration
+│   ├── stack.json              # Detected technology stack (cached)
+│   ├── bts-config.json         # Better-T-Stack configuration
+│   ├── mcp.json               # Context7/MCP configuration
+│   ├── tasks.json             # Main tasks database
+│   ├── ai-metadata.json       # AI metadata for all tasks
+│   │
+│   ├── tasks/                # Task content files
+│   │   ├── {task-id}.md
+│   │   └── enhanced/
+│   │       └── {task-id}.md
+│   │
+│   ├── plans/                # Implementation plans
+│   │   └── {task-id}.json
+│   │
+│   ├── docs/                 # Documentation
+│   │   ├── tasks/           # Task-specific documentation
+│   │   └── {library-name}/  # Context7 library docs (cached)
+│   │
+│   ├── prd/                 # PRD versions and logs
+│   │   ├── versions/        # PRD versioning history
+│   │   │   ├── v1.json
+│   │   │   ├── v2.json
+│   │   │   └── ...
 │   │   ├── parsed-prd.json
-│   │   └── ...
-│   └── logs/               # Operation logs
-│       └── ...
+│   │   └── (user prd files)
+│   │
+│   └── logs/                # Operation logs
 └── your-project-files...
 ```
 
-## Error Handling
+**Key notes:**
+- Tasks with content >200 characters are stored as separate files
+- AI metadata tracks who enhanced what, when, and with which model
+- PRD versioning lets you track evolution over time
+- Documentation from Context7 is cached to avoid repeated API calls
+
+---
+
+## ⚠️ ERROR HANDLING
 
 ```typescript
 import { TaskService, TaskOMaticError } from "task-o-matic-core";
@@ -561,86 +1288,152 @@ try {
     console.error(`TaskOMatic Error: ${error.message}`);
     console.error(`Code: ${error.code}`);
     console.error(`Details:`, error.details);
+    console.error(`Suggestions:`, error.suggestions);
   } else {
     console.error(`Unexpected error:`, error);
   }
 }
 ```
 
-## Hooks System
+### Standard Error Helpers
+
+```typescript
+import {
+  isTaskOMaticError,
+  formatTaskNotFoundError,
+  formatInvalidStatusTransitionError,
+  formatStorageError,
+  formatAIOperationError,
+} from "task-o-matic-core";
+
+// Check if error is TaskOMaticError
+if (isTaskOMaticError(error)) {
+  // Handle accordingly
+}
+
+// Create standard errors
+throw formatTaskNotFoundError("task-id-here");
+
+throw formatInvalidStatusTransitionError("todo", "completed");
+
+throw formatStorageError("getAllTasks", new Error("File not found"));
+
+throw formatAIOperationError("enhanceTask", new Error("API timeout"));
+```
+
+---
+
+## 🪝 HOOKS SYSTEM
 
 Register hooks to customize behavior:
 
 ```typescript
-import { registerLoggerHooks } from "task-o-matic-core";
+import { hooks, registerLoggerHooks } from "task-o-matic-core";
 
 // Register logger hooks
-registerLoggerHooks({
-  onLog: (level, message) => {
-    console.log(`[${level}] ${message}`);
-  },
-  onError: (error) => {
-    console.error(`Error:`, error);
-  },
+hooks.onLog = (level, message) => {
+  console.log(`[${level}] ${message}`);
+};
+
+hooks.onError = (error) => {
+  console.error(`Error:`, error);
+  // Send to external monitoring
+  externalMonitoring.logError(error);
+};
+
+hooks.onProgress = (event) => {
+  // Update your UI
+  ui.updateProgress(event.message);
+};
+```
+
+---
+
+## 🧪 TESTING
+
+The core library provides test utilities:
+
+```typescript
+import {
+  resetServiceInstances,
+  injectTestInstances,
+} from "task-o-matic-core";
+
+// Reset all singleton instances (useful for tests)
+resetServiceInstances();
+
+// Inject mock instances for testing
+injectTestInstances({
+  storage: mockStorage,
+  aiOperations: mockAIOperations,
 });
 ```
 
-## Development
+---
+
+## 🛠️ DEVELOPMENT
 
 ### Building from Source
 
 ```bash
-# Clone and install
+# Clone repository
 git clone https://github.com/DimitriGilbert/task-o-matic.git
 cd task-o-matic
-npm install
 
-# Build the core package
+# Install dependencies
+bun install
+
+# Build core package
 cd packages/core
-npm run build
+bun run build
 
 # Type checking
-npm run check-types
+bun run check-types
 
 # Run tests
-npm run test
+bun run test
 ```
 
-### Testing
+### Running Specific Tests
 
 ```bash
-# Run all tests
-npm test
+# From project root
+cd packages/core
+npx mocha -r tsx/cjs src/test/test-setup.ts src/test/path/to/your.test.ts
 
 # Run specific test file
-npm test -- --grep "TaskService"
+bun run test -- --grep "TaskService"
 ```
-
-## Documentation
-
-For more detailed documentation, see:
-
-- [Configuration](../../docs/configuration.md) - AI providers and settings
-- [Task Management](../../docs/tasks.md) - Full task lifecycle with AI features
-- [PRD Processing](../../docs/prd.md) - Parse and rework Product Requirements Documents
-- [Interactive Workflow](../../docs/workflow-command.md) - Guided setup with AI assistance
-- [AI Integration](../../docs/ai-integration.md) - AI providers and prompt engineering
-- [Project Initialization](../../docs/projects.md) - Project setup and bootstrapping
-- [Streaming Output](../../docs/streaming.md) - Real-time AI streaming capabilities
-- [Model Benchmarking](../../docs/benchmarking.md) - Compare AI models and workflow performance
-
-## License
-
-MIT License - see LICENSE file for details.
-
-## Contributing
-
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Add tests if applicable
-5. Submit a pull request
 
 ---
 
-**Built with ❤️ using Vercel AI SDK and modern TypeScript**
+## 📚 FURTHER READING: ENGINEERING MANUALS
+
+For detailed documentation:
+
+- [Configuration Guide](../../docs/configuration.md)
+- [Task Management Guide](../../docs/tasks.md)
+- [PRD Processing Guide](../../docs/prd.md)
+- [Workflow Command Guide](../../docs/workflow-command.md)
+- [AI Integration Guide](../../docs/ai-integration.md)
+- [Project Initialization Guide](../../docs/projects.md)
+- [Streaming Output Guide](../../docs/streaming.md)
+- [Model Benchmarking Guide](../../docs/benchmarking.md)
+- [CLI Command Reference](../cli/README.md)
+
+---
+
+## 🏁 FINAL REMINDER
+
+**Remember:** Clean architecture is survival architecture. The core library is your blueprint—build whatever interface you need on top of it.
+
+You now have everything you need to integrate task management into your custom applications. Build well, engineer.
+
+[Stay modular. Stay clean. Survive.]
+
+---
+
+**DOCUMENT CONTROL:**
+- **Version:** 1.0
+- **Clearance:** Engineering Personnel
+- **Classification:** For Builders' Eyes Only

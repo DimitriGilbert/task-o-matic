@@ -8,7 +8,7 @@
 
 _Citizen, the world outside has changed. The AI-pocalypse has transformed development from a chaotic free-for-all into something... darker. But your projects don't have to die in the radioactive dust._
 
-_npx task-o-matic is your bunker management system for software development. Think of it as your Pip-Boy for code—organizing tasks, parsing documents, and deploying artificial intelligence to help your projects thrive when everything else has collapsed._
+_npx task-o-matic is your task management system for software development. Think of it as your Pip-Boy for code—organizing tasks, parsing documents, and deploying artificial intelligence to help your projects thrive when everything else has collapsed._
 
 _[The preceding message was brought to you by the Department of Project Preservation. Remember: A prepared developer is a surviving developer.]_
 
@@ -54,7 +54,7 @@ You have projects. They're disorganized. The burnout levels are rising. Let's fi
 ### Method 1: The Full Treatment (Recommended)
 
 ```bash
-# Navigate to your project's bunker
+# Navigate to your project's directory
 cd /path/to/your/project
 
 # One command. That's it. The AI will guide you through everything.
@@ -133,7 +133,7 @@ This creates:
 - A full Better-T-Stack project scaffold
 - Next.js frontend, Hono backend, Postgres database, authentication
 
-**Result:** A bunker ready to be built.
+**Result:** A project ready to be built.
 
 ### Workflow Gamma: Existing Project Adoption (When the Walls Are Already Up)
 
@@ -340,9 +340,9 @@ The AI will spend more time thinking before answering. Like a survivor contempla
 
 ---
 
-## 📁 STORAGE STRUCTURE: YOUR BUNKER LAYOUT
+## 📁 STORAGE STRUCTURE: YOUR PROJECT LAYOUT
 
-Everything lives in `.task-o-matic/`. Know your bunker.
+Everything lives in `.task-o-matic/`. Know your project.
 
 ```
 your-project/
@@ -461,6 +461,7 @@ npx task-o-matic tasks split --task-id 7 --stream
 Let multiple AI models compete and produce the best results together.
 
 **For PRD Creation:**
+
 ```bash
 npx task-o-matic prd create "Build a vault manager" \
   --ai "anthropic:claude-3.5-sonnet,openai:gpt-4o,openrouter:qwen-2.5" \
@@ -469,6 +470,7 @@ npx task-o-matic prd create "Build a vault manager" \
 ```
 
 **For PRD Parsing:**
+
 ```bash
 npx task-o-matic prd parse --file requirements.md \
   --ai "anthropic:claude-3.5-sonnet,openai:gpt-4o,openrouter:qwen-2.5" \
@@ -477,6 +479,7 @@ npx task-o-matic prd parse --file requirements.md \
 ```
 
 **For Task Splitting:**
+
 ```bash
 npx task-o-matic tasks split --task-id 7 \
   --ai "anthropic:claude-3.5-sonnet,openai:gpt-4o" \
@@ -616,7 +619,7 @@ const parseResult = await prdService.parsePRD({
 
 ---
 
-## 🛠️ DEVELOPMENT: BUILDING YOUR OWN BUNKER TOOLS
+## 🛠️ DEVELOPMENT: BUILDING YOUR OWN PROJECT TOOLS
 
 Want to contribute or extend task-o-matic? Here's the blueprint.
 
@@ -706,7 +709,7 @@ A: No, you can pick and choose. But remember: a task too large to finish in one 
 
 **Q: What AI provider should I use?**
 
-A: We recommend OpenRouter with `claude-4.5-sonnet`/`anthropic/claude-4.5-opus` for quality, or `z-ai/glm-4.7` for cheap. [The AI doesn't care about your political affiliation. It just wants to help organize your bunker.]
+A: We recommend OpenRouter with `claude-4.5-sonnet`/`anthropic/claude-4.5-opus` for quality, or `z-ai/glm-4.7` for cheap. [The AI doesn't care about your political affiliation. It just wants to help organize your project.]
 
 **Q: Can I add tasks manually?**
 
@@ -756,6 +759,7 @@ For detailed information on specific facilities:
 The benchmarking system lets AI models compete against each other to find the optimal performer for your specific workflow. It's not quite prime time yet, but we're working on it.
 
 **What will be available:**
+
 - Multi-model PRD parsing comparison
 - Task breakdown quality assessment
 - Workflow-level benchmarking with isolated git branches
