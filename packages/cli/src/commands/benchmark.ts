@@ -1,52 +1,30 @@
-/**
- * Benchmark CLI Commands
- *
- * NOTE: This file is temporarily disabled pending Phase 4 of the benchmark system redesign.
- * The old benchmark services have been replaced with new worktree-based infrastructure.
- * This file will be completely rewritten in Phase 4.
- *
- * See opus_bench_v2.md for the redesign plan.
- */
-
-import { Command } from "commander";
 import chalk from "chalk";
-
-// ===========================================================================
-// PHASE 4 TODO: Replace with new benchmark orchestrator and types
-// ===========================================================================
-// OLD IMPORTS (REMOVED - services deleted):
-// import { benchmarkService } from "task-o-matic-core";
-// import { benchmarkRegistry } from "task-o-matic-core";
-// import { BenchmarkConfig, WorkflowBenchmarkInput } from "task-o-matic-core";
-// ===========================================================================
-
+import { Command } from "commander";
 import {
-  BenchmarkModelConfig,
-  WorkflowBenchmarkInput,
-} from "task-o-matic-core";
-import { WorkflowAutomationOptions } from "task-o-matic-core";
-import { displayError } from "../cli/display/progress";
-import {
-  confirmPrompt,
-  selectPrompt,
-  textInputPrompt,
-} from "../utils/workflow-prompts";
-
-export const benchmarkCommand = new Command("benchmark").description(
-  "Run and manage AI benchmarks (UNDER RECONSTRUCTION - Phase 4 pending)"
-);
-
-import { createStandardError, TaskOMaticErrorCodes } from "task-o-matic-core";
-import {
-  parseTryModels,
-} from "task-o-matic-core";
-import {
-  ExecuteLoopOptions,
-  ModelAttemptConfig,
+  BenchmarkOrchestrator,
+  createStandardError,
+  TaskOMaticErrorCodes,
+  type BenchmarkInput,
+  type BenchmarkModelConfig,
+  type BenchmarkOperationType,
+  type BenchmarkRunConfig,
+  type ExecuteLoopBenchmarkInput,
+  type ExecutionBenchmarkInput,
+  type ModelScore,
+  type OperationBenchmarkInput,
 } from "task-o-matic-core";
 
-// Helper to parse model string
-// Format: provider:model[:reasoning=<tokens>]
+// Initialize orchestrator
+const orchestrator = new BenchmarkOrchestrator();
+
+export const benchmarkCommand = new Command("bench")
+  .alias("benchmark")
+  .description("Run and manage AI model benchmarks");
+
+// ============================================================================
+// HELPER FUNCTIONS
+// ============================================================================
+
 function parseModelString(modelStr: string): BenchmarkModelConfig {
   const parts = modelStr.split(":");
   if (parts.length < 2) {
@@ -77,238 +55,321 @@ function parseModelString(modelStr: string): BenchmarkModelConfig {
   return { provider, model, reasoningTokens };
 }
 
-// ===========================================================================
-// TEMPORARILY DISABLED COMMANDS
-// These will be reimplemented in Phase 4 with the new worktree-based system
-// ===========================================================================
+function statusColor(status: string): string {
+  switch (status) {
+    case "completed": return chalk.green(status);
+    case "success": return chalk.green(status);
+    case "running": return chalk.blue(status);
+    case "failed": return chalk.red(status);
+    case "partial": return chalk.yellow(status);
+    case "error": return chalk.red(status);
+    default: return status;
+  }
+}
+
+// ============================================================================
+// RUN COMMAND
+// ============================================================================
 
 benchmarkCommand
   .command("run")
-  .description("[DISABLED] Run a benchmark operation - pending Phase 4 rewrite")
-  .argument(
-    "<operation>",
-    "Operation to benchmark (e.g., prd-parse, task-breakdown, task-create, prd-create)"
-  )
-  .requiredOption(
-    "--models <list>",
-    "Comma-separated list of models (provider:model[:reasoning=<tokens>])"
-  )
-  .option("--file <path>", "Input file path (for PRD ops)")
-  .option("--task-id <id>", "Task ID (for Task ops)")
-  .option("--concurrency <number>", "Max concurrent requests", "5")
-  .option("--delay <number>", "Delay between requests in ms", "250")
-  .action(async (_operation, _options) => {
-    console.log(chalk.yellow("\n⚠️  Benchmark commands are temporarily disabled.\n"));
-    console.log(chalk.dim("The benchmark system is being redesigned with:"));
-    console.log(chalk.dim("  - True parallel execution via git worktrees"));
-    console.log(chalk.dim("  - Persistent worktrees for manual inspection"));
-    console.log(chalk.dim("  - Comprehensive code metrics and scoring"));
-    console.log(chalk.dim("\nSee opus_bench_v2.md for the redesign plan."));
-    console.log(chalk.dim("Phase 4 will implement the new CLI commands.\n"));
+  .description("Run a benchmark")
+  .argument("<type>", "Type of benchmark (execution, execute-loop, operation, workflow)")
+  .requiredOption("-m, --models <models...>", "Models to benchmark (e.g., openai:gpt-4o)")
+  .option("-t, --task <id>", "Task ID (for execution type)")
+  .option("-s, --status <status>", "Task status filter (for execute-loop type)")
+  .option("-o, --operation <id>", "Operation ID (for operation type)")
+  .option("-f, --file <path>", "File path (for operation type, e.g., PRD file)")
+  .option("-v, --verify <commands...>", "Verification commands to run")
+  .option("-r, --max-retries <n>", "Max retries per task", parseInt)
+  .option("-c, --concurrency <n>", "Max parallel worktrees", parseInt)
+  .option("--base-commit <commit>", "Base commit to start from")
+  .action(async (type, options) => {
+    try {
+      console.log(chalk.bold.blue(`\nStarting ${type} benchmark...\n`));
+
+      // Parse models
+      const models: BenchmarkModelConfig[] = options.models.map(parseModelString);
+
+      // Build run config
+      const config: BenchmarkRunConfig = {
+        models,
+        concurrency: options.concurrency ?? 0,
+        baseCommit: options.baseCommit,
+        keepWorktrees: true, // Always persistent in new system
+      };
+
+      // Build input based on type
+      let input: BenchmarkInput;
+
+      switch (type) {
+        case "execution":
+          if (!options.task) throw new Error("--task <id> is required for execution benchmark");
+          input = {
+            taskId: options.task,
+            verificationCommands: options.verify,
+            maxRetries: options.maxRetries,
+          } as ExecutionBenchmarkInput;
+          break;
+
+        case "execute-loop":
+          input = {
+            loopOptions: {
+              filters: { status: options.status },
+              config: {
+                verificationCommands: options.verify,
+                maxRetries: options.maxRetries,
+              },
+            },
+          } as ExecuteLoopBenchmarkInput;
+          break;
+
+        case "operation": {
+          if (!options.operation) throw new Error("--operation <id> is required for operation benchmark");
+          
+          // Construct params from available options
+          const params: Record<string, unknown> = {};
+          if (options.file) params.file = options.file;
+          
+          input = {
+            operationId: options.operation,
+            params,
+          } as OperationBenchmarkInput;
+          break;
+        }
+          
+        case "workflow":
+          throw new Error("Workflow benchmark requires complex input. Use CLI wizard or file input (not yet implemented in basic CLI)");
+
+        default:
+          throw new Error(`Unknown benchmark type: ${type}`);
+      }
+
+      // Execute benchmark
+      const run = await orchestrator.run(
+        type as BenchmarkOperationType,
+        input,
+        config,
+        (event) => {
+          const timestamp = new Date().toLocaleTimeString();
+          const prefix = `[${timestamp}] ${chalk.cyan(event.modelId)}`;
+          
+          switch (event.type) {
+            case "start":
+              console.log(`${prefix} Starting...`);
+              break;
+            case "progress":
+              console.log(`${prefix} ${event.message}`);
+              break;
+            case "complete":
+              console.log(`${prefix} ${chalk.green("Completed")} (${event.duration}ms)`);
+              break;
+            case "error":
+              console.log(`${prefix} ${chalk.red("Failed")}: ${event.error}`);
+              break;
+          }
+        }
+      );
+
+      console.log(chalk.bold.green(`\nBenchmark run completed: ${run.id}`));
+      console.log(`Run 'task-o-matic bench show ${run.id}' to view details.`);
+      
+      // List active worktrees
+      console.log(chalk.bold("\nActive Worktrees:"));
+      const worktrees = await orchestrator.getWorktreesByRunId(run.id);
+      worktrees.forEach(wt => {
+        console.log(`  ${chalk.cyan(wt.modelId)}: ${chalk.gray(wt.path)}`);
+      });
+
+    } catch (error) {
+      console.error(chalk.red("\nBenchmark failed:"));
+      console.error(error instanceof Error ? error.message : String(error));
+      process.exit(1);
+    }
   });
+
+// ============================================================================
+// LIST COMMAND
+// ============================================================================
 
 benchmarkCommand
   .command("list")
-  .description("[DISABLED] List past benchmark runs - pending Phase 4 rewrite")
-  .action(() => {
-    console.log(chalk.yellow("\n⚠️  Benchmark commands are temporarily disabled.\n"));
-    console.log(chalk.dim("Phase 4 will implement: npx task-o-matic bench list"));
+  .description("List benchmark runs")
+  .option("-t, --type <type>", "Filter by type")
+  .option("-s, --status <status>", "Filter by status")
+  .option("-l, --limit <n>", "Limit results", parseInt, 10)
+  .action(async (options) => {
+    try {
+      const runs = await orchestrator.listRuns({
+        type: options.type as BenchmarkOperationType,
+        status: options.status,
+        limit: options.limit
+      });
+
+      if (runs.length === 0) {
+        console.log("No benchmark runs found.");
+        return;
+      }
+
+      console.log(chalk.bold("\nBenchmark Runs:"));
+      console.log(`${"ID".padEnd(30)}${"Type".padEnd(15)}${"Status".padEnd(12)}${"Models".padEnd(8)}Date`);
+      console.log("-".repeat(80));
+
+      runs.forEach(run => {
+        const date = new Date(run.createdAt).toLocaleString();
+        console.log(
+          `${run.id.padEnd(30)}${run.type.padEnd(15)}${statusColor(run.status).padEnd(21)}${String(run.config.models.length).padEnd(8)}${date}`
+        );
+      });
+      console.log("");
+
+    } catch (error) {
+      console.error(chalk.red("Failed to list runs:"), error);
+    }
   });
 
-benchmarkCommand
-  .command("operations")
-  .description("[DISABLED] List available benchmark operations - pending Phase 4 rewrite")
-  .action(() => {
-    console.log(chalk.yellow("\n⚠️  Benchmark commands are temporarily disabled.\n"));
-    console.log(chalk.dim("Phase 4 will implement operation registry."));
-  });
+// ============================================================================
+// SHOW COMMAND
+// ============================================================================
 
 benchmarkCommand
   .command("show")
-  .description("[DISABLED] Show details of a benchmark run - pending Phase 4 rewrite")
-  .argument("<id>", "Run ID")
-  .action((_id) => {
-    console.log(chalk.yellow("\n⚠️  Benchmark commands are temporarily disabled.\n"));
-    console.log(chalk.dim("Phase 4 will implement: npx task-o-matic bench show <run-id>"));
+  .description("Show benchmark run details")
+  .argument("<run-id>", "Run ID")
+  .action(async (runId) => {
+    try {
+      const run = await orchestrator.getRun(runId);
+      if (!run) {
+        console.error(chalk.red(`Run not found: ${runId}`));
+        return;
+      }
+
+      console.log(chalk.bold(`\nRun: ${run.id}`));
+      console.log(`Type: ${run.type}`);
+      console.log(`Status: ${statusColor(run.status)}`);
+      console.log(`Date: ${new Date(run.createdAt).toLocaleString()}`);
+      console.log(`Base Commit: ${run.baseCommit.substring(0, 8)}`);
+      
+      console.log(chalk.bold("\nResults:"));
+      
+      // Table Header
+      const modelW = 30;
+      const statusW = 10;
+      const durW = 10;
+      const linesW = 15;
+      const scoreW = 8;
+      
+      console.log(
+        `${"Model".padEnd(modelW)}${"Status".padEnd(statusW)}${"Duration".padEnd(durW)}${"Lines +/-".padEnd(linesW)}Score`
+      );
+      console.log("-".repeat(modelW + statusW + durW + linesW + scoreW));
+
+      run.results.forEach(res => {
+        const modelId = res.modelId.length > modelW - 2 ? `${res.modelId.substring(0, modelW - 2)}..` : res.modelId;
+        const status = res.status === "success" ? chalk.green("PASS") : 
+                       res.status === "error" ? chalk.red("ERR") : chalk.yellow("FAIL");
+        const duration = `${Math.round(res.duration / 1000)}s`;
+        const lines = res.metrics.code 
+          ? `+${res.metrics.code.linesAdded} / -${res.metrics.code.linesRemoved}`
+          : "N/A";
+        
+        const score = run.scores.find(s => s.modelId === res.modelId);
+        const scoreStr = score ? `${score.score}/5` : "-";
+
+        console.log(
+          `${modelId.padEnd(modelW)}${status.padEnd(statusW + 9)}${duration.padEnd(durW)}${lines.padEnd(linesW)}${scoreStr}`
+        );
+      });
+      console.log("");
+      
+      // Worktrees hint
+      console.log(chalk.gray(`Use 'bench worktrees cleanup ${runId}' to remove worktrees.`));
+
+    } catch (error) {
+      console.error(chalk.red("Failed to show run:"), error);
+    }
   });
+
+// ============================================================================
+// WORKTREES COMMANDS
+// ============================================================================
+
+const worktreesCommand = benchmarkCommand.command("worktrees").description("Manage benchmark worktrees");
+
+worktreesCommand
+  .command("list")
+  .description("List active worktrees")
+  .action(async () => {
+    try {
+      const worktrees = await orchestrator.listWorktrees();
+      if (worktrees.length === 0) {
+        console.log("No active worktrees.");
+        return;
+      }
+
+      console.log(chalk.bold(`\nActive Worktrees (${worktrees.length}):`));
+      worktrees.forEach(wt => {
+        console.log(`${chalk.cyan(wt.name)}`);
+        console.log(`  Run: ${wt.runId}`);
+        console.log(`  Model: ${wt.modelId}`);
+        console.log(`  Path: ${wt.path}`);
+        console.log("");
+      });
+    } catch (error) {
+      console.error(chalk.red("Failed to list worktrees:"), error);
+    }
+  });
+
+worktreesCommand
+  .command("cleanup")
+  .description("Cleanup worktrees for a run")
+  .argument("<run-id>", "Run ID")
+  .action(async (runId) => {
+    try {
+      await orchestrator.cleanupRun(runId);
+      console.log(chalk.green(`Cleaned up worktrees for run: ${runId}`));
+    } catch (error) {
+      console.error(chalk.red("Failed to cleanup worktrees:"), error);
+    }
+  });
+
+// ============================================================================
+// SCORE COMMAND
+// ============================================================================
+
+benchmarkCommand
+  .command("score")
+  .description("Score a model's result")
+  .argument("<run-id>", "Run ID")
+  .requiredOption("-m, --model <model>", "Model ID")
+  .requiredOption("-s, --score <n>", "Score (1-5)", parseInt)
+  .option("-n, --note <text>", "Optional note")
+  .action(async (runId, options) => {
+    try {
+      const score: ModelScore = {
+        modelId: options.model,
+        score: options.score,
+        notes: options.note,
+        scoredAt: Date.now(),
+        scoredBy: "user" // Could get from git config user.name in future
+      };
+
+      await orchestrator.scoreModel(runId, score);
+      console.log(chalk.green(`Score recorded for ${options.model}`));
+    } catch (error) {
+      console.error(chalk.red("Failed to record score:"), error);
+    }
+  });
+
+// ============================================================================
+// COMPARE COMMAND
+// ============================================================================
 
 benchmarkCommand
   .command("compare")
-  .description("[DISABLED] Compare results of a benchmark run - pending Phase 4 rewrite")
-  .argument("<id>", "Run ID")
-  .action((_id) => {
-    console.log(chalk.yellow("\n⚠️  Benchmark commands are temporarily disabled.\n"));
-    console.log(chalk.dim("Phase 4 will implement: npx task-o-matic bench compare <run-id>"));
+  .description("Compare results across models (placeholder)")
+  .argument("<run-id>", "Run ID")
+  .action(async (_runId) => {
+    console.log("Compare visualizer coming soon. Use 'bench show' for metrics comparison.");
+    // Implementation of detailed comparison (diff visualization etc) would go here
   });
-
-benchmarkCommand
-  .command("execution")
-  .description("[DISABLED] Run execution benchmark - pending Phase 4 rewrite")
-  .requiredOption("--task-id <id>", "Task ID to benchmark")
-  .requiredOption(
-    "--models <list>",
-    "Comma-separated list of models (provider:model)"
-  )
-  .action(async (_options) => {
-    console.log(chalk.yellow("\n⚠️  Benchmark commands are temporarily disabled.\n"));
-    console.log(chalk.dim("Phase 4 will implement: npx task-o-matic bench run execution --task <id> --models ..."));
-  });
-
-benchmarkCommand
-  .command("execute-loop")
-  .description("[DISABLED] Benchmark task loop execution - pending Phase 4 rewrite")
-  .option("--status <status>", "Filter tasks by status")
-  .requiredOption(
-    "--models <list>",
-    "Comma-separated list of models (provider:model)"
-  )
-  .action(async (_options) => {
-    console.log(chalk.yellow("\n⚠️  Benchmark commands are temporarily disabled.\n"));
-    console.log(chalk.dim("Phase 4 will implement: npx task-o-matic bench run execute-loop --status <status> --models ..."));
-  });
-
-benchmarkCommand
-  .command("workflow")
-  .description("[DISABLED] Benchmark complete workflow - pending Phase 4 rewrite")
-  .requiredOption(
-    "--models <list>",
-    "Comma-separated list of models (provider:model[:reasoning=<tokens>])"
-  )
-  .action(async (_options) => {
-    console.log(chalk.yellow("\n⚠️  Benchmark commands are temporarily disabled.\n"));
-    console.log(chalk.dim("Phase 4 will implement: npx task-o-matic bench run workflow --models ..."));
-  });
-
-// ===========================================================================
-// PRESERVED UTILITIES FOR PHASE 4
-// These helper functions will be reused in the Phase 4 implementation
-// ===========================================================================
-
-/**
- * Collect workflow responses from user interactively
- * (Preserved for Phase 4 - will be used by new workflow benchmark)
- */
-async function collectWorkflowResponses(
-  options: Record<string, unknown>
-): Promise<WorkflowBenchmarkInput["collectedResponses"]> {
-  // Use provided options or prompt user
-  const getOrPrompt = async <T>(
-    preAnswered: T | undefined,
-    promptFn: () => Promise<T>,
-    skipCondition: boolean = false
-  ): Promise<T> => {
-    if (skipCondition) {
-      throw new Error("Step skipped");
-    }
-    if (preAnswered !== undefined) {
-      return preAnswered;
-    }
-    return promptFn();
-  };
-
-  // Project setup questions
-  const projectName = await getOrPrompt(options.projectName as string | undefined, () =>
-    textInputPrompt("What is the name of your project?", "benchmark-proj")
-  );
-
-  const initMethod = await getOrPrompt(options.initMethod as string | undefined, () =>
-    selectPrompt("How would you like to configure your project stack?", [
-      { name: "Quick start (recommended defaults)", value: "quick" },
-      { name: "Custom configuration", value: "custom" },
-      { name: "AI-assisted (describe your project)", value: "ai" },
-    ])
-  );
-
-  let projectDescription: string | undefined;
-  if (initMethod === "ai") {
-    projectDescription = await getOrPrompt(options.projectDescription as string | undefined, () =>
-      textInputPrompt("Describe your project:")
-    );
-  }
-
-  // Stack configuration (if custom)
-  let stackConfig: {
-    frontend?: string;
-    backend?: string;
-    database?: string;
-    auth?: boolean;
-  } = {};
-  if (initMethod === "custom") {
-    stackConfig.frontend = await getOrPrompt(options.frontend as string | undefined, () =>
-      selectPrompt("Frontend framework:", ["next", "react", "vue"])
-    );
-    stackConfig.backend = await getOrPrompt(options.backend as string | undefined, () =>
-      selectPrompt("Backend framework:", ["hono", "express", "fastify"])
-    );
-    stackConfig.auth = await getOrPrompt(options.auth as boolean | undefined, () =>
-      confirmPrompt("Include authentication?", true)
-    );
-  }
-
-  // PRD questions
-  const prdMethod = await getOrPrompt(options.prdMethod as string | undefined, () =>
-    selectPrompt("How would you like to define your PRD?", [
-      { name: "AI-assisted creation", value: "ai" },
-      { name: "Upload existing file", value: "upload" },
-      { name: "Skip PRD", value: "skip" },
-    ])
-  );
-
-  let prdDescription: string | undefined;
-  let prdFile: string | undefined;
-
-  if (prdMethod === "ai") {
-    prdDescription = await getOrPrompt(options.prdDescription as string | undefined, () =>
-      textInputPrompt("Describe your product in detail:")
-    );
-  } else if (prdMethod === "upload") {
-    prdFile = await getOrPrompt(options.prdFile as string | undefined, () =>
-      textInputPrompt("Path to PRD file:")
-    );
-  }
-
-  const generateTasks = !options.skipGenerate && prdMethod !== "skip";
-  const customInstructions =
-    (options.generateInstructions as string | undefined) ||
-    (generateTasks
-      ? await textInputPrompt(
-          "Custom task generation instructions (optional):",
-          ""
-        )
-      : undefined);
-
-  const splitTasks =
-    !options.skipSplit && generateTasks
-      ? await confirmPrompt("Split complex tasks into subtasks?", true)
-      : false;
-
-  const splitInstructions =
-    splitTasks && options.splitInstructions
-      ? (options.splitInstructions as string)
-      : splitTasks
-      ? await textInputPrompt(
-          "Custom splitting instructions (optional):",
-          "Break into 2-4 hour chunks"
-        )
-      : undefined;
-
-  return {
-    projectName,
-    initMethod: initMethod as "quick" | "custom" | "ai",
-    projectDescription,
-    stackConfig,
-    prdMethod: prdMethod as "upload" | "manual" | "ai" | "skip",
-    prdContent: undefined,
-    prdDescription,
-    prdFile,
-    refinePrd: false,
-    refineFeedback: undefined,
-    generateTasks,
-    customInstructions,
-    splitTasks,
-    splitInstructions,
-  };
-}
-
-// Export utilities for Phase 4
-export { parseModelString, collectWorkflowResponses };

@@ -52,7 +52,7 @@ export interface PoolProgressEvent {
 /**
  * Result from a single model execution
  */
-export interface ExecutionResult<T> {
+export interface PoolExecutionResult<T> {
   /** The model that was executed */
   modelId: string;
   /** The result if successful */
@@ -104,8 +104,8 @@ export class WorktreePool {
     executor: (worktree: Worktree, model: ModelConfig) => Promise<T>,
     onProgress?: (event: PoolProgressEvent) => void,
     baseCommit?: string
-  ): Promise<Map<string, ExecutionResult<T>>> {
-    const results = new Map<string, ExecutionResult<T>>();
+  ): Promise<Map<string, PoolExecutionResult<T>>> {
+    const results = new Map<string, PoolExecutionResult<T>>();
     const worktrees: Worktree[] = [];
 
     logger.info(`Starting parallel execution for ${models.length} models`);

@@ -17,7 +17,7 @@ export * from "./services/tasks";
 export * from "./services/workflow";
 export * from "./services/prd";
 export * from "./services/project-analysis";
-export * from "./lib/benchmark/types";
+export * from "./lib/benchmark";
 
 export * from "./utils/ai-service-factory";
 export * from "./utils/task-o-matic-error";
