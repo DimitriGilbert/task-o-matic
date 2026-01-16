@@ -1,130 +1,548 @@
-# 🚀 task-o-matic
+# ⛑️ task-o-matic
 
-AI-powered task management for CLI, TUI, and web applications. Parse PRDs, enhance tasks with AI, and integrate task management into your applications using local file storage only. No backend connectivity required.
+**Your lifeline in the AI-pocalypse wasteland**
 
-## 📦 Monorepo Structure
+---
 
-This project is organized as a monorepo with two packages:
+## ⚠️ SURVIVAL BULLETIN
 
-- **[`task-o-matic-core`](packages/core/README.md)** - Core library for TUI, web apps, and custom integrations
-- **[`task-o-matic`](packages/cli/README.md)** - Command-line interface for terminal usage
+_Citizen, the world outside has changed. The AI-pocalypse has transformed development from a chaotic free-for-all into something... darker. But your projects don't have to die in the radioactive dust._
 
-## ✨ Features
+_npx task-o-matic is your bunker management system for software development. Think of it as your Pip-Boy for code—organizing tasks, parsing documents, and deploying artificial intelligence to help your projects thrive when everything else has collapsed._
 
-- 🤖 **AI-Powered**: Parse PRDs and enhance tasks using multiple AI providers
-- 🔗 **Existing Project Support**: Attach to any existing codebase with automatic stack detection
-- 🎭 **Interactive Workflow**: Guided setup from project init to task generation with AI assistance
-- ❓ **PRD Question/Refine**: AI generates clarifying questions and can answer them automatically
-- 🧠 **AI Reasoning Support**: Enable advanced reasoning for better PRD refinement
-- 📦 **Dual-Package Architecture**: Separate Core library and CLI for flexible integration
-- 📁 **Project-Local Storage**: All data stored locally in `.task-o-matic/` directory
-- 🎯 **Task Management**: Full CRUD operations with AI enhancement
-- 📋 **PRD Processing**: Convert Product Requirements Documents into actionable tasks
-- 🔄 **PRD Evolution**: Version control for PRDs with task bidirectional linking
-- 🏗️ **Project Bootstrapping**: Better-T-Stack integration for new projects
-- 🔧 **Multi-Provider AI**: Support for OpenAI, Anthropic, OpenRouter, and custom providers
-- 📊 **Smart Breakdown**: AI-powered task decomposition into subtasks
-- 🌊 **Real-time Streaming**: Watch AI responses generate live with streaming output
-- 📊 **Model Benchmarking**: Compare performance and quality across different AI models
-- 🏁 **Workflow Benchmarking**: Test complete workflows across multiple models and compare results
-- 🏠 **Single-Project Focus**: Self-contained within each project directory
-- 💻 **Framework-Agnostic**: Easily integrate into TUI, web apps, or any Node.js project
+_[The preceding message was brought to you by the Department of Project Preservation. Remember: A prepared developer is a surviving developer.]_
 
-## 📦 Installation
+---
 
-### As a CLI Tool
+## 📡 WHAT THIS THING ACTUALLY DOES
 
-```bash
-# Install globally
-npm install -g task-o-matic
+In the Before Times, people used sticky notes and spreadsheets. Then came the AI-pocalypse. Now we have **task-o-matic**:
 
-# Or use with npx
-npx task-o-matic init
-```
+- **🤖 AI-Powered Task Management**: Let the machine spirits enhance your tasks with actual documentation. They may not have souls, but they have access to Context7.
+- **📋 PRD Processing**: Parse Product Requirements Documents into structured tasks. Because vague requirements lead to vague outcomes. Vague outcomes lead to... well, you've seen what happens to vague projects.
+- **🎯 Complete Workflow Automation**: From project initialization to execution—guided by AI, supervised by you. Mostly.
+- **📊 AI Model Benchmarking**: Test multiple models against each other. Let them fight it out. Survival of the fittest, citizen.
+- **💾 Local Storage**: Everything lives in `.task-o-matic/`. No cloud. No surveillance. Just you, your code, and the containment directory.
+- **🌊 Real-Time Streaming**: Watch AI responses generate live. Like watching the Geiger counter tick, but for code generation.
 
-See [`packages/cli/README.md`](packages/cli/README.md) for detailed CLI usage.
+---
 
-### As a Library (for TUI/Web Apps)
+## 📦 ARCHITECTURE: TWO FACILITIES
 
-```bash
-# Install the core library in your project
-npm install task-o-matic-core
-```
+The npx task-o-matic compound is split into two facilities:
 
-See [`packages/core/README.md`](packages/core/README.md) for detailed library usage.
+### **task-o-matic-core** (`packages/core/`)
 
-### For Development
+The infrastructure foundation. Library code for TUI, web apps, and custom integrations.
+
+- [Full documentation here](packages/core/README.md)
+
+### **npx task-o-matic** (`packages/cli/`)
+
+The terminal interface. What you actually use.
+
+- [Full documentation here](packages/cli/README.md)
+
+Both facilities share the same air—same codebase, same dependencies, same Bun-powered machinery.
+
+---
+
+## 🚀 QUICK START: FOR THE BUSY SURVIVOR
+
+You have projects. They're disorganized. The burnout levels are rising. Let's fix this.
+
+### Method 1: The Full Treatment (Recommended)
 
 ```bash
-# Clone and install dependencies
-git clone https://github.com/DimitriGilbert/task-o-matic.git
-cd task-o-matic
-npm install
-npm run build
+# Navigate to your project's bunker
+cd /path/to/your/project
+
+# One command. That's it. The AI will guide you through everything.
+npx task-o-matic workflow --stream
 ```
 
-## 🏗️ Architecture & Mindset
+**What happens next:**
 
-### Monorepo Structure
+1. **Initialization**: Set up the `.task-o-matic/` containment directory
+2. **PRD Creation**: Define what your project actually does (or let AI figure it out)
+3. **PRD Refinement**: AI asks clarifying questions. You answer. Or let AI answer itself. We don't judge.
+4. **Task Generation**: PRD gets parsed into actionable tasks
+5. **Task Splitting**: Large tasks get broken down. Procrastination kills more projects than burnout.
 
-```
-task-o-matic/
-├── packages/
-│   ├── core/           # Core library (task-o-matic-core)
-│   │   ├── src/
-│   │   │   ├── lib/           # Core library (Storage, Config, AI, etc.)
-│   │   │   ├── services/      # WorkflowService, PRDService, TaskService
-│   │   │   ├── prompts/       # AI prompt templates
-│   │   │   ├── types/         # TypeScript type definitions
-│   │   │   └── utils/         # Shared utilities
-│   │   └── dist/              # Compiled output
-│   └── cli/            # CLI interface (task-o-matic)
-│       ├── src/
-│       │   ├── cli/           # CLI-specific logic
-│       │   ├── commands/      # Commander.js command implementations
-│       │   └── types/         # CLI type definitions
-│       └── dist/              # Compiled output
-└── docs/              # Documentation
-```
+**Estimated time:** 5-10 minutes, depending on how much you want the AI to think.
 
-### Core Components
+### Method 2: The Surgical Strike
 
-- **[`task-o-matic-core`](packages/core/README.md)**: Core library containing services, AI operations, storage, and utilities
-  - Service Layer (`WorkflowService`, `PRDService`, `TaskService`): Framework-agnostic business logic
-  - AI Service: Uses Vercel AI SDK for multi-provider support with reasoning capabilities
-  - Local Storage: JSON-based file storage in `.task-o-matic/` directory
-  - Configuration: Project-local config with AI provider settings
-  - Prompt Templates: Structured AI prompts for consistent results
-
-- **[`task-o-matic`](packages/cli/README.md)**: CLI interface that depends on the core package
-  - Command definitions using Commander.js
-  - Interactive prompts and user input
-  - Display utilities for terminal output
-  - Shell completion support
-
-### Design Philosophy
-
-- **Separation of Concerns**: Core library and CLI are cleanly separated
-- **Framework-Agnostic**: Core services can be used in any environment (CLI, TUI, web)
-- **Project-Local**: Each project manages its own tasks and configuration
-- **AI-Enhanced**: Use AI to improve clarity and break down complexity
-- **Developer-Friendly**: Simple, intuitive APIs with helpful output
-- **Self-Contained**: No external dependencies, everything works offline
-- **Monorepo Benefits**: Shared codebase, easier maintenance, consistent versioning
-
-## 🚀 Quick Start
-
-### Library Usage (TUI/Web Apps)
-
-For detailed library usage, see [`packages/core/README.md`](packages/core/README.md).
-
-#### Installation
+Already know what you're doing? Good. Survivors who know things live longer.
 
 ```bash
-npm install task-o-matic-core
+# Initialize containment directory
+npx task-o-matic init init --ai-provider anthropic --ai-model claude-3-5-sonnet
+
+# Configure your AI provider
+npx task-o-matic config set-ai-provider anthropic claude-3-5-sonnet
+
+# Create a task with AI enhancement
+npx task-o-matic tasks create --title "Add user authentication" --ai-enhance --stream
 ```
 
-#### Basic Example
+---
+
+## 🗺️ THE WASTELAND: COMMON WORKFLOWS
+
+### Workflow Alpha: From PRD to Tasks (When You Have a Plan)
+
+You've written a PRD. It's beautiful. Let's turn it into something executable.
+
+```bash
+#1. Initialize (if you haven't)
+npx task-o-matic init init
+
+#2. Parse PRD with streaming
+npx task-o-matic prd parse --file requirements.md --stream
+
+#3. Review task tree
+npx task-o-matic tasks tree
+
+#4. Split big ones into manageable chunks
+npx task-o-matic tasks split --all --stream
+
+#5. Get your next assignment
+npx task-o-matic tasks get-next
+```
+
+**Tip:** Use `--stream` on AI operations. Watching text appear character-by-character gives you something to do while waiting for the token machine to settle.
+
+### Workflow Beta: Project Bootstrapping (When Starting Fresh)
+
+```bash
+# Initialize AND bootstrap with Better-T-Stack in one shot
+npx task-o-matic init init \
+  --project-name my-fallout-shelter-manager \
+  --ai-provider openrouter \
+  --ai-model anthropic/claude-3.5-sonnet \
+  --frontend next \
+  --backend hono \
+  --database postgres \
+  --auth
+```
+
+This creates:
+
+- `.task-o-matic/` directory with config
+- A full Better-T-Stack project scaffold
+- Next.js frontend, Hono backend, Postgres database, authentication
+
+**Result:** A bunker ready to be built.
+
+### Workflow Gamma: Existing Project Adoption (When the Walls Are Already Up)
+
+Working on something that existed before the AI-pocalypse? Let's attach npx task-o-matic without touching your carefully-curated code.
+
+```bash
+# Attach to existing project with automatic stack detection
+npx task-o-matic init attach --analyze
+
+# Review what was detected
+cat .task-o-matic/stack.json
+
+# Generate PRD from your existing codebase
+npx task-o-matic prd generate --stream
+
+# Create tasks for new features
+npx task-o-matic tasks create --title "Add rad-resistant UI" --ai-enhance --stream
+```
+
+**What gets detected:**
+
+- Language (TypeScript/JavaScript)
+- Frameworks (Next.js, Express, Hono, Vue, Svelte, etc.)
+- Database (Postgres, MongoDB, SQLite, MySQL)
+- ORM (Prisma, Drizzle, TypeORM)
+- Auth (Better-Auth, Clerk, NextAuth, Auth0)
+- Package Manager & Runtime
+- Testing & Build tools
+
+No code is modified. Only observation. We're not raiders, citizen.
+
+### Workflow Delta: AI Model Comparison (When You Need the Best)
+
+Not sure which AI model to use? Let them compete. The strongest model survives.
+
+```bash
+# Benchmark PRD parsing across multiple models
+task-o-matic benchmark run prd-parse \
+  --file requirements.md \
+  --models "openai:gpt-4o,anthropic:claude-3-5-sonnet,openrouter:anthropic/claude-3.5-sonnet" \
+  --concurrency 2
+
+# Benchmark the ENTIRE workflow
+task-o-matic benchmark workflow \
+  --models "openai:gpt-4o,anthropic:claude-3-5-sonnet" \
+  --project-name "vault-manager-app" \
+  --project-description "Comprehensive vault management system" \
+  --init-method ai \
+  --prd-method ai \
+  --auto-accept \
+  --split-all
+```
+
+**Output:** Comprehensive comparison table showing duration, task count, token usage, and cost. Select the winner. Your project gets the best results.
+
+---
+
+## 🔧 COMMAND REFERENCE: YOUR SURVIVAL KIT
+
+### Initialization (`init`)
+
+```bash
+# New project
+npx task-o-matic init init --project-name my-shelter-manager
+
+# Attach to existing project
+npx task-o-matic init attach --analyze --create-prd
+
+# Bootstrap fresh project
+npx task-o-matic init bootstrap vault-app --frontend next --backend hono
+```
+
+[Full init documentation](docs/projects.md)
+
+### Task Management (`tasks`)
+
+```bash
+# Create task with AI enhancement
+npx task-o-matic tasks create --title "Implement geiger counter UI" --ai-enhance --stream
+
+# List tasks by status
+npx task-o-matic tasks list --status todo
+npx task-o-matic tasks list --status in-progress
+npx task-o-matic tasks list --status completed
+
+# View task hierarchy
+npx task-o-matic tasks tree
+
+# Get next prioritized task
+npx task-o-matic tasks get-next
+
+# Split complex task
+npx task-o-matic tasks split --task-id 7 --stream
+
+# Update task status
+npx task-o-matic tasks update --id 7 --status in-progress
+
+# Execute task with AI assistance
+npx task-o-matic tasks execute --id 7 --tool opencode --plan
+
+# Batch execute with retry logic
+npx task-o-matic tasks execute-loop --status todo --max-retries3 --verify "bun test"
+```
+
+[Full task documentation](docs/tasks.md)
+
+### PRD Management (`prd`)
+
+```bash
+# Create PRD from description
+npx task-o-matic prd create "Build a vault management system" --stream
+
+# Parse PRD into tasks
+npx task-o-matic prd parse --file requirements.md --stream
+
+# Rework PRD with feedback
+npx task-o-matic prd rework --file requirements.md --feedback "Add more security protocols"
+
+# Generate clarifying questions
+npx task-o-matic prd question --file requirements.md
+
+# Refine PRD with AI answering
+npx task-o-matic prd refine --file requirements.md --question-mode ai --stream
+```
+
+**🔥 Multi-AI Generation (READY NOW!)**
+
+When creating PRDs or parsing them into tasks, you can use multiple AI models in parallel and combine the best results:
+
+```bash
+# Multi-model PRD creation
+npx task-o-matic prd create "Build a vault manager" \
+  --ai "anthropic:claude-3.5-sonnet,openai:gpt-4o,openrouter:qwen-2.5" \
+  --combine-ai anthropic:claude-3.5-sonnet \
+  --stream
+
+# Multi-model PRD parsing
+npx task-o-matic prd parse --file requirements.md \
+  --ai "anthropic:claude-3.5-sonnet,openai:gpt-4o,openrouter:qwen-2.5" \
+  --combine-ai anthropic:claude-3.5-sonnet \
+  --stream
+
+# Multi-model task splitting
+npx task-o-matic tasks split --task-id 7 \
+  --ai "anthropic:claude-3.5-sonnet,openai:gpt-4o" \
+  --stream
+```
+
+**Why this matters:** Competition among AI models produces superior PRDs and task breakdowns. Let multiple models work, then combine their strengths into one definitive result.
+
+[Full PRD documentation](docs/prd.md)
+
+### Configuration (`config`)
+
+### Configuration (`config`)
+
+```bash
+# Set AI provider
+npx task-o-matic config set-ai-provider anthropic claude-3-5-sonnet
+
+# View current configuration
+npx task-o-matic config info
+```
+
+[Full configuration documentation](docs/configuration.md)
+
+---
+
+## 🤖 AI PROVIDERS: CHOOSE YOUR MACHINE SPIRITS
+
+The AI-pocalypse brought us many survivors. Choose wisely.
+
+| Provider       | Strengths                                 | Recommended For                                |
+| -------------- | ----------------------------------------- | ---------------------------------------------- |
+| **anthropic**  | Strong reasoning, great with complexity   | PRD parsing, task breakdown                    |
+| **openai**     | Balanced, fast                            | Task enhancement, code generation              |
+| **openrouter** | Access to many models, supports reasoning | Multi-model testing, finding optimal performer |
+| **custom**     | Any OpenAI-compatible endpoint            | Proprietary or local models                    |
+
+### Model Recommendations
+
+Based on extensive field testing (read: we tried a lot of things so you don't have to):
+
+- **PRD Parsing**: `anthropic:claude-3.5-sonnet` or `openai:gpt-4o`
+- **Task Enhancement**: `openai:gpt-4o-mini` or `anthropic:claude-3-haiku`
+- **Task Breakdown**: `anthropic:claude-3.5-sonnet`
+- **Workflow Testing**: Use benchmarking. Let the data decide.
+
+### Reasoning Support
+
+OpenRouter models support extended reasoning for complex problems:
+
+```bash
+task-o-matic tasks create --title "Solve the energy crisis" \
+  --ai-provider openrouter \
+  --ai-model anthropic/claude-3.5-sonnet \
+  --ai-reasoning 5000 \
+  --stream
+```
+
+The AI will spend more time thinking before answering. Like a survivor contemplating the wasteland before making a move.
+
+[Full AI integration documentation](docs/ai-integration.md)
+
+---
+
+## 📁 STORAGE STRUCTURE: YOUR BUNKER LAYOUT
+
+Everything lives in `.task-o-matic/`. Know your bunker.
+
+```
+your-project/
+├── .task-o-matic/
+│   ├── config.json              # AI configuration
+│   ├── stack.json              # Detected technology stack (cached for AI context)
+│   ├── bts-config.json         # Better-T-Stack configuration (if bootstrapped)
+│   ├── mcp.json               # Context7/MCP configuration
+│   ├── tasks.json             # Main tasks database
+│   ├── ai-metadata.json       # AI metadata for all tasks
+│   │
+│   ├── tasks/                # Task content files (>200 chars)
+│   │   ├── {task-id}.md
+│   │   └── enhanced/
+│   │       └── {task-id}.md
+│   │
+│   ├── plans/                # Implementation plans
+│   │   └── {task-id}.json
+│   │
+│   ├── docs/                 # Documentation
+│   │   ├── tasks/           # Task-specific documentation
+│   │   └── {library-name}/  # Context7 library docs
+│   │
+│   ├── prd/                 # PRD versions and logs
+│   │   ├── versions/        # PRD versioning history
+│   │   ├── parsed-prd.json
+│   │   └── (user prd files)
+│   │
+│   └── logs/                # Operation logs
+└── your-project-files...
+```
+
+**Key notes:**
+
+- Tasks with content >200 characters are stored as separate files
+- AI metadata tracks who enhanced what, when, and with which model
+- PRD versioning lets you track evolution over time
+- Documentation fetched from Context7 is cached to avoid repeated API calls
+
+---
+
+## 🌊 STREAMING: WATCH THE AI WORK
+
+The wasteland is boring. Watch the AI instead.
+
+```bash
+# Enable streaming on any AI operation
+npx task-o-matic tasks create --title "Fix the air filtration" --ai-enhance --stream
+
+# Reasoning tokens appear in magenta
+npx task-o-matic prd parse --file requirements.md --stream
+# Standard text appears normally
+# Reasoning appears: [magenta text indicating deep thought]
+```
+
+Streaming callbacks are available in the core library for TUI integration:
+
+```typescript
+import { TaskService } from "task-o-matic-core";
+
+const taskService = new TaskService();
+
+await taskService.createTask({
+  title: "Repair water chip",
+  aiEnhance: true,
+  streamingOptions: {
+    onChunk: (chunk) => {
+      tuiTextArea.append(chunk); // Update your TUI in real-time
+    },
+    onReasoning: (text) => {
+      tuiStatusBar.update(`Thinking: ${text}`);
+    },
+    onFinish: ({ text }) => {
+      tuiStatusBar.success("Task enhanced!");
+    },
+  },
+});
+```
+
+[Full streaming documentation](docs/streaming.md)
+
+---
+
+## 🎯 ADVANCED SURVIVAL TACTICS
+
+### Tip 1: PRD Question/Refine Mode
+
+Let AI ask questions about your PRD to identify gaps before generating tasks.
+
+```bash
+# User answers questions
+npx task-o-matic workflow --prd-question-refine --prd-answer-mode user
+
+# AI answers questions using PRD + stack context
+npx task-o-matic workflow --prd-question-refine --prd-answer-mode ai --prd-answer-ai-reasoning
+```
+
+**Why this matters:** An unclear plan is worse than no plan. At least with no plan, you know you're doomed.
+
+### Tip 2: Task Splitting Before Execution
+
+Large tasks lead to procrastination. Break them down.
+
+```bash
+# Split all tasks at once
+npx task-o-matic tasks split --all --stream
+
+# Split specific task
+npx task-o-matic tasks split --task-id 7 --stream
+```
+
+**Rule of thumb:** If a task can't be finished in one sitting, it's too large. Procrastination kills more projects than burnout.
+
+### Tip 3: Multi-AI PRD Creation & Task Splitting (READY NOW!)
+
+Let multiple AI models compete and produce the best results together.
+
+**For PRD Creation:**
+```bash
+npx task-o-matic prd create "Build a vault manager" \
+  --ai "anthropic:claude-3.5-sonnet,openai:gpt-4o,openrouter:qwen-2.5" \
+  --combine-ai anthropic:claude-3.5-sonnet \
+  --stream
+```
+
+**For PRD Parsing:**
+```bash
+npx task-o-matic prd parse --file requirements.md \
+  --ai "anthropic:claude-3.5-sonnet,openai:gpt-4o,openrouter:qwen-2.5" \
+  --combine-ai anthropic:claude-3.5-sonnet \
+  --stream
+```
+
+**For Task Splitting:**
+```bash
+npx task-o-matic tasks split --task-id 7 \
+  --ai "anthropic:claude-3.5-sonnet,openai:gpt-4o" \
+  --stream
+```
+
+**Why this works better:** Multiple models approach the same problem from different angles. A smarter model excels at complexity, while a faster model handles straightforward cases. The combination model synthesizes the best of all worlds into one superior result.
+
+Competition among AI models produces superior results. Much like competition among dwellers produces... well, we're getting ahead of ourselves.
+
+### Tip 4: Context7 Documentation Integration
+
+npx task-o-matic integrates with Context7 to fetch current library documentation automatically.
+
+```bash
+# Enable Context7 during init
+npx task-o-matic init init --context7-api-key your-key
+
+# Or set environment variable
+export CONTEXT7_API_KEY="your-key"
+
+# Task enhancement will now fetch relevant docs
+npx task-o-matic tasks enhance --task-id 7 --stream
+```
+
+The AI will pull up-to-date documentation for libraries/frameworks in your stack. No outdated tutorials.
+
+### Tip 5: Execution with Verification
+
+Run verification commands after task execution to catch failures early.
+
+```bash
+npx task-o-matic tasks execute --id 7 \
+  --tool opencode \
+  --plan \
+  --verify "bun test" \
+  --verify "bun run build" \
+  --max-retries3 \
+  --try-models "gpt-4o-mini,gpt-4o,claude:sonnet-4"
+```
+
+If a task fails, it will retry with progressively stronger models. Survival of the fittest code generation.
+
+### Tip 6: Continue Working on Existing Projects
+
+Jump back into a project and let npx task-o-matic tell you where you left off.
+
+```bash
+# Check project status
+npx task-o-matic continue --status
+
+# Update PRD with progress
+npx task-o-matic continue --update-prd
+
+# Generate tasks for unimplemented features
+npx task-o-matic continue --generate-tasks
+
+# Generate implementation plan for remaining work
+npx task-o-matic continue --generate-plan
+```
+
+---
+
+## 📚 LIBRARY INTEGRATION: USING npx task-o-matic IN YOUR CODE
+
+Need to integrate task management into a TUI, web app, or custom tooling? Use `task-o-matic-core`.
 
 ```typescript
 import {
@@ -135,11 +553,10 @@ import {
   type AIConfig,
 } from "task-o-matic-core";
 
-// Use the workflow service for complete project setup
+// Initialize project
 const workflowService = new WorkflowService();
-
-const result = await workflowService.initializeProject({
-  projectName: "my-app",
+const initResult = await workflowService.initializeProject({
+  projectName: "vault-manager",
   initMethod: "quick",
   bootstrap: true,
   aiOptions: {
@@ -154,82 +571,34 @@ const result = await workflowService.initializeProject({
   },
 });
 
-console.log("Project initialized:", result.projectName);
-
-// Or use task service directly
+// Create task with AI enhancement
 const taskService = new TaskService();
-
 const taskResult = await taskService.createTask({
-  title: "Implement user authentication",
-  content: "Add login and signup functionality",
+  title: "Implement Pip-Boy interface",
+  content: "Create wearable device interface for vault management",
   aiEnhance: true,
   aiOptions: {
     aiProvider: "anthropic",
     aiModel: "claude-3-5-sonnet",
     aiKey: process.env.ANTHROPIC_API_KEY,
   },
-  callbacks: {
-    onProgress: (event) => {
-      console.log(`Progress: ${event.message}`);
-    },
-  },
-});
-
-console.log("Task created:", taskResult.task);
-```
-
-#### TUI Integration Example
-
-```typescript
-import { TaskService } from "task-o-matic-core";
-import type { ProgressCallback } from "task-o-matic-core";
-
-const taskService = new TaskService();
-
-// Progress callback for TUI updates
-const progressCallback: ProgressCallback = {
-  onProgress: (event) => {
-    // Update your TUI with progress
-    tuiStatusBar.update(event.message);
-  },
-};
-
-// Create task with streaming
-const result = await taskService.createTask({
-  title: "Add payment integration",
-  aiEnhance: true,
   streamingOptions: {
     enabled: true,
     onChunk: (chunk) => {
-      // Update TUI in real-time
-      tuiTextArea.append(chunk);
-    },
-    onFinish: ({ text }) => {
-      tuiStatusBar.success("Task enhanced!");
+      console.log(chunk);
     },
   },
-  callbacks: progressCallback,
+  callbacks: {
+    onProgress: (event) => {
+      console.log(event.message);
+    },
+  },
 });
-```
 
-#### PRD Question/Refine Example
-
-```typescript
-import { PRDService } from "task-o-matic-core";
-
+// Parse PRD
 const prdService = new PRDService();
-
-// Generate questions and refine PRD with AI answering
-const result = await prdService.refinePRDWithQuestions({
+const parseResult = await prdService.parsePRD({
   file: "./requirements.md",
-  questionMode: "ai", // or "user" for interactive
-  questionAIOptions: {
-    // Optional: use a different AI for answering
-    aiProvider: "openrouter",
-    aiModel: "anthropic/claude-3-opus",
-    aiReasoning: "enabled", // Enable reasoning for better answers
-  },
-  workingDirectory: process.cwd(),
   aiOptions: {
     aiProvider: "anthropic",
     aiModel: "claude-3-5-sonnet",
@@ -241,743 +610,183 @@ const result = await prdService.refinePRDWithQuestions({
     },
   },
 });
-
-console.log(`Refined PRD with ${result.questions.length} questions`);
-result.questions.forEach((q, i) => {
-  console.log(`Q${i + 1}: ${q}`);
-  console.log(`A${i + 1}: ${result.answers[q]}`);
-});
 ```
 
-#### Using Utility Factories
-
-```typescript
-import { getStorage, getAIOperations, buildAIConfig } from "task-o-matic-core";
-
-// Get singleton instances
-const storage = getStorage();
-const aiOps = getAIOperations();
-
-// Build AI configuration
-const aiConfig = buildAIConfig({
-  provider: "openai",
-  model: "gpt-4",
-  apiKey: process.env.OPENAI_API_KEY,
-});
-
-// Use storage directly
-const allTasks = await storage.getAllTasks();
-```
-
-#### TypeScript Support
-
-The core package includes full TypeScript type definitions:
-
-```typescript
-import type {
-  Task,
-  AIConfig,
-  StreamingOptions,
-  CreateTaskOptions,
-  PRDParseResult,
-  TaskAIMetadata,
-  // Workflow types
-  WorkflowService,
-  InitializeResult,
-  DefinePRDResult,
-  RefinePRDResult,
-  GenerateTasksResult,
-  SplitTasksResult,
-  // Benchmark types
-  WorkflowBenchmarkInput,
-  WorkflowBenchmarkResult,
-  BenchmarkConfig,
-  BenchmarkResult,
-} from "task-o-matic-core";
-```
-
-### CLI Usage
-
-For detailed CLI usage, see [`packages/cli/README.md`](packages/cli/README.md).
-
-#### 1. Initialize Your Project
-
-```bash
-# Navigate to your project directory
-cd /path/to/your/project
-
-# Initialize task-o-matic (basic setup)
-task-o-matic init init
-
-# Initialize task-o-matic + bootstrap Better-T-Stack project (recommended)
-task-o-matic init init --project-name my-app
-
-# Initialize with custom AI settings + bootstrap
-task-o-matic init init --project-name my-app --ai-provider openrouter --ai-key your-key --frontend next --backend hono
-```
-
-#### 2. Attach to Existing Project
-
-For existing codebases, use `init attach` instead of `init init`:
-
-```bash
-# Attach to existing project with automatic stack detection
-task-o-matic init attach
-
-# With full project analysis (TODOs, features, structure)
-task-o-matic init attach --analyze
-
-# Preview what would be detected without creating files
-task-o-matic init attach --dry-run
-
-# Force re-detection after stack changes
-task-o-matic init attach --redetect
-```
-
-**What gets detected:**
-- Language (TypeScript/JavaScript)
-- Frameworks (Next.js, Express, Hono, Vue, Svelte, etc.)
-- Database (Postgres, MongoDB, SQLite, MySQL)
-- ORM (Prisma, Drizzle, TypeORM)
-- Auth (Better-Auth, Clerk, NextAuth, Auth0)
-- Package Manager & Runtime
-- Testing & Build tools
-
-This creates a `.task-o-matic/` directory with:
-
-- `config.json` - AI configuration
-- `stack.json` - Detected technology stack (cached for AI context)
-- `tasks/` - Task JSON files
-- `prd/` - PRD versions and logs
-- `logs/` - Operation logs
-- `bts-config.json` - Better-T-Stack configuration (if bootstrapped)
-
-### 3. Configure AI Provider
-
-```bash
-# Option 1: Configure during init (recommended)
-task-o-matic init init --project-name my-app --ai-provider openrouter --ai-model anthropic/claude-3.5-sonnet --ai-key your-key
-
-# Option 2: Configure after init
-task-o-matic config set-ai-provider openrouter anthropic/claude-3.5-sonnet
-
-# Option 3: Use environment variables
-export OPENROUTER_API_KEY="your-key-here"
-export ANTHROPIC_API_KEY="your-key-here"
-export OPENAI_API_KEY="your-key-here"
-```
-
-### 4. Bootstrap Your Project (if not done during init)
-
-```bash
-# Bootstrap with defaults (Next.js + Hono + SQLite + Auth)
-task-o-matic init bootstrap my-app
-
-# Bootstrap with custom options
-task-o-matic init bootstrap my-app --frontend next --backend hono --database postgres --addons pwa biome
-```
-
-### 6. Create Your First Tasks
-
-```bash
-# Create a task with AI enhancement
-task-o-matic tasks create --title "Implement user authentication" --ai-enhance
-
-# Create a task with real-time AI streaming
-task-o-matic tasks create --title "Implement user authentication" --ai-enhance --stream
-
-# Parse a PRD into tasks
-task-o-matic prd parse --file my-prd.md
-
-# Parse PRD with real-time AI streaming
-task-o-matic prd parse --file my-prd.md --stream
-
-# List all tasks
-task-o-matic tasks list
-```
-
-### 7. Interactive Workflow (Recommended for New Projects)
-
-The interactive workflow guides you through the entire setup process:
-
-```bash
-# Start the interactive workflow
-task-o-matic workflow
-
-# With streaming AI output
-task-o-matic workflow --stream
-
-# Want to test multiple AI models? Try workflow benchmarking:
-task-o-matic benchmark workflow --models "openai:gpt-4o,anthropic:claude-3-5-sonnet"
-```
-
-**The workflow will guide you through:**
-
-1. **Project Initialization** - Choose quick start, custom, or AI-assisted configuration
-2. **PRD Definition** - Upload file, write manually, or use AI to generate from description
-3. **PRD Question/Refine** (NEW) - AI generates clarifying questions and refines PRD
-   - User can answer questions interactively
-   - OR AI can answer with PRD + stack context
-   - Optional: Use different AI model for answering (e.g., smarter model)
-   - Optional: Enable reasoning for better answers
-4. **PRD Manual Refinement** - Optional additional AI-assisted improvements
-5. **Task Generation** - Parse PRD into actionable tasks
-6. **Task Splitting** - Break down complex tasks into subtasks
-
-**AI Assistance at Every Step:**
-
-At each step, you can choose "AI-assisted" to describe your needs in natural language:
-
-```bash
-# Example AI-assisted workflow
-task-o-matic workflow --stream
-
-# Step 1: "I want to build a SaaS platform for team collaboration"
-# Step 2: "Real-time chat, file sharing, and task management features"
-# Step 3: "Add more details about authentication and security"
-# Step 4: "Focus on MVP features first"
-# Step 5: "Break tasks into 2-4 hour chunks"
-```
-
-## 📚 Documentation
-
-- [Configuration](docs/configuration.md) - AI providers and settings
-- [Task Management](docs/tasks.md) - Full task lifecycle with AI features
-- [PRD Processing](docs/prd.md) - Parse and rework Product Requirements Documents
-- [Interactive Workflow](docs/workflow-command.md) - Guided setup with AI assistance
-- [AI Integration](docs/ai-integration.md) - AI providers and prompt engineering
-- [Project Initialization](docs/projects.md) - Project setup and bootstrapping
-- [Streaming Output](docs/streaming.md) - Real-time AI streaming capabilities
-- [Model Benchmarking](docs/benchmarking.md) - Compare AI models and workflow performance
-
-## 🎯 Common Workflows
-
-### Workflow 0: Interactive Guided Setup (Recommended)
-
-```bash
-# One command to rule them all
-task-o-matic workflow --stream
-
-# The workflow will guide you through:
-# 1. Project initialization with AI-assisted configuration
-# 2. PRD creation (manual, upload, or AI-generated)
-# 3. PRD refinement with AI feedback
-# 4. Task generation from PRD
-# 5. Complex task splitting
-
-# After completion:
-task-o-matic tasks list
-task-o-matic tasks tree
-```
-
-### Workflow 1: From PRD to Tasks
-
-```bash
-# 1. Initialize project (if not done)
-task-o-matic init init
-
-# 2. Configure AI provider
-task-o-matic config set-ai-provider anthropic claude-3-5-sonnet
-
-# 3. Parse PRD with streaming
-task-o-matic prd parse --file requirements.md --stream
-
-# 4. Review and enhance tasks
-task-o-matic tasks list
-task-o-matic tasks split --task-id <complex-task-id>
-```
-
-### Workflow 2: Task Enhancement
-
-```bash
-# 1. Create basic task
-task-o-matic tasks create --title "Add payment system"
-
-# 2. Enhance with AI (with streaming)
-task-o-matic tasks create --title "Add payment system" --ai-enhance --stream
-
-# 3. Break down into subtasks
-task-o-matic tasks split --task-id <task-id>
-```
-
-### Workflow 3: Benchmarking Models
-
-Compare different AI models for performance, cost, and quality.
-
-```bash
-# 1. Run a benchmark for PRD parsing
-task-o-matic benchmark run prd-parse \
-  --file requirements.md \
-  --models "openai:gpt-4o,openrouter:anthropic/claude-3.5-sonnet" \
-  --concurrency 5
-
-# 2. Compare results
-task-o-matic benchmark compare <run-id>
-
-# 3. View detailed metrics (Tokens, BPS, Size)
-task-o-matic benchmark show <run-id>
-```
-
-### Workflow 3b: Complete Workflow Benchmarking
-
-Test entire workflows across multiple AI models and automatically set up your project with the best results.
-
-```bash
-# 1. Basic workflow benchmark with interactive setup
-task-o-matic benchmark workflow \
-  --models "openai:gpt-4o,anthropic:claude-3-5-sonnet,openrouter:qwen/qwen-2.5-72b-instruct" \
-  --concurrency 2 \
-  --delay 1000
-
-# 2. Automated workflow benchmark
-task-o-matic benchmark workflow \
-  --models "openai:gpt-4o,anthropic:claude-3-5-sonnet" \
-  --project-name "my-saas-app" \
-  --project-description "Team collaboration platform with real-time chat" \
-  --init-method ai \
-  --prd-method ai \
-  --auto-accept \
-  --skip-all
-
-# 3. Benchmark with specific workflow options
-task-o-matic benchmark workflow \
-  --models "openai:gpt-4o,anthropic:claude-3-5-sonnet" \
-  --project-name "e-commerce-app" \
-  --init-method custom \
-  --frontend next \
-  --backend hono \
-  --database postgres \
-  --prd-method ai \
-  --prd-description "Modern e-commerce platform with AI recommendations" \
-  --refine-feedback "Focus on scalability and security" \
-  --split-all
-
-# Results include:
-# - Comprehensive comparison table (duration, tasks, PRD size, costs)
-# - Detailed per-model breakdowns with timing and token metrics
-# - Interactive selection to choose the best model
-# - Automatic project setup with selected model's results
-```
-
-**Workflow Benchmark Features:**
-
-- **Two-Phase Execution**: Interactive question collection, then parallel execution
-- **Complete Workflow**: Project init → PRD creation → task generation → task splitting
-- **Comprehensive Metrics**: Performance, cost, quality, and output comparison
-- **Model Selection**: Choose the best performer and auto-setup your project
-- **Identical Conditions**: All models receive the same inputs for fair comparison
-
-### Workflow 4: Project Bootstrapping
-
-```bash
-# Option 1: One-step setup (recommended)
-task-o-matic init init --project-name my-app --ai-provider openrouter --ai-key your-key
-
-# Option 2: Two-step setup
-task-o-matic init init --no-bootstrap
-task-o-matic init bootstrap my-app --frontend next --backend hono
-
-# Option 3: Manual setup
-task-o-matic init init
-task-o-matic config set-ai-provider openrouter anthropic/claude-3.5-sonnet
-task-o-matic init bootstrap my-app
-
-# Start managing tasks
-task-o-matic tasks create --title "Set up development environment" --ai-enhance --stream
-```
-
-### Workflow 5: Existing Project Adoption
-
-For existing codebases where you want to start using task-o-matic:
-
-```bash
-# 1. Attach task-o-matic to existing project (auto-detects stack)
-cd /path/to/existing-project
-task-o-matic init attach --analyze
-
-# 2. Configure AI provider
-task-o-matic config set-ai-provider anthropic claude-3-5-sonnet
-
-# 3. Review detected stack
-cat .task-o-matic/stack.json
-
-# 4. Generate PRD from existing codebase
-task-o-matic prd generate --from-codebase
-
-# 5. Or manually create tasks for planned work
-task-o-matic tasks create --title "Add user dashboard" --ai-enhance --stream
-
-# 6. Split complex tasks
-task-o-matic tasks split --task-id <id> --stream
-
-# 7. Execute tasks
-task-o-matic tasks execute-loop --status todo
-```
-
-**Why `init attach` instead of `init init`?**
-- `init init` is for **new projects** (optionally bootstraps with Better-T-Stack)
-- `init attach` is for **existing projects** (detects existing stack, never modifies code)
-
-### Workflow 6: Returning to a Project
-
-Jump back into a project and let task-o-matic tell you where you left off:
-
-```bash
-# 1. Analyze project state
-task-o-matic continue
-
-# Output:
-# 📊 Project Status: Active
-# Tasks: 12 Completed, 3 In Progress, 5 Todo
-# PRD: Found
-# 👉 Suggested Next Steps:
-#   - Start working on a task
-```
-
-You can also use specific actions:
-
-```bash
-# Update PRD with progress
-task-o-matic continue --update-prd
-
-# Generate tasks for unimplemented features
-task-o-matic continue --generate-tasks
-
-# Generate plan for remaining work
-task-o-matic continue --generate-plan
-```
-
-## 📊 Benchmarking Commands
-
-### Basic Model Benchmarking
-
-Compare different AI models on specific operations:
-
-```bash
-# Benchmark PRD parsing across multiple models
-task-o-matic benchmark run prd-parse \
-  --file requirements.md \
-  --models "openai:gpt-4o,anthropic:claude-3-5-sonnet,openrouter:qwen/qwen-2.5-72b-instruct" \
-  --concurrency 3 \
-  --delay 1000
-
-# Benchmark task splitting
-task-o-matic benchmark run task-breakdown \
-  --task-id <task-id> \
-  --models "openai:gpt-4o,anthropic:claude-3-5-sonnet" \
-  --concurrency 2
-
-# View benchmark results
-task-o-matic benchmark list
-task-o-matic benchmark show <run-id>
-task-o-matic benchmark compare <run-id>
-```
-
-### Complete Workflow Benchmarking
-
-Test entire project workflows across multiple AI models:
-
-```bash
-# Interactive workflow benchmark (recommended)
-task-o-matic benchmark workflow \
-  --models "openai:gpt-4o,anthropic:claude-3-5-sonnet,openrouter:qwen/qwen-2.5-72b-instruct"
-```
-
-**What happens:**
-1. **Phase 1**: You answer workflow questions once (project setup, PRD creation, etc.)
-2. **Phase 2**: All models execute the identical workflow in parallel
-3. **Results**: Comprehensive comparison table with metrics and model selection
-
-**Full automation example:**
-
-```bash
-task-o-matic benchmark workflow \
-  --models "openai:gpt-4o,anthropic:claude-3-5-sonnet" \
-  --project-name "my-saas-platform" \
-  --project-description "Team collaboration platform with real-time messaging" \
-  --init-method ai \
-  --prd-method ai \
-  --auto-accept \
-  --refine-feedback "Add more technical details and security considerations" \
-  --generate-instructions "Focus on MVP features and break into small tasks" \
-  --split-all \
-  --concurrency 2 \
-  --delay 2000
-```
-
-**Output includes:**
-
-```
-📊 Workflow Benchmark Results
-
-Model                                    | Duration   | Tasks | PRD Size   | Steps | Cost      
----------------------------------------- | ---------- | ----- | ---------- | ----- | ----------
-openai:gpt-4o                           | 45234ms    | 12    | 2843 chars | 5/5   | $0.023400
-anthropic:claude-3-5-sonnet             | 42156ms    | 15    | 3021 chars | 5/5   | $0.019800
-
-🔍 Detailed Comparison
-
-[1] openai:gpt-4o
-Duration: 45234ms
-Steps Completed: 5/5
-  Init: 2341ms
-  PRD Generation: 12456ms
-  Task Generation: 8234ms
-  Task Splitting: 3421ms
-Tasks Created: 12
-PRD Size: 2843 characters
-Tokens: 4521 (Prompt: 2341, Completion: 2180)
-Cost: $0.023400
-
-🎯 Model Selection
-Would you like to select a model and set up your project with its results? (y/N)
-```
-
-### Benchmark Options
-
-All benchmark commands support:
-
-- `--models <list>`: Comma-separated model list (required)
-- `--concurrency <number>`: Max parallel requests (default: 3)
-- `--delay <ms>`: Delay between requests (default: 1000ms)
-
-**Model format:** `provider:model[:reasoning=<tokens>]`
-
-**Examples:**
-- `openai:gpt-4o`
-- `anthropic:claude-3-5-sonnet`
-- `openrouter:anthropic/claude-3.5-sonnet`
-- `openrouter:openai/o1-preview:reasoning=50000`
-
-### Workflow Benchmark Inheritance
-
-The `benchmark workflow` command supports ALL workflow command options:
-
-```bash
-# All these workflow options work in benchmarks:
---project-name, --init-method, --project-description
---frontend, --backend, --database, --auth/--no-auth
---prd-method, --prd-file, --prd-description, --prd-content
---refine-feedback, --generate-instructions
---split-tasks, --split-all, --split-instructions
---skip-init, --skip-prd, --skip-refine, --skip-generate, --skip-split
---stream, --auto-accept, --config-file
-```
-
-This allows you to:
-- **Pre-configure workflow steps** via command-line options
-- **Skip interactive questions** for automated benchmarking
-- **Compare identical workflows** across different models
-- **Test specific scenarios** (e.g., only AI vs only custom stack)
-```
-
-## 🔧 Environment Variables
-
-```bash
-# AI Provider API Keys
-OPENAI_API_KEY=your_openai_key
-ANTHROPIC_API_KEY=your_anthropic_key
-OPENROUTER_API_KEY=your_openrouter_key
-CUSTOM_API_KEY=your_custom_key
-CUSTOM_API_URL=https://api.custom.com/v1
-
-# Default AI Configuration
-AI_PROVIDER=openrouter
-AI_MODEL=anthropic/claude-3.5-sonnet
-AI_MAX_TOKENS=4000
-AI_TEMPERATURE=0.7
-```
-
-## 🤖 AI Providers
-
-### Supported Providers
-
-- **OpenAI**: GPT models with full feature support
-- **Anthropic**: Claude models with enhanced reasoning
-- **OpenRouter**: Access to multiple models through one API
-- **Custom**: Any OpenAI-compatible API endpoint
-
-### Model Recommendations
-
-- **PRD Parsing**: `claude-3.5-sonnet` or `gpt-4`
-- **Task Enhancement**: `claude-3-haiku` or `gpt-3.5-turbo`
-- **Task Breakdown**: `claude-3.5-sonnet` for complex tasks
-- **Workflow Benchmarking**: Test 2-3 models to find optimal performance for your use case
-
-### Choosing the Right Model
-
-Not sure which model to use? Try workflow benchmarking:
-
-```bash
-# Test your specific workflow across multiple models
-task-o-matic benchmark workflow \
-  --models "openai:gpt-4o,anthropic:claude-3-5-sonnet,openrouter:qwen/qwen-2.5-72b-instruct" \
-  --project-description "Your project description here"
-
-# The benchmark will show you:
-# - Performance (speed, tokens, cost)
-# - Quality (tasks created, PRD completeness)  
-# - Best model for your specific needs
-```
-
-## 📁 Storage Structure
-
-```
-your-project/
-├── .task-o-matic/
-│   ├── config.json          # AI configuration
-│   ├── stack.json           # Detected technology stack (cached)
-│   ├── mcp.json             # Context7/MCP configuration
-│   ├── bts-config.json      # Better-T-Stack configuration (if bootstrapped)
-│   ├── analysis.json        # Project analysis results (if --analyze used)
-│   ├── tasks/              # Task JSON files
-│   │   ├── {task-id}.json
-│   │   └── ...
-│   ├── prd/                # PRD versions and logs
-│   │   ├── parsed-prd.json
-│   │   └── ...
-│   └── logs/               # Operation logs
-│       └── ...
-└── your-project-files...
-```
-
-## 🛠️ Development
-
-### Building from Source
-
-```bash
-# Clone and install
-git clone https://github.com/DimitriGilbert/task-o-matic.git
-cd task-o-matic
-npm install
-
-# Build all packages
-npm run build
-
-# Build specific package
-cd packages/core && npm run build
-cd packages/cli && npm run build
-
-# Type checking
-npm run check-types
-
-# Run tests
-npm run test
-```
-
-### Development Mode
-
-```bash
-# Run the CLI in development mode
-npm run dev
-
-# Type checking (without compilation)
-npm run check-types
-
-# Run tests
-npm run test
-```
-
-### Package Structure
-
-The monorepo is structured with two packages:
-
-**Core Package** (`packages/core/package.json`):
-```json
-{
-  "name": "task-o-matic-core",
-  "main": "./dist/index.js",
-  "types": "./dist/index.d.ts",
-  "exports": {
-    ".": {
-      "types": "./dist/index.d.ts",
-      "require": "./dist/index.js",
-      "default": "./dist/index.js"
-    }
-  }
-}
-```
-
-**CLI Package** (`packages/cli/package.json`):
-```json
-{
-  "name": "task-o-matic",
-  "bin": {
-    "task-o-matic": "dist/cli/bin.js"
-  },
-  "dependencies": {
-    "task-o-matic-core": "workspace:*"
-  }
-}
-```
-
-## 🤖 MCP Server Integration
-
-`task-o-matic` includes a built-in Model Context Protocol (MCP) server that exposes its project management capabilities directly to compatible AI models and development tools.
-
-### Running the MCP Server
-
-You can run the server in development mode or as a production build.
-
-**Development:**
-
-```bash
-# This will start the server using tsx for live reloading
-npm run dev:mcp
-```
-
-**Production:**
-First, build the server, then run the executable from your project root.
-
-```bash
-# 1. Build the server
-npm run build:mcp
-
-# 2. Run the server
-# The 'projpoc-mcp' command is now available via npx
-npx projpoc-mcp
-```
-
-### Connecting a Client
-
-You can connect any MCP-compatible client. For example, to connect an AI model, you would configure its tool server settings to use the `projpoc-mcp` command.
-
-**Example Client Configuration:**
-
-```json
-{
-  "mcpServers": {
-    "task-o-matic": {
-      "command": "npx",
-      "args": ["projpoc-mcp"]
-    }
-  }
-}
-```
-
-### Exposed Tools
-
-When running, the server provides the following tools:
-
-- **`get_project_info`**: Retrieves information about the current project, including its path and AI configuration.
-- **`list_tasks`**: Lists all tasks for the project.
-  - `filterByStatus` (optional): Filter by `todo`, `in-progress`, or `completed`.
-- **`create_task`**: Creates a new task.
-  - `taskTitle` (required): The title of the task.
-  - `taskContent` (optional): The description of the task.
-
-## 📄 License
-
-MIT License - see LICENSE file for details.
-
-## 🤝 Contributing
-
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Add tests if applicable
-5. Submit a pull request
+[Full library documentation](packages/core/README.md)
 
 ---
 
-**Built with ❤️ using Vercel AI SDK and modern TypeScript**
+## 🛠️ DEVELOPMENT: BUILDING YOUR OWN BUNKER TOOLS
+
+Want to contribute or extend task-o-matic? Here's the blueprint.
+
+```bash
+# Clone the facility
+git clone https://github.com/DimitriGilbert/task-o-matic.git
+cd task-o-matic
+
+# Install supplies
+bun install
+
+# Build all facilities
+bun run build
+
+# Type checking (run this before committing)
+bun run check-types
+
+# Run all tests
+bun run test
+```
+
+### Running Specific Tests
+
+```bash
+# From project root - run core package tests
+cd packages/core
+npx mocha -r tsx/cjs src/test/test-setup.ts src/test/path/to/your.test.ts
+
+# Run CLI tests
+cd packages/cli
+npx mocha -r tsx/cjs src/test/commands.test.ts
+```
+
+### Monorepo Structure
+
+```
+task-o-matic/
+├── packages/
+│   ├── core/           # Core library (task-o-matic-core)
+│   │   ├── src/
+│   │   │   ├── lib/           # Storage, Config, AI, etc.
+│   │   │   ├── services/      # WorkflowService, PRDService, TaskService
+│   │   │   ├── prompts/       # AI prompt templates
+│   │   │   ├── types/         # TypeScript type definitions
+│   │   │   └── utils/         # Shared utilities
+│   │   └── dist/              # Compiled output
+│   └── cli/            # CLI interface (task-o-matic)
+│       ├── src/
+│       │   ├── cli/           # CLI-specific logic
+│       │   ├── commands/      # Commander.js command implementations
+│       │   └── types/         # CLI type definitions
+│       └── dist/              # Compiled output
+└── docs/              # Documentation
+```
+
+---
+
+## ⚙️ ENVIRONMENT VARIABLES
+
+```bash
+# AI Provider API Keys
+export OPENAI_API_KEY="your_openai_key"
+export ANTHROPIC_API_KEY="your_anthropic_key"
+export OPENROUTER_API_KEY="your_openrouter_key"
+export CUSTOM_API_KEY="your_custom_key"
+export CUSTOM_API_URL="https://api.custom.com/v1"
+export CONTEXT7_API_KEY="your_context7_key"
+
+# Default AI Configuration
+export AI_PROVIDER="anthropic"
+export AI_MODEL="claude-3-5-sonnet"
+export AI_MAX_TOKENS="4000"
+export AI_TEMPERATURE="0.5"
+```
+
+---
+
+## ❓ FREQUENTLY ASKED QUESTIONS FROM THE FIELD
+
+**Q: Can I skip the PRD phase and just start coding?**
+
+A: Technically, yes. But also, citizen, have you SEEN the results of "just starting coding"? We have. It's not pretty. [The '53 incident taught us many things about the dangers of unguided development.]
+
+**Q: Do I really need to split ALL tasks?**
+
+A: No, you can pick and choose. But remember: a task too large to finish in one sitting is a task that won't BE finished. [Procrastination kills more projects than burnout.]
+
+**Q: What AI provider should I use?**
+
+A: We recommend OpenRouter with `claude-4.5-sonnet`/`anthropic/claude-4.5-opus` for quality, or `z-ai/glm-4.7` for cheap. [The AI doesn't care about your political affiliation. It just wants to help organize your bunker.]
+
+**Q: Can I add tasks manually?**
+
+A: Absolutely:
+
+```bash
+npx task-o-matic tasks create \
+  --title "Add deathclaw... er, CREATURE encounters" \
+  --content "Random creature attacks on facility" \
+  --ai-enhance
+```
+
+**Q: What if my project changes direction midway?**
+
+A: Common occurrence, citizen. Use `prd rework` to update your PRD, then regenerate tasks from the updated document. [Flexibility is a survival trait.]
+
+**Q: How does npx task-o-matic handle dependencies?**
+
+A: Tasks can specify dependencies. The system tracks relationships and prevents circular dependencies. [A project where everything depends on everything is a project that never completes. We learned this the hard way.]
+
+**Q: Is there an MCP server?**
+
+A: Not yet, citizen. We're working on it. For now, you don't need an MCP server - we provide Skills for your agent to learn about task-o-matic. [The future promised features don't always arrive on schedule. We're still waiting for those jetpacks, too.]
+
+---
+
+## 📖 FURTHER READING: SURVIVAL MANUALS
+
+For detailed information on specific facilities:
+
+- [Configuration Guide](docs/configuration.md) - AI providers and settings
+- [Task Management Guide](docs/tasks.md) - Full task lifecycle with AI features
+- [PRD Processing Guide](docs/prd.md) - Parse and rework Product Requirements Documents
+- [Workflow Command Guide](docs/workflow-command.md) - Complete workflow command reference
+- [AI Integration Guide](docs/ai-integration.md) - AI providers and prompt engineering
+- [Project Initialization Guide](docs/projects.md) - Project setup and bootstrapping
+- [Streaming Output Guide](docs/streaming.md) - Real-time AI streaming capabilities
+- [Core Library API](packages/core/README.md) - Framework-agnostic library API
+- [CLI Command Reference](packages/cli/README.md) - Complete command documentation
+
+---
+
+## 🔬 BENCHMARKING (COMING SOON)
+
+**Status:** Under Development
+
+The benchmarking system lets AI models compete against each other to find the optimal performer for your specific workflow. It's not quite prime time yet, but we're working on it.
+
+**What will be available:**
+- Multi-model PRD parsing comparison
+- Task breakdown quality assessment
+- Workflow-level benchmarking with isolated git branches
+- Comprehensive metrics (duration, tokens, cost, quality)
+
+**In the meantime:** Use multi-AI generation features (see above) - they're production-ready and give you excellent results by letting multiple models collaborate.
+
+Check back soon for benchmarking updates, citizen.
+
+---
+
+## 🏁 FINAL REMINDER
+
+**Remember:** A well-planned project is like a well-stocked bunker—both give you peace of mind when the world outside gets chaotic. [And in software development, as in underground containment, chaos is ALWAYS just one merge conflict away.]
+
+You now have everything you need to manage your projects in the AI-pocalypse. Go forth, citizen. Your code is counting on you.
+
+[Literally. It needs you to organize it. Don't disappoint it. Or us. We're watching.]
+
+---
+
+**END OF SURVIVAL BULLETIN**
+
+_This document is classified MANDATORY READING for all developer-citizens. Unauthorized failure to follow these protocols may result in... suboptimal project outcomes._
+
+---
+
+**DOCUMENT CONTROL:**
+
+- **Version:** 1.0
+- **Clearance:** All Personnel
+- **Classification:** For Citizens' Eyes Only
+
+[Stay organized. Stay safe. Survive.]
