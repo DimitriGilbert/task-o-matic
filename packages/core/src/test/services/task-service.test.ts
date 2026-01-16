@@ -382,7 +382,7 @@ describe("TaskService", () => {
       assert.strictEqual(subtasks.length, 2);
     });
 
-    it("should throw error if task already has subtasks", async () => {
+    it("should allow re-splitting task with existing subtasks", async () => {
       // Create a task
       const taskData = createTestTaskData();
       const createResult = await taskService.createTask({
@@ -391,22 +391,50 @@ describe("TaskService", () => {
 
       const taskId = createResult.task.id;
 
-      // Create a subtask
+      // Create a subtask manually
       await taskService.createTask({
         title: "Existing Subtask",
         parentId: taskId,
       });
 
-      // Try to split task that already has subtasks
-      await assert.rejects(
-        async () => {
-          await taskService.splitTask(taskId);
-        },
-        (err: Error) => {
-          assert.ok(err.message.includes("already has"));
-          return true;
-        }
-      );
+      // Split the task again
+      const splitResult = await taskService.splitTask(taskId);
+
+      assert.strictEqual(splitResult.success, true);
+      
+      // We expect existing subtask + new subtasks from split
+      // The mock AI returns 2 subtasks usually
+      const subtasks = await taskService.getSubtasks(taskId);
+      assert.strictEqual(subtasks.length, 3); // 1 existing + 2 new
+    });
+
+    it("should allow splitting a subtask (creating sub-subtasks)", async () => {
+      // Create parent
+      const parentResult = await taskService.createTask({ title: "Parent" });
+      const parentId = parentResult.task.id;
+
+      // Create subtask
+      const subtaskResult = await taskService.createTask({
+        title: "Subtask",
+        parentId: parentId
+      });
+      const subtaskId = subtaskResult.task.id;
+
+      // Split the subtask
+      const splitResult = await taskService.splitTask(subtaskId);
+
+      assert.strictEqual(splitResult.success, true);
+      assert.strictEqual(splitResult.subtasks.length, 2);
+
+      // Verify hierarchy
+      const subSubtasks = await taskService.getSubtasks(subtaskId);
+      assert.strictEqual(subSubtasks.length, 2);
+      assert.strictEqual(subSubtasks[0].parentId, subtaskId);
+
+      // Check tree depth
+      const tree = await taskService.getTaskTree(parentId);
+      // Parent(1) + Subtask(1) + SubSubtasks(2) = 4
+      assert.strictEqual(tree.length, 4);
     });
   });
 

@@ -848,21 +848,10 @@ export class TaskService {
 
     // Check if task already has subtasks
     const existingSubtasks = await this.storage.getSubtasks(taskId);
-    if (existingSubtasks.length > 0) {
-      throw createStandardError(
-        TaskOMaticErrorCodes.TASK_OPERATION_FAILED,
-        `Task already has ${existingSubtasks.length} subtasks`,
-        {
-          context: `Task "${task.title}" (${taskId}) already has subtasks`,
-          suggestions: [
-            "Use existing subtasks instead of splitting again",
-            "Delete existing subtasks first if you want to re-split",
-            "Consider editing existing subtasks instead",
-          ],
-          metadata: { taskId, subtaskCount: existingSubtasks.length },
-        },
-      );
-    }
+    // if (existingSubtasks.length > 0) {
+    //   // NOTE: We now allow re-splitting tasks with existing subtasks
+    //   // The AI service will receive the existing subtasks in context
+    // }
 
     this.hooks.emit("task:progress", {
       message: "Building context...",
