@@ -648,7 +648,7 @@ async splitTask(
 - `metadata` (object): AI metadata
 
 **Error Conditions:**
-- `Error`: Task not found, task already has subtasks
+- `Error`: Task not found
 - `TaskOMaticError`: AI operation failures
 
 **Example: Basic Task Splitting**
@@ -658,6 +658,13 @@ console.log(`Created ${result.subtasks.length} subtasks`);
 result.subtasks.forEach(subtask => {
   console.log(`- ${subtask.title} (${subtask.estimatedEffort})`);
 });
+```
+
+**Example: Re-Splitting (Sub-subtasks)**
+```typescript
+// Split a task that already has subtasks, or split a subtask
+const result = await taskService.splitTask("1.1"); // Splitting subtask 1.1
+console.log(`Created sub-subtasks for 1.1`);
 ```
 
 **Example: Splitting with Filesystem Analysis**

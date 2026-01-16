@@ -198,7 +198,7 @@ npx task-o-matic tasks tree
 # Get next prioritized task
 npx task-o-matic tasks get-next
 
-# Split complex task
+# Split complex task (supports sub-subtasks)
 npx task-o-matic tasks split --task-id 7 --stream
 
 # Update task status

@@ -286,6 +286,7 @@ const result = await taskService.splitTask("task-id-here", {
   streamingOptions: { enabled: true },
   enableFilesystemTools: true, // Enable AI to read project files
 });
+// Supports splitting tasks that already have subtasks (creating sub-subtasks)
 ```
 
 **documentTask**

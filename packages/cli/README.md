@@ -319,7 +319,7 @@ task-o-matic tasks enhance --status todo --tag critical --dry
 Split a task into smaller subtasks using AI.
 
 ```bash
-# Split single task
+# Split single task (works even if it already has subtasks)
 task-o-matic tasks split --task-id 7 --stream
 
 # Split all tasks

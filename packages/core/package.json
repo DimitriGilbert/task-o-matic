@@ -20,7 +20,7 @@
     "clean": "rm -rf dist tsconfig.tsbuildinfo",
     "build": "tsc",
     "check-types": "tsc --noEmit",
-    "test": "mocha -r tsx/cjs --exit src/test/test-setup.ts src/test/**/*.test.ts"
+    "test": "mocha -r tsx/cjs src/test/test-setup.ts src/test/**/*.test.ts --exit"
   },
   "dependencies": {
     "@ai-sdk/mcp": "^0.0.8",

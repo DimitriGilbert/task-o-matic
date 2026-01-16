@@ -778,6 +778,10 @@ task-o-matic tasks split --all --force
 # Dry run to preview splits
 task-o-matic tasks split --status todo --dry
 
+# Re-split a task (create sub-subtasks)
+task-o-matic tasks split --task-id task-123 --stream
+# Note: Existing subtasks are preserved and provided as context to the AI
+
 # Split with project analysis
 task-o-matic tasks split \
   --status in-progress \
@@ -824,10 +828,6 @@ task-o-matic tasks split \
 
 ### ERROR CONDITIONS
 ```bash
-# Task already has subtasks
-Error: Task already has subtasks
-Solution: Choose a task without existing subtasks or manage existing subtasks
-
 # No tasks found for splitting
 Error: No tasks found matching filters
 Solution: Adjust filters or create tasks that need splitting
