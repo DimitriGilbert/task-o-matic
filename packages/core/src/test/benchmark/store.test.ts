@@ -117,8 +117,8 @@ describe("BenchmarkStore", () => {
     // Cleanup temp directory
     try {
       await fs.rm(tempDir, { recursive: true, force: true });
-    } catch {
-      // Ignore cleanup errors
+    } catch (error) {
+      console.error(`Failed to cleanup temp dir ${tempDir}:`, error);
     }
   });
 
@@ -162,7 +162,16 @@ describe("BenchmarkStore", () => {
 
     it("should update an existing run", async () => {
       const run = createMockRun("run-789", ["openai:gpt-4o"]);
+      
+      // Initial state: running, no completedAt
+      run.status = "running";
+      delete run.completedAt;
       await store.save(run);
+
+      // Verify initial state
+      const initial = await store.get("run-789");
+      assert.strictEqual(initial?.status, "running");
+      assert.strictEqual(initial?.completedAt, undefined);
 
       // Update run
       run.status = "completed";

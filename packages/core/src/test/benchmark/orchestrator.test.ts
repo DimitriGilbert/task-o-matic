@@ -146,8 +146,8 @@ describe("BenchmarkOrchestrator", function () {
     // Cleanup temp directory
     try {
       await fs.rm(tempDir, { recursive: true, force: true });
-    } catch {
-      // Ignore cleanup errors
+    } catch (error) {
+      console.error(`Failed to cleanup temp dir ${tempDir}:`, error);
     }
   });
 
