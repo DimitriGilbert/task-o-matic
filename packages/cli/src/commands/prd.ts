@@ -12,16 +12,7 @@ import path, { join } from "node:path";
 import chalk from "chalk";
 import { Command } from "commander";
 import inquirer from "inquirer";
-import {
-  configManager,
-  createStandardError,
-  isValidAIProvider,
-  parseModelString,
-  prdService,
-  TaskOMaticErrorCodes,
-  taskService,
-} from "task-o-matic-core";
-import type { Task } from "task-o-matic-core";
+import { configManager, parseModelString, prdService } from "task-o-matic-core";
 
 import { displayError, displayProgress } from "../cli/display/progress";
 import { createStreamingOptions } from "../utils/streaming-options";
@@ -949,7 +940,8 @@ prdCommand
       // Determine which AI model to use
       let aiProvider: string | undefined = aiConfig.provider;
       let aiModel: string = aiConfig.model;
-      let aiReasoning: string | undefined = aiConfig.reasoning?.maxTokens?.toString();
+      let aiReasoning: string | undefined =
+        aiConfig.reasoning?.maxTokens?.toString();
 
       if (options.ai) {
         const modelConfig = parseModelString(options.ai);
@@ -969,78 +961,96 @@ prdCommand
         "Generating PRD from codebase"
       );
 
-      console.log(chalk.blue("🔍 Analyzing existing codebase...\n"));
+      // Default to codebase generation if from-codebase is specified OR if no description is provided (as implied by command)
+      // Actually this is the `generate` subcommand, so it *is* the from-codebase command essentially.
+      // But we should respect the flag if user explicitly provides it, or if it's the intended default mode for this command.
+      // Given the description "Generate a PRD from an existing codebase", it seems `from-codebase` is the primary function.
 
-      const result = await prdService.generateFromCodebase({
-        workingDirectory,
-        outputFile: options.output,
-        enableFilesystemTools: options.tools,
-        aiOptions: {
-          aiProvider,
-          aiModel,
-          aiReasoning,
-        },
-        streamingOptions,
-        callbacks: {
-          onProgress: displayProgress,
-          onError: displayError,
-        },
-      });
+      if (options.fromCodebase || true) {
+        // Always true for this subcommand per its description, but keeping check structure
+        console.log(chalk.blue("🔍 Analyzing existing codebase...\n"));
 
-      console.log("");
+        const result = await prdService.generateFromCodebase({
+          workingDirectory,
+          outputFile: options.output,
+          enableFilesystemTools: options.tools,
+          aiOptions: {
+            aiProvider,
+            aiModel,
+            aiReasoning,
+          },
+          streamingOptions,
+          callbacks: {
+            onProgress: displayProgress,
+            onError: displayError,
+          },
+        });
 
-      if (options.json) {
-        // JSON output mode
-        console.log(
-          JSON.stringify(
-            {
-              prdPath: result.prdPath,
-              projectName: result.analysis.projectName,
-              stack: result.analysis.stack,
-              features: result.analysis.existingFeatures.length,
-              todos: result.analysis.todos.length,
-              stats: result.stats,
-            },
-            null,
-            2
-          )
-        );
-      } else {
-        // Human-readable output
-        console.log(chalk.green("✓ PRD Generated from Codebase\n"));
+        console.log("");
 
-        console.log(chalk.cyan("Project Analysis:"));
-        console.log(
-          chalk.white(`  Project Name: ${result.analysis.projectName}`)
-        );
-        console.log(
-          chalk.white(
-            `  Stack: ${result.analysis.stack.frameworks.join(", ")} (${result.analysis.stack.language})`
-          )
-        );
-        console.log(
-          chalk.white(`  Features Detected: ${result.analysis.existingFeatures.length}`)
-        );
-        console.log(chalk.white(`  TODOs Found: ${result.analysis.todos.length}`));
+        if (options.json) {
+          // JSON output mode
+          console.log(
+            JSON.stringify(
+              {
+                prdPath: result.prdPath,
+                projectName: result.analysis.projectName,
+                stack: result.analysis.stack,
+                features: result.analysis.existingFeatures.length,
+                todos: result.analysis.todos.length,
+                stats: result.stats,
+              },
+              null,
+              2
+            )
+          );
+        } else {
+          // Human-readable output
+          console.log(chalk.green("✓ PRD Generated from Codebase\n"));
 
-        console.log(chalk.blue("\nStats:"));
-        console.log(chalk.cyan(`  Duration: ${result.stats.duration}ms`));
-        if (result.stats.tokenUsage) {
-          console.log(chalk.cyan(`  Tokens: ${result.stats.tokenUsage.total}`));
+          console.log(chalk.cyan("Project Analysis:"));
+          console.log(
+            chalk.white(`  Project Name: ${result.analysis.projectName}`)
+          );
+          console.log(
+            chalk.white(
+              `  Stack: ${result.analysis.stack.frameworks.join(", ")} (${
+                result.analysis.stack.language
+              })`
+            )
+          );
+          console.log(
+            chalk.white(
+              `  Features Detected: ${result.analysis.existingFeatures.length}`
+            )
+          );
+          console.log(
+            chalk.white(`  TODOs Found: ${result.analysis.todos.length}`)
+          );
+
+          console.log(chalk.blue("\nStats:"));
+          console.log(chalk.cyan(`  Duration: ${result.stats.duration}ms`));
+          if (result.stats.tokenUsage) {
+            console.log(
+              chalk.cyan(`  Tokens: ${result.stats.tokenUsage.total}`)
+            );
+          }
+          if (result.stats.timeToFirstToken) {
+            console.log(
+              chalk.cyan(`  TTFT: ${result.stats.timeToFirstToken}ms`)
+            );
+          }
+
+          console.log(chalk.green(`\n✓ PRD saved to: ${result.prdPath}`));
+          console.log(
+            chalk.dim(
+              "\nTip: Use 'task-o-matic prd parse --file " +
+                result.prdPath +
+                "' to extract tasks"
+            )
+          );
         }
-        if (result.stats.timeToFirstToken) {
-          console.log(chalk.cyan(`  TTFT: ${result.stats.timeToFirstToken}ms`));
-        }
-
-        console.log(chalk.green(`\n✓ PRD saved to: ${result.prdPath}`));
-        console.log(
-          chalk.dim(
-            "\nTip: Use 'task-o-matic prd parse --file " +
-              result.prdPath +
-              "' to extract tasks"
-          )
-        );
-      }
+      } // End of fromCodebase block
     } catch (error) {
       displayError(error);
       process.exit(1);

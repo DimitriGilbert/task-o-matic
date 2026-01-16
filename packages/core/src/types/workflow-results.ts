@@ -1,4 +1,4 @@
-import { Task, AIConfig } from "./index";
+import { Task, AIConfig, ContinueResult } from "./index";
 
 /**
  * Result types for workflow service operations
@@ -86,24 +86,4 @@ export interface SplitTasksResult {
   }>;
 }
 
-export interface ContinueResult {
-  success: boolean;
-  action: string;
-  projectStatus?: {
-    tasks: {
-      total: number;
-      completed: number;
-      inProgress: number;
-      todo: number;
-      completionPercentage: number;
-    };
-    prd?: {
-      path: string;
-      exists: boolean;
-      features: string[];
-    };
-    nextSteps: string[];
-  };
-  message?: string;
-  data?: any;
-}
+export { ContinueResult };

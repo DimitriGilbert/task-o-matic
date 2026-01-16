@@ -37,7 +37,7 @@ detectCommand
           console.log(chalk.yellow("⚠️  Stack detection had issues:"));
           stackResult.warnings?.forEach((w) => console.log(chalk.yellow(`   - ${w}`)));
         }
-        return;
+        process.exit(1);
       }
 
       const stack = stackResult.stack;

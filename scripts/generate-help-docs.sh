@@ -41,7 +41,9 @@ EOF
 
 # Add TOC links for main commands
 for cmd in $MAIN_COMMANDS; do
-    echo "- [$cmd Commands](#$cmd-commands)" >> "$OUTPUT_FILE"
+    # Ensure anchor is lowercased to match GitHub markdown behavior
+    CMD_LOWER=$(echo "$cmd" | tr '[:upper:]' '[:lower:]')
+    echo "- [$cmd Commands](#$CMD_LOWER-commands)" >> "$OUTPUT_FILE"
 done
 echo "" >> "$OUTPUT_FILE"
 echo "---" >> "$OUTPUT_FILE"

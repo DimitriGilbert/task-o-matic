@@ -37,9 +37,9 @@ npx task-o-matic prd rework --file <path> --feedback "..."
 ```
 
 ### 3. Freeze & Version
-**CRITICAL**: Create a snapshot before task generation.
+**CRITICAL**: Task-O-Matic CLI automatically creates/updates versions in `prd/versions/` during `parse` or `update` operations. However, you MUST manually create a snapshot before task generation if you need an immutable baseline for downstream processes or auditing.
 
-*Note: Task-O-Matic CLI handles versioning automatically during parse/update, but be aware of the `prd/versions/` directory.*
+*Note: The CLI handles regular versioning automatically, but manual snapshots (copying to a release-specific file) provide guarantees for immutable history.*
 
 ### 4. Decompose (Task Generation)
 Convert frozen requirements into tasks.

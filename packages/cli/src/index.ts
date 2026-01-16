@@ -66,7 +66,7 @@ program.on("command:*", (operands) => {
   console.error(chalk.red(`Unknown command: ${operands[0]}`));
   console.log(
     chalk.blue(
-      "Available commands: config, tasks, prd, prompt, init, workflow, benchmark, install"
+      "Available commands: config, tasks, prd, prompt, init, workflow, benchmark, install, continue, detect"
     )
   );
   console.log(chalk.blue("Use --help for available commands"));

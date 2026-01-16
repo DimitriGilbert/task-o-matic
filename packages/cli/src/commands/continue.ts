@@ -47,7 +47,7 @@ export const continueCommand = new Command("continue")
         if (result.action === "initialize") {
              console.log(chalk.cyan("Run 'task-o-matic init attach' to set up this project."));
         }
-        return;
+        process.exit(1);
       }
 
       const status = result.projectStatus!;
@@ -79,5 +79,6 @@ export const continueCommand = new Command("continue")
 
     } catch (error) {
       displayError(error);
+      process.exit(1);
     }
   });

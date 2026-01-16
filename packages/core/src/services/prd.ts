@@ -838,8 +838,6 @@ export class PRDService {
     streamingOptions?: StreamingOptions;
     callbacks?: ProgressCallback;
     enableFilesystemTools?: boolean;
-    includeImplemented?: boolean;
-    includePlanned?: boolean;
   }): Promise<PRDFromCodebaseResult> {
     const startTime = Date.now();
 

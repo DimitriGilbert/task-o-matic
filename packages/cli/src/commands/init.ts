@@ -357,7 +357,13 @@ initCommand
     const analysisService = new ProjectAnalysisService();
 
     // Detect stack
-    const stackResult = await analysisService.detectStack(workingDir);
+    let stackResult: import("task-o-matic-core").StackDetectionResult | undefined;
+    try {
+      stackResult = await analysisService.detectStack(workingDir);
+    } catch (error) {
+      console.log(chalk.red("❌ Stack detection failed:"), error instanceof Error ? error.message : String(error));
+      return;
+    }
 
     if (!stackResult.success) {
       console.log(chalk.yellow("⚠️  Stack detection had issues:"));
@@ -450,9 +456,16 @@ initCommand
     // Run full analysis if requested
     if (options.analyze) {
       console.log(chalk.blue("\n📊 Running full project analysis..."));
-      const analysisResult = await analysisService.analyzeProject(workingDir);
+      
+      let analysisResult: import("task-o-matic-core").ProjectAnalysisResult | undefined;
+      try {
+        analysisResult = await analysisService.analyzeProject(workingDir);
+      } catch (error) {
+        console.error(chalk.red("❌ Project analysis failed:"), error instanceof Error ? error.message : String(error));
+        // Fallback or early exit if analysis is critical
+      }
 
-      if (analysisResult.success) {
+      if (analysisResult && analysisResult.success) {
         const analysis = analysisResult.analysis;
 
         console.log(chalk.green("\n✅ Project analysis complete:"));
@@ -500,9 +513,36 @@ initCommand
             console.log(chalk.cyan(`   - ${suggestion}`));
           });
         }
+
+        // Handle --create-prd if analysis succeeded
+        if (options.createPrd) {
+          console.log(chalk.blue("\n📄 Generating PRD from codebase..."));
+          
+          try {
+            // Import dynamically to avoid circular deps if any, or just use existing service pattern
+            const { prdService } = await import("task-o-matic-core");
+            
+            // Generate PRD using the analysis we just did implicitly via generateFromCodebase
+            // Note: prdService.generateFromCodebase runs analysis internally again. 
+            // Ideally we should pass the analysis, but the interface might not support it yet.
+            // For now, calling generateFromCodebase is safer as it handles the full flow including AI call.
+            // It might re-analyze but that's acceptable for now to ensure consistency.
+            
+            const prdResult = await prdService.generateFromCodebase({
+              workingDirectory: workingDir,
+              outputFile: "current-state.md",
+              // Reuse options if applicable, or defaults
+            });
+
+            console.log(chalk.green(`  ✓ Generated PRD: ${prdResult.prdPath}`));
+          } catch (error) {
+            console.error(chalk.red("  ❌ Failed to generate PRD:"), error instanceof Error ? error.message : String(error));
+          }
+        }
+
       } else {
         console.log(chalk.yellow("⚠️  Analysis had issues:"));
-        analysisResult.warnings?.forEach((w) => console.log(chalk.yellow(`   - ${w}`)));
+        analysisResult?.warnings?.forEach((w) => console.log(chalk.yellow(`   - ${w}`)));
       }
     }
 
