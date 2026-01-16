@@ -155,3 +155,4 @@ bun run --filter task-o-matic-core test -- src/test/path/to/your.test.ts
 - LSP errors MUST be FIXED ! fixing LSP errors is NOT OPTIONAL !
 - LSP errors **MUST be FIXED** ! fixing LSP errors is **NOT OPTIONAL** !
 - **LSP errors MUST be FIXED** ! fixing LSP errors is **NOT OPTIONAL** !
+- **LSP errors MUST be FIXED IMMEDIATELY** ! DO NOT IGNORE ! DO NOT DELAY ! DO NOT ADD TECHNICAL DEBT ! **LSP errors MUST be FIXED IMMEDIATELY**

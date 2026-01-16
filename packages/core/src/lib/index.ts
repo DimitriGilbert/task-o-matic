@@ -39,12 +39,6 @@ export { PRDService } from "../services/prd";
  */
 export { WorkflowService } from "../services/workflow";
 
-/**
- * BenchmarkService - AI model benchmarking
- * Handles running benchmarks, storing results, and comparing models
- */
-export { BenchmarkService } from "../services/benchmark";
-
 // ============================================================================
 // Result Types - Service Operation Results
 // ============================================================================
