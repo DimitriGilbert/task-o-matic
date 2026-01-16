@@ -1115,17 +1115,15 @@ export class PRDService {
   /**
    * Resolve PRD file to consistent storage key
    */
-  private resolvePRDKey(file: string, workingDirectory?: string): string {
+  private async resolvePRDKey(file: string, workingDirectory?: string): Promise<string> {
     if (workingDirectory) {
-      setupWorkingDirectory(workingDirectory);
+      await setupWorkingDirectory(workingDirectory);
     }
 
     const taskOMaticDir = configManager.getTaskOMaticDir();
     const absolutePrdDir = join(taskOMaticDir, "prd");
 
     if (file.startsWith(taskOMaticDir)) {
-      return relative(taskOMaticDir, file);
-    } else if (file.startsWith(absolutePrdDir)) {
       return relative(taskOMaticDir, file);
     } else {
       return "prd/" + basename(file);
@@ -1147,7 +1145,7 @@ export class PRDService {
 
     const prdContent = readFileSync(input.file, "utf-8");
 
-    const relativePath = this.resolvePRDKey(input.file, input.workingDirectory);
+    const relativePath = await this.resolvePRDKey(input.file, input.workingDirectory);
 
     // Get latest version to determine next version number
     const latestVersion = await this.storage.getLatestPRDVersion(relativePath);
@@ -1175,7 +1173,7 @@ export class PRDService {
     file: string;
     workingDirectory?: string;
   }): Promise<PRDVersion[]> {
-    const relativePath = this.resolvePRDKey(input.file, input.workingDirectory);
+    const relativePath = await this.resolvePRDKey(input.file, input.workingDirectory);
 
     const versionData = await this.storage.getPRDVersions(relativePath);
     return versionData?.versions || [];
