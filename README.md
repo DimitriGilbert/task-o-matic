@@ -1,4 +1,4 @@
-# ⛑️ task-o-matic
+# task-o-matic
 
 **Your lifeline in the AI-pocalypse wasteland**
 
@@ -16,10 +16,11 @@ _[The preceding message was brought to you by the Department of Project Preserva
 
 ## 📡 WHAT THIS THING ACTUALLY DOES
 
-In the Before Times, people used sticky notes and spreadsheets. Then came the AI-pocalypse. Now we have **task-o-matic**:
+In the Before Times, people used sticky notes and spreadsheets, or worse, kanban boards. Then came the AI-pocalypse. Now we have **task-o-matic**:
 
-- **🤖 AI-Powered Task Management**: Let the machine spirits enhance your tasks with actual documentation. They may not have souls, but they have access to Context7.
+- **🧠 Idea to PRD**: Generate a Product Requirements Document from an idea. Maximize your chances, by running multiple iterations of the PRD generation process. _what is better than one machine? Multiple machines._
 - **📋 PRD Processing**: Parse Product Requirements Documents into structured tasks. Because vague requirements lead to vague outcomes. Vague outcomes lead to... well, you've seen what happens to vague projects.
+- **🤖 AI-Powered Task Management**: Let the machine spirits enhance your tasks with actual documentation. They may not have souls, but they have access to Context7.
 - **🎯 Complete Workflow Automation**: From project initialization to execution—guided by AI, supervised by you. Mostly.
 - **💾 Local Storage**: Everything lives in `.task-o-matic/`. No cloud. No surveillance. Just you, your code, and the containment directory.
 - **🌊 Real-Time Streaming**: Watch AI responses generate live. Like watching the Geiger counter tick, but for code generation.
@@ -76,10 +77,10 @@ Already know what you're doing? Good. Survivors who know things live longer.
 
 ```bash
 # Initialize containment directory
-npx task-o-matic init init --ai-provider anthropic --ai-model claude-3-5-sonnet
+npx task-o-matic init init --ai-provider anthropic --ai-model claude-4.5-sonnet
 
 # Configure your AI provider
-npx task-o-matic config set-ai-provider anthropic claude-3-5-sonnet
+npx task-o-matic config set-ai-provider anthropic claude-4.5-sonnet
 
 # Create a task with AI enhancement
 npx task-o-matic tasks create --title "Add user authentication" --ai-enhance --stream
@@ -119,7 +120,7 @@ npx task-o-matic tasks get-next
 npx task-o-matic init init \
   --project-name my-fallout-shelter-manager \
   --ai-provider openrouter \
-  --ai-model anthropic/claude-3.5-sonnet \
+  --ai-model anthropic/claude-4.5-sonnet \
   --frontend next \
   --backend hono \
   --database postgres \
@@ -240,10 +241,10 @@ When creating PRDs or parsing them into tasks, you can use multiple AI models in
 
 ```bash
 npx task-o-matic prd create "Build a vault manager" \
-  --ai "anthropic:claude-3.5-sonnet" \
-  --ai "openai:gpt-4o" \
-  --ai "openrouter:qwen-2.5" \
-  --combine-ai anthropic:claude-3.5-sonnet \
+  --ai "anthropic:claude-4.5-sonnet" \
+  --ai "openai:gpt-5.2" \
+  --ai "openrouter:qwen-3" \
+  --combine-ai anthropic:claude-4.5-sonnet \
   --stream
 ```
 
@@ -251,10 +252,10 @@ npx task-o-matic prd create "Build a vault manager" \
 
 ```bash
 npx task-o-matic prd parse --file requirements.md \
-  --ai "anthropic:claude-3.5-sonnet" \
-  --ai "openai:gpt-4o" \
-  --ai "openrouter:qwen-2.5" \
-  --combine-ai anthropic:claude-3.5-sonnet \
+  --ai "anthropic:claude-4.5-sonnet" \
+  --ai "openai:gpt-5.2" \
+  --ai "openrouter:qwen-3" \
+  --combine-ai anthropic:claude-4.5-sonnet \
   --stream
 ```
 
@@ -262,8 +263,8 @@ npx task-o-matic prd parse --file requirements.md \
 
 ```bash
 npx task-o-matic tasks split --task-id 7 \
-  --ai "anthropic:claude-3.5-sonnet" \
-  --ai "openai:gpt-4o" \
+  --ai "anthropic:claude-4.5-sonnet" \
+  --ai "openai:gpt-5.2" \
   --stream
 ```
 
@@ -275,7 +276,7 @@ npx task-o-matic tasks split --task-id 7 \
 
 ```bash
 # Set AI provider
-npx task-o-matic config set-ai-provider anthropic claude-3-5-sonnet
+npx task-o-matic config set-ai-provider anthropic claude-4.5-sonnet
 
 # View current configuration
 npx task-o-matic config info
@@ -300,9 +301,9 @@ The AI-pocalypse brought us many survivors. Choose wisely.
 
 Based on extensive field testing (read: we tried a lot of things so you don't have to):
 
-- **PRD Parsing**: `anthropic:claude-3.5-sonnet` or `openai:gpt-4o`
-- **Task Enhancement**: `openai:gpt-4o-mini` or `anthropic:claude-3-haiku`
-- **Task Breakdown**: `anthropic:claude-3.5-sonnet`
+- **PRD Parsing**: `anthropic:claude-4.5-sonnet` or `openai:gpt-5.2`
+- **Task Enhancement**: `openai:gpt-5.2-mini` or `anthropic:claude-3-haiku`
+- **Task Breakdown**: `anthropic:claude-4.5-sonnet`
 - **Workflow Testing**: Use benchmarking. Let the data decide.
 
 ### Reasoning Support
@@ -312,7 +313,7 @@ OpenRouter models support extended reasoning for complex problems:
 ```bash
 npx task-o-matic tasks create --title "Solve the energy crisis" \
   --ai-provider openrouter \
-  --ai-model anthropic/claude-3.5-sonnet \
+  --ai-model anthropic/claude-4.5-sonnet \
   --ai-reasoning 5000 \
   --stream
 ```
@@ -447,10 +448,10 @@ Let multiple AI models compete and produce the best results together.
 
 ```bash
 npx task-o-matic prd create "Build a vault manager" \
-  --ai "anthropic:claude-3.5-sonnet" \
-  --ai "openai:gpt-4o" \
-  --ai "openrouter:qwen-2.5" \
-  --combine-ai anthropic:claude-3.5-sonnet \
+  --ai "anthropic:claude-4.5-sonnet" \
+  --ai "openai:gpt-5.2" \
+  --ai "openrouter:qwen-3" \
+  --combine-ai anthropic:claude-4.5-sonnet \
   --stream
 ```
 
@@ -458,10 +459,10 @@ npx task-o-matic prd create "Build a vault manager" \
 
 ```bash
 npx task-o-matic prd parse --file requirements.md \
-  --ai "anthropic:claude-3.5-sonnet" \
-  --ai "openai:gpt-4o" \
-  --ai "openrouter:qwen-2.5" \
-  --combine-ai anthropic:claude-3.5-sonnet \
+  --ai "anthropic:claude-4.5-sonnet" \
+  --ai "openai:gpt-5.2" \
+  --ai "openrouter:qwen-3" \
+  --combine-ai anthropic:claude-4.5-sonnet \
   --stream
 ```
 
@@ -469,8 +470,8 @@ npx task-o-matic prd parse --file requirements.md \
 
 ```bash
 npx task-o-matic tasks split --task-id 7 \
-  --ai "anthropic:claude-3.5-sonnet" \
-  --ai "openai:gpt-4o" \
+  --ai "anthropic:claude-4.5-sonnet" \
+  --ai "openai:gpt-5.2" \
   --stream
 ```
 
@@ -506,7 +507,7 @@ npx task-o-matic tasks execute --id 7 \
   --verify "bun test" \
   --verify "bun run build" \
   --max-retries3 \
-  --try-models "gpt-4o-mini,gpt-4o,claude:sonnet-4"
+  --try-models "gpt-5.2-mini,gpt-5.2,claude:sonnet-4.5"
 ```
 
 If a task fails, it will retry with progressively stronger models. Survival of the fittest code generation.
@@ -552,7 +553,7 @@ const initResult = await workflowService.initializeProject({
   bootstrap: true,
   aiOptions: {
     aiProvider: "anthropic",
-    aiModel: "claude-3-5-sonnet",
+    aiModel: "claude-4.5-sonnet",
     aiKey: process.env.ANTHROPIC_API_KEY,
   },
   callbacks: {
@@ -570,7 +571,7 @@ const taskResult = await taskService.createTask({
   aiEnhance: true,
   aiOptions: {
     aiProvider: "anthropic",
-    aiModel: "claude-3-5-sonnet",
+    aiModel: "claude-4.5-sonnet",
     aiKey: process.env.ANTHROPIC_API_KEY,
   },
   streamingOptions: {
@@ -592,7 +593,7 @@ const parseResult = await prdService.parsePRD({
   file: "./requirements.md",
   aiOptions: {
     aiProvider: "anthropic",
-    aiModel: "claude-3-5-sonnet",
+    aiModel: "claude-4.5-sonnet",
     aiKey: process.env.ANTHROPIC_API_KEY,
   },
   callbacks: {
@@ -678,7 +679,7 @@ export CONTEXT7_API_KEY="your_context7_key"
 
 # Default AI Configuration
 export AI_PROVIDER="anthropic"
-export AI_MODEL="claude-3-5-sonnet"
+export AI_MODEL="claude-4.5-sonnet"
 export AI_MAX_TOKENS="4000"
 export AI_TEMPERATURE="0.5"
 ```
