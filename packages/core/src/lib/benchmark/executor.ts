@@ -28,8 +28,9 @@ import { executeTaskCore } from "../task-execution-core";
 import { executeTaskLoop } from "../task-loop-execution";
 import { WorkflowService } from "../../services/workflow";
 import { PRDService } from "../../services/prd";
-import { writeFileSync } from "node:fs";
+import { writeFileSync, mkdirSync } from "node:fs";
 import { join } from "node:path";
+import { createStandardError, TaskOMaticErrorCodes } from "../../utils/task-o-matic-error";
 
 /**
  * Token tracking from AI operations
@@ -101,12 +102,25 @@ export class BenchmarkExecutor {
       // Get the operation from registry
       const operation = this.operationRegistry.get(input.operationId);
       if (!operation) {
-        throw new Error(`Operation not found: ${input.operationId}`);
+        throw createStandardError(
+          TaskOMaticErrorCodes.INVALID_INPUT,
+          `Operation not found: ${input.operationId}`,
+          {
+            context: `The requested operation "${input.operationId}" is not registered.`,
+            suggestions: ["Check the operation ID", "List available operations"],
+          }
+        );
       }
 
       // Validate input
       if (!operation.validateInput(input.params)) {
-        throw new Error(`Invalid input for operation ${input.operationId}`);
+        throw createStandardError(
+          TaskOMaticErrorCodes.INVALID_INPUT,
+          `Invalid input for operation ${input.operationId}`,
+          {
+            context: `The provided parameters do not match the requirements for "${input.operationId}".`,
+          }
+        );
       }
 
       // Setup working directory to the worktree
@@ -398,7 +412,9 @@ export class BenchmarkExecutor {
         
         if (input.collectedResponses.prdContent) {
           // If we have PRD content, save it first
-          const prdPath = join(projectDir, ".task-o-matic", "prd", "benchmark-prd.md");
+          const prdDir = join(projectDir, ".task-o-matic", "prd");
+          mkdirSync(prdDir, { recursive: true });
+          const prdPath = join(prdDir, "benchmark-prd.md");
           writeFileSync(prdPath, input.collectedResponses.prdContent);
           
           results.prdParse = await prdService.parsePRD({

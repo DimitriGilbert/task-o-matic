@@ -104,7 +104,15 @@ benchmarkCommand
 
       switch (type) {
         case "execution":
-          if (!options.task) throw new Error("--task <id> is required for execution benchmark");
+          if (!options.task) {
+            throw createStandardError(
+              TaskOMaticErrorCodes.INVALID_INPUT,
+              "--task <id> is required for execution benchmark",
+              {
+                suggestions: ["Provide a task ID using --task <id>"],
+              }
+            );
+          }
           input = {
             taskId: options.task,
             verificationCommands: options.verify,
@@ -125,7 +133,15 @@ benchmarkCommand
           break;
 
         case "operation": {
-          if (!options.operation) throw new Error("--operation <id> is required for operation benchmark");
+          if (!options.operation) {
+            throw createStandardError(
+              TaskOMaticErrorCodes.INVALID_INPUT,
+              "--operation <id> is required for operation benchmark",
+              {
+                suggestions: ["Provide an operation ID using --operation <id>"],
+              }
+            );
+          }
           
           // Construct params from available options
           const params: Record<string, unknown> = {};
@@ -139,10 +155,30 @@ benchmarkCommand
         }
           
         case "workflow":
-          throw new Error("Workflow benchmark requires complex input. Use CLI wizard or file input (not yet implemented in basic CLI)");
+          throw createStandardError(
+            TaskOMaticErrorCodes.INVALID_INPUT,
+            "Workflow benchmark requires complex input. Use CLI wizard or file input (not yet implemented in basic CLI)",
+            {
+              suggestions: [
+                "Use the interactive wizard",
+                "Provide a configuration file (future feature)",
+              ],
+            }
+          );
 
         default:
-          throw new Error(`Unknown benchmark type: ${type}`);
+          throw createStandardError(
+            TaskOMaticErrorCodes.INVALID_INPUT,
+            `Unknown benchmark type: ${type}`,
+            {
+              suggestions: [
+                "execution",
+                "execute-loop",
+                "operation",
+                "workflow",
+              ],
+            }
+          );
       }
 
       // Execute benchmark
