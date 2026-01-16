@@ -12,7 +12,7 @@ import {
 import { join, basename, relative } from "path";
 import { getAIOperations, getStorage } from "../utils/ai-service-factory";
 import { buildAIConfig, AIOptions } from "../utils/ai-config-builder";
-import { AIConfig, StreamingOptions, PRDVersion, PRDChange } from "../types";
+import { AIConfig, StreamingOptions, PRDVersion, PRDChange, ProjectAnalysisResult } from "../types";
 import { PRDParseResult, SuggestStackResult, PRDFromCodebaseResult } from "../types/results";
 import { configManager, setupWorkingDirectory } from "../lib/config";
 import { isValidAIProvider } from "../lib/validation";
@@ -838,6 +838,7 @@ export class PRDService {
     streamingOptions?: StreamingOptions;
     callbacks?: ProgressCallback;
     enableFilesystemTools?: boolean;
+    analysisResult?: ProjectAnalysisResult;
   }): Promise<PRDFromCodebaseResult> {
     const startTime = Date.now();
 
@@ -869,9 +870,17 @@ export class PRDService {
       message: "Running project analysis...",
     });
 
-    // Use ProjectAnalysisService to analyze the codebase
-    const analysisService = getProjectAnalysisService();
-    const analysisResult = await analysisService.analyzeProject(workingDir);
+    let analysisResult: ProjectAnalysisResult;
+    if (input.analysisResult && input.analysisResult.success) {
+      analysisResult = input.analysisResult;
+      input.callbacks?.onProgress?.({
+        type: "progress",
+        message: "Using provided analysis result...",
+      });
+    } else {
+      const analysisService = getProjectAnalysisService();
+      analysisResult = await analysisService.analyzeProject(workingDir);
+    }
 
     if (!analysisResult.success) {
       throw createStandardError(

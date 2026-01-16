@@ -4,7 +4,7 @@ import { Command } from "commander";
 import chalk from "chalk";
 import { existsSync, mkdirSync, writeFileSync, readFileSync } from "fs";
 import { resolve, join } from "path";
-import { configManager, Config, ProjectAnalysisService } from "task-o-matic-core";
+import { configManager, Config, ProjectAnalysisService, ProjectAnalysisResult, prdService } from "task-o-matic-core";
 import { displayError } from "../cli/display/progress";
 import {
   createStandardError,
@@ -453,11 +453,12 @@ initCommand
     writeFileSync(mcpFilePath, JSON.stringify(mcpConfig, null, 2));
     console.log(chalk.green(`  ✓ Created ${mcpFilePath}`));
 
+    let analysisResult: ProjectAnalysisResult | undefined;
+
     // Run full analysis if requested
     if (options.analyze) {
       console.log(chalk.blue("\n📊 Running full project analysis..."));
-      
-      let analysisResult: import("task-o-matic-core").ProjectAnalysisResult | undefined;
+
       try {
         analysisResult = await analysisService.analyzeProject(workingDir);
       } catch (error) {
@@ -525,11 +526,10 @@ initCommand
       console.log(chalk.blue("\n📄 Generating PRD from codebase..."));
 
       try {
-        const { prdService } = await import("task-o-matic-core");
-
         const prdResult = await prdService.generateFromCodebase({
           workingDirectory: workingDir,
           outputFile: "current-state.md",
+          analysisResult,
         });
 
         console.log(chalk.green(`  ✓ Generated PRD: ${prdResult.prdPath}`));
