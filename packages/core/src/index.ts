@@ -16,10 +16,8 @@ export * from "./lib/task-loop-execution";
 export * from "./services/tasks";
 export * from "./services/workflow";
 export * from "./services/prd";
-export * from "./services/benchmark";
 export * from "./services/project-analysis";
-export * from "./lib/benchmark/registry";
-export * from "./lib/benchmark/types";
+export * from "./lib/benchmark";
 
 export * from "./utils/ai-service-factory";
 export * from "./utils/task-o-matic-error";

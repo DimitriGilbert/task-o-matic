@@ -22,7 +22,7 @@ _[The preceding message was brought to you by the Department of Engineering Stan
 - 🤖 **AI-Powered Task Management**: Create, enhance, split, and manage tasks with AI
 - 📋 **PRD Processing**: Parse, refine, version, and rework Product Requirements Documents
 - 🎯 **Workflow Automation**: Complete project lifecycle orchestration
-- 📊 **Benchmarking**: Compare AI model performance across operations
+- 📊 **Benchmark System**: Compare AI model performance across operations
 - 💾 **Local Storage**: File-based persistence in `.task-o-matic/` directory
 - 🌊 **Streaming Support**: Real-time AI response streaming
 - 🔧 **Multi-Provider AI**: OpenAI, Anthropic, OpenRouter, custom endpoints
@@ -783,136 +783,66 @@ console.log(`Executed ${result.completed} tasks successfully`);
 
 ---
 
-### BenchmarkService
+### BenchmarkOrchestrator
 
-Compare AI model performance across different operations.
+Compare AI model performance using parallel git worktrees.
 
 #### Constructor
 
 ```typescript
-const benchmarkService = new BenchmarkService();
+const benchmark = new BenchmarkOrchestrator();
 ```
 
-#### Benchmark Methods
-
-**runBenchmark**
+#### Run Benchmark
 
 ```typescript
-const run = await benchmarkService.runBenchmark(
-  "prd-parse", // operationId
+const run = await benchmark.run(
+  "operation", // type: execution, execute-loop, operation, workflow
   {
-    file: "./requirements.md",
+    operationId: "prd-parse",
+    params: { file: "./requirements.md" }
   },
   {
     models: [
-      { provider: "openai", model: "gpt-4o", apiKey: process.env.OPENAI_API_KEY },
-      { provider: "anthropic", model: "claude-3-5-sonnet", apiKey: process.env.ANTHROPIC_API_KEY },
+      { provider: "openai", model: "gpt-4o" },
+      { provider: "anthropic", model: "claude-3-5-sonnet" }
     ],
     concurrency: 2,
-    delay: 1000,
+    keepWorktrees: true
   },
   (event) => {
-    console.log(`Benchmark progress: ${event.message}`);
+    console.log(`[${event.modelId}] ${event.type}: ${event.message || ""}`);
   }
 );
 
-console.log("Benchmark results:", run.results);
+console.log("Run ID:", run.id);
+console.log("Results:", run.results);
 ```
 
-**runExecutionBenchmark**
+#### Management Methods
+
+**listRuns**
 
 ```typescript
-const run = await benchmarkService.runExecutionBenchmark(
-  {
-    taskId: "task-123",
-  },
-  {
-    models: [
-      { provider: "openai", model: "gpt-4o", apiKey: process.env.OPENAI_API_KEY },
-      { provider: "anthropic", model: "claude-3-5-sonnet", apiKey: process.env.ANTHROPIC_API_KEY },
-    ],
-    concurrency: 1,
-  },
-  (event) => {
-    console.log(`Benchmark progress: ${event.message}`);
-  }
-);
-
-console.log("Execution benchmark completed:", run.results);
-```
-
-**runExecuteLoopBenchmark**
-
-```typescript
-const run = await benchmarkService.runExecuteLoopBenchmark(
-  {
-    loopOptions: {
-      status: "todo",
-      tool: "opencode",
-      maxRetries: 3,
-      verify: "bun test",
-    },
-    keepBranches: false,
-  },
-  {
-    models: [
-      { provider: "openai", model: "gpt-4o", apiKey: process.env.OPENAI_API_KEY },
-    ],
-    concurrency: 1,
-  },
-  (event) => {
-    console.log(`Benchmark progress: ${event.message}`);
-  }
-);
-
-console.log("Execute loop benchmark completed:", run.results);
-```
-
-**runWorkflowBenchmark**
-
-```typescript
-const run = await benchmarkService.runWorkflowBenchmark(
-  {
-    projectName: "vault-manager",
-    projectDescription: "Comprehensive vault management system",
-    initMethod: "ai",
-    prdMethod: "ai",
-    skipRefine: true,
-    splitTasks: [],
-    tempDir: "/tmp/benchmark-workflows",
-  },
-  {
-    models: [
-      { provider: "openai", model: "gpt-4o", apiKey: process.env.OPENAI_API_KEY },
-      { provider: "anthropic", model: "claude-3-5-sonnet", apiKey: process.env.ANTHROPIC_API_KEY },
-    ],
-    concurrency: 1,
-    delay: 2000,
-  },
-  (event) => {
-    console.log(`Benchmark progress: ${event.message}`);
-  }
-);
-
-console.log("Workflow benchmark completed:", run.results);
+const runs = await benchmark.listRuns({ limit: 10 });
 ```
 
 **getRun**
 
 ```typescript
-const run = await benchmarkService.getRun("run-id-here");
-if (run) {
-  console.log("Benchmark details:", run);
-}
+const run = await benchmark.getRun("run-id-123");
 ```
 
-**listRuns**
+**listWorktrees**
 
 ```typescript
-const runs = await benchmarkService.listRuns();
-runs.forEach((run) => {
-  console.log(`${run.id}: ${run.command} (${new Date(run.timestamp).toISOString()})`);
-});
+const worktrees = await benchmark.listWorktrees();
+```
+
+**cleanupRun**
+
+```typescript
+await benchmark.cleanupRun("run-id-123");
 ```
 
 ---
@@ -1103,7 +1033,7 @@ import type {
   ContinueAction,
 
   // Benchmark Types
-  BenchmarkService,
+  BenchmarkOrchestrator,
   BenchmarkConfig,
   BenchmarkResult,
   BenchmarkRun,
@@ -1135,7 +1065,7 @@ import type {
   TaskService,
   WorkflowService,
   PRDService,
-  BenchmarkService,
+  BenchmarkOrchestrator,
 } from "task-o-matic-core";
 ```
 
@@ -1418,7 +1348,7 @@ For detailed documentation:
 - [AI Integration Guide](../../docs/ai-integration.md)
 - [Project Initialization Guide](../../docs/projects.md)
 - [Streaming Output Guide](../../docs/streaming.md)
-- [Model Benchmarking Guide](../../docs/benchmarking.md)
+- [Model Benchmarking Guide](../../docs/FO/benchmark/overview.md)
 - [CLI Command Reference](../cli/README.md)
 
 ---

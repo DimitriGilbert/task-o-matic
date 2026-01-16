@@ -1,40 +1,30 @@
-import { Command } from "commander";
 import chalk from "chalk";
-import { benchmarkService } from "task-o-matic-core";
-import { benchmarkRegistry } from "task-o-matic-core";
+import { Command } from "commander";
 import {
-  BenchmarkConfig,
-  BenchmarkModelConfig,
-  WorkflowBenchmarkInput,
-} from "task-o-matic-core";
-import { WorkflowAutomationOptions } from "task-o-matic-core";
-import { displayError } from "../cli/display/progress";
-import {
-  confirmPrompt,
-  selectPrompt,
-  multiSelectPrompt,
-  textInputPrompt,
-  editorPrompt,
-} from "../utils/workflow-prompts";
-
-export const benchmarkCommand = new Command("benchmark").description(
-  "Run and manage AI benchmarks"
-);
-
-import { createStandardError, TaskOMaticErrorCodes } from "task-o-matic-core";
-import {
-  parseTryModels,
-  validateExecutor,
-  VALID_EXECUTORS,
-} from "task-o-matic-core";
-import {
-  ExecuteLoopOptions,
-  ExecutorTool,
-  ModelAttemptConfig,
+  BenchmarkOrchestrator,
+  createStandardError,
+  TaskOMaticErrorCodes,
+  type BenchmarkInput,
+  type BenchmarkModelConfig,
+  type BenchmarkOperationType,
+  type BenchmarkRunConfig,
+  type ExecuteLoopBenchmarkInput,
+  type ExecutionBenchmarkInput,
+  type ModelScore,
+  type OperationBenchmarkInput,
 } from "task-o-matic-core";
 
-// Helper to parse model string
-// Format: provider:model[:reasoning=<tokens>]
+// Initialize orchestrator
+const orchestrator = new BenchmarkOrchestrator();
+
+export const benchmarkCommand = new Command("bench")
+  .alias("benchmark")
+  .description("Run and manage AI model benchmarks");
+
+// ============================================================================
+// HELPER FUNCTIONS
+// ============================================================================
+
 function parseModelString(modelStr: string): BenchmarkModelConfig {
   const parts = modelStr.split(":");
   if (parts.length < 2) {
@@ -65,960 +55,365 @@ function parseModelString(modelStr: string): BenchmarkModelConfig {
   return { provider, model, reasoningTokens };
 }
 
+function statusColor(status: string): string {
+  switch (status) {
+    case "completed": return chalk.green(status);
+    case "success": return chalk.green(status);
+    case "running": return chalk.blue(status);
+    case "failed": return chalk.red(status);
+    case "partial": return chalk.yellow(status);
+    case "error": return chalk.red(status);
+    default: return status;
+  }
+}
+
+// ============================================================================
+// RUN COMMAND
+// ============================================================================
+
 benchmarkCommand
   .command("run")
-  .description("Run a benchmark operation")
-  .argument(
-    "<operation>",
-    "Operation to benchmark (e.g., prd-parse, task-breakdown, task-create, prd-create)"
-  )
-  .requiredOption(
-    "--models <list>",
-    "Comma-separated list of models (provider:model[:reasoning=<tokens>])"
-  )
-  .option("--file <path>", "Input file path (for PRD ops)")
-  .option("--task-id <id>", "Task ID (for Task ops)")
-  .option("--concurrency <number>", "Max concurrent requests", "5")
-  .option("--delay <number>", "Delay between requests in ms", "250")
-  .option("--prompt <prompt>", "Override prompt")
-  .option("--message <message>", "User message")
-  .option("--tools", "Enable filesystem tools")
-  .option("--feedback <feedback>", "Feedback (for prd-rework)")
-
-  // Task creation options
-  .option("--title <title>", "Task title (for task-create)")
-  .option("--content <content>", "Task content (for task-create)")
-  .option("--parent-id <id>", "Parent task ID (for task-create)")
-  .option(
-    "--effort <effort>",
-    "Effort estimate: small, medium, large (for task-create)"
-  )
-  .option("--force", "Force operation (for task-document)")
-
-  // PRD creation options
-  .option(
-    "--description <desc>",
-    "Project/PRD description (for prd-create, prd-combine)"
-  )
-  .option(
-    "--output-dir <dir>",
-    "Output directory (for prd-create, prd-combine)"
-  )
-  .option("--filename <name>", "Output filename (for prd-create, prd-combine)")
-
-  // PRD combine options
-  .option(
-    "--prds <list>",
-    "Comma-separated list of PRD file paths (for prd-combine)"
-  )
-
-  // PRD refine options
-  .option(
-    "--question-mode <mode>",
-    "Question mode: user or ai (for prd-refine)"
-  )
-  .option(
-    "--answers <json>",
-    "JSON string of answers (for prd-refine user mode)"
-  )
-
-  .action(async (operation, options) => {
+  .description("Run a benchmark")
+  .argument("<type>", "Type of benchmark (execution, execute-loop, operation, workflow)")
+  .requiredOption("-m, --models <models...>", "Models to benchmark (e.g., openai:gpt-4o)")
+  .option("-t, --task <id>", "Task ID (for execution type)")
+  .option("-s, --status <status>", "Task status filter (for execute-loop type)")
+  .option("-o, --operation <id>", "Operation ID (for operation type)")
+  .option("-f, --file <path>", "File path (for operation type, e.g., PRD file)")
+  .option("-v, --verify <commands...>", "Verification commands to run")
+  .option("-r, --max-retries <n>", "Max retries per task", parseInt)
+  .option("-c, --concurrency <n>", "Max parallel worktrees", parseInt)
+  .option("--base-commit <commit>", "Base commit to start from")
+  .action(async (type, options) => {
     try {
-      const modelStrings = options.models.split(",");
-      const models: BenchmarkModelConfig[] = modelStrings.map((s: string) =>
-        parseModelString(s.trim())
-      );
+      console.log(chalk.bold.blue(`\nStarting ${type} benchmark...\n`));
 
-      const config: BenchmarkConfig = {
+      // Parse models
+      const models: BenchmarkModelConfig[] = options.models.map(parseModelString);
+
+      // Build run config
+      const config: BenchmarkRunConfig = {
         models,
-        concurrency: parseInt(options.concurrency, 10),
-        delay: parseInt(options.delay, 10),
+        concurrency: options.concurrency ?? 0,
+        baseCommit: options.baseCommit,
+        keepWorktrees: true, // Always persistent in new system
       };
 
-      console.log(chalk.blue(`Starting benchmark for ${operation}...`));
-      console.log(
-        chalk.dim(
-          `Models: ${models.length}, Concurrency: ${config.concurrency}, Delay: ${config.delay}ms`
-        )
-      );
+      // Build input based on type
+      let input: BenchmarkInput;
 
-      // Construct input object with all potential options
-      const input: any = {
-        // Common options
-        file: options.file,
-        taskId: options.taskId,
-        prompt: options.prompt,
-        message: options.message,
-        tools: options.tools,
-        feedback: options.feedback,
-        workingDirectory: process.cwd(), // Always pass current working directory
+      switch (type) {
+        case "execution":
+          if (!options.task) {
+            throw createStandardError(
+              TaskOMaticErrorCodes.INVALID_INPUT,
+              "--task <id> is required for execution benchmark",
+              {
+                suggestions: ["Provide a task ID using --task <id>"],
+              }
+            );
+          }
+          input = {
+            taskId: options.task,
+            verificationCommands: options.verify,
+            maxRetries: options.maxRetries,
+          } as ExecutionBenchmarkInput;
+          break;
 
-        // Task creation options
-        title: options.title,
-        content: options.content,
-        parentId: options.parentId,
-        effort: options.effort,
-        force: options.force,
+        case "execute-loop":
+          input = {
+            loopOptions: {
+              filters: { status: options.status },
+              config: {
+                verificationCommands: options.verify,
+                maxRetries: options.maxRetries,
+              },
+            },
+          } as ExecuteLoopBenchmarkInput;
+          break;
 
-        // PRD creation/combine options
-        description: options.description,
-        outputDir: options.outputDir,
-        filename: options.filename,
-        prds: options.prds
-          ? options.prds.split(",").map((p: string) => p.trim())
-          : undefined,
+        case "operation": {
+          if (!options.operation) {
+            throw createStandardError(
+              TaskOMaticErrorCodes.INVALID_INPUT,
+              "--operation <id> is required for operation benchmark",
+              {
+                suggestions: ["Provide an operation ID using --operation <id>"],
+              }
+            );
+          }
+          
+          // Construct params from available options
+          const params: Record<string, unknown> = {};
+          if (options.file) params.file = options.file;
+          
+          input = {
+            operationId: options.operation,
+            params,
+          } as OperationBenchmarkInput;
+          break;
+        }
+          
+        case "workflow":
+          throw createStandardError(
+            TaskOMaticErrorCodes.INVALID_INPUT,
+            "Workflow benchmark requires complex input. Use CLI wizard or file input (not yet implemented in basic CLI)",
+            {
+              suggestions: [
+                "Use the interactive wizard",
+                "Provide a configuration file (future feature)",
+              ],
+            }
+          );
 
-        // PRD refine options
-        questionMode: options.questionMode,
-        answers: options.answers ? JSON.parse(options.answers) : undefined,
-      };
+        default:
+          throw createStandardError(
+            TaskOMaticErrorCodes.INVALID_INPUT,
+            `Unknown benchmark type: ${type}`,
+            {
+              suggestions: [
+                "execution",
+                "execute-loop",
+                "operation",
+                "workflow",
+              ],
+            }
+          );
+      }
 
-      // Prepare dashboard
-      console.log(chalk.bold("\nBenchmark Progress:"));
-      const modelMap = new Map<string, number>();
-      const modelStatus = new Map<string, string>();
-
-      // Print initial lines and map indices
-      models.forEach((m, i) => {
-        const id = `${m.provider}:${m.model}${
-          m.reasoningTokens ? `:reasoning=${m.reasoningTokens}` : ""
-        }`;
-        modelMap.set(id, i);
-        modelStatus.set(id, "Waiting...");
-        console.log(chalk.dim(`- ${id}: Waiting...`));
-      });
-      const totalModels = models.length;
-
-      const run = await benchmarkService.runBenchmark(
-        operation,
+      // Execute benchmark
+      const run = await orchestrator.run(
+        type as BenchmarkOperationType,
         input,
         config,
         (event) => {
-          const index = modelMap.get(event.modelId);
-          if (index === undefined) return;
-
-          // Update status in memory
-          let statusStr = "";
-          if (event.type === "start") {
-            statusStr = chalk.yellow("Starting...");
-          } else if (event.type === "progress") {
-            const bps = event.currentBps ? `${event.currentBps} B/s` : "0 B/s";
-            const size = event.currentSize ? `${event.currentSize} B` : "0 B";
-            statusStr = `${chalk.blue(
-              "Running"
-            )} - Size: ${size}, Speed: ${bps}`;
-          } else if (event.type === "complete") {
-            statusStr = chalk.green(`Completed (${event.duration}ms)`);
-          } else if (event.type === "error") {
-            statusStr = chalk.red(`Failed: ${event.error}`);
+          const timestamp = new Date().toLocaleTimeString();
+          const prefix = `[${timestamp}] ${chalk.cyan(event.modelId)}`;
+          
+          switch (event.type) {
+            case "start":
+              console.log(`${prefix} Starting...`);
+              break;
+            case "progress":
+              console.log(`${prefix} ${event.message}`);
+              break;
+            case "complete":
+              console.log(`${prefix} ${chalk.green("Completed")} (${event.duration}ms)`);
+              break;
+            case "error":
+              console.log(`${prefix} ${chalk.red("Failed")}: ${event.error}`);
+              break;
           }
-          modelStatus.set(event.modelId, statusStr);
-
-          // Update display
-          // Move cursor up to the specific line
-          // Distance from bottom = totalModels - index
-          const up = totalModels - index;
-          process.stdout.write(`\x1B[${up}A`); // Move up
-          process.stdout.write(`\x1B[2K`); // Clear line
-          process.stdout.write(
-            `- ${chalk.bold(event.modelId)}: ${statusStr}\r`
-          );
-          process.stdout.write(`\x1B[${up}B`); // Move down
         }
       );
 
-      console.log(chalk.green(`\n✓ Benchmark completed! Run ID: ${run.id}`));
-
-      console.log(
-        chalk.bold(
-          `\n${"Model".padEnd(40)} | ${"Duration".padEnd(10)} | ${"TTFT".padEnd(
-            8
-          )} | ${"Tokens".padEnd(10)} | ${"TPS".padEnd(8)} | ${"BPS".padEnd(
-            8
-          )} | ${"Size".padEnd(10)} | ${"Cost".padEnd(10)}`
-        )
-      );
-      console.log("-".repeat(130)); // Adjusted line length for new columns
-
-      run.results.forEach((r) => {
-        const duration = `${r.duration}ms`.padEnd(10);
-        const ttft = r.timeToFirstToken
-          ? `${r.timeToFirstToken}ms`.padEnd(8)
-          : "-".padEnd(8);
-        const tokens = r.tokenUsage
-          ? `${r.tokenUsage.total}`.padEnd(10)
-          : "-".padEnd(10);
-        const tps = r.tps ? `${r.tps}`.padEnd(8) : "-".padEnd(8);
-        const bps = r.bps ? `${r.bps}`.padEnd(8) : "-".padEnd(8);
-        const size = r.responseSize
-          ? `${r.responseSize}`.padEnd(10)
-          : "-".padEnd(10);
-        const cost = r.cost
-          ? `$${r.cost.toFixed(6)}`.padEnd(10)
-          : "-".padEnd(10);
-
-        console.log(
-          `${r.modelId.padEnd(
-            40
-          )} | ${duration} | ${ttft} | ${tokens} | ${tps} | ${bps} | ${size} | ${cost}`
-        );
-        if (r.error) {
-          console.log(chalk.red(`  Error: ${r.error}`));
-        }
+      console.log(chalk.bold.green(`\nBenchmark run completed: ${run.id}`));
+      console.log(`Run 'task-o-matic bench show ${run.id}' to view details.`);
+      
+      // List active worktrees
+      console.log(chalk.bold("\nActive Worktrees:"));
+      const worktrees = await orchestrator.getWorktreesByRunId(run.id);
+      worktrees.forEach(wt => {
+        console.log(`  ${chalk.cyan(wt.modelId)}: ${chalk.gray(wt.path)}`);
       });
-    } catch (error: any) {
-      displayError(error);
+
+    } catch (error) {
+      console.error(chalk.red("\nBenchmark failed:"));
+      console.error(error instanceof Error ? error.message : String(error));
       process.exit(1);
     }
   });
+
+// ============================================================================
+// LIST COMMAND
+// ============================================================================
 
 benchmarkCommand
   .command("list")
-  .description("List past benchmark runs")
-  .action(() => {
-    const runs = benchmarkService.listRuns();
-    if (runs.length === 0) {
-      console.log(chalk.yellow("No benchmark runs found."));
-      return;
-    }
+  .description("List benchmark runs")
+  .option("-t, --type <type>", "Filter by type")
+  .option("-s, --status <status>", "Filter by status")
+  .option("-l, --limit <n>", "Limit results", parseInt, 10)
+  .action(async (options) => {
+    try {
+      const runs = await orchestrator.listRuns({
+        type: options.type as BenchmarkOperationType,
+        status: options.status,
+        limit: options.limit
+      });
 
-    console.log(chalk.bold("Benchmark Runs:"));
-    runs.forEach((run) => {
-      const date = new Date(run.timestamp).toLocaleString();
-      console.log(`- ${chalk.cyan(run.id)} (${date}) - ${run.command}`);
-    });
+      if (runs.length === 0) {
+        console.log("No benchmark runs found.");
+        return;
+      }
+
+      console.log(chalk.bold("\nBenchmark Runs:"));
+      console.log(`${"ID".padEnd(30)}${"Type".padEnd(15)}${"Status".padEnd(12)}${"Models".padEnd(8)}Date`);
+      console.log("-".repeat(80));
+
+      runs.forEach(run => {
+        const date = new Date(run.createdAt).toLocaleString();
+        const statusRaw = run.status;
+        const statusColored = statusColor(statusRaw);
+        const statusPadded = statusColored + " ".repeat(Math.max(0, 12 - statusRaw.length));
+        console.log(
+          `${run.id.padEnd(30)}${run.type.padEnd(15)}${statusPadded}${String(run.config.models.length).padEnd(8)}${date}`
+        );
+      });
+      console.log("");
+
+    } catch (error) {
+      console.error(chalk.red("Failed to list runs:"), error);
+    }
   });
 
-benchmarkCommand
-  .command("operations")
-  .description("List all available benchmark operations")
-  .action(() => {
-    const operations = benchmarkRegistry.list();
-
-    console.log(chalk.bold("\n📊 Available Benchmark Operations\n"));
-    console.log(
-      chalk.dim("Use these operation IDs with 'benchmark run <operation>'\n")
-    );
-
-    // Group by category
-    const taskOps = operations.filter((op: any) => op.id.startsWith("task-"));
-    const prdOps = operations.filter((op: any) => op.id.startsWith("prd-"));
-    const workflowOps = operations.filter((op: any) =>
-      op.id.startsWith("workflow-")
-    );
-
-    if (taskOps.length > 0) {
-      console.log(chalk.cyan.bold("Task Operations:"));
-      taskOps.forEach((op: any) => {
-        console.log(`  ${chalk.green(op.id.padEnd(20))} - ${op.description}`);
-      });
-      console.log();
-    }
-
-    if (prdOps.length > 0) {
-      console.log(chalk.cyan.bold("PRD Operations:"));
-      prdOps.forEach((op: any) => {
-        console.log(`  ${chalk.green(op.id.padEnd(20))} - ${op.description}`);
-      });
-      console.log();
-    }
-
-    if (workflowOps.length > 0) {
-      console.log(chalk.cyan.bold("Workflow Operations:"));
-      workflowOps.forEach((op: any) => {
-        console.log(`  ${chalk.green(op.id.padEnd(20))} - ${op.description}`);
-      });
-      console.log();
-    }
-
-    console.log(chalk.dim("\nTotal operations: " + operations.length));
-    console.log(chalk.dim("\nExample usage:"));
-    console.log(
-      chalk.gray(
-        '  task-o-matic benchmark run task-create --models anthropic:claude-3.5-sonnet --title "Example task"'
-      )
-    );
-    console.log(
-      chalk.gray(
-        "  task-o-matic benchmark run prd-parse --models openai:gpt-4 --file ./prd.md"
-      )
-    );
-  });
+// ============================================================================
+// SHOW COMMAND
+// ============================================================================
 
 benchmarkCommand
   .command("show")
-  .description("Show details of a benchmark run")
-  .argument("<id>", "Run ID")
-  .action((id) => {
-    const run = benchmarkService.getRun(id);
-    if (!run) {
-      console.error(chalk.red(`Run ${id} not found`));
-      process.exit(1);
-    }
-
-    console.log(chalk.bold(`Run: ${run.id}`));
-    console.log(`Date: ${new Date(run.timestamp).toLocaleString()}`);
-    console.log(`Command: ${run.command}`);
-    console.log(`Input: ${JSON.stringify(run.input, null, 2)}`); // Might be large
-    console.log(chalk.bold("\nConfiguration:"));
-    console.log(`Concurrency: ${run.config.concurrency}`);
-    console.log(`Delay: ${run.config.delay}ms`);
-
-    console.log(chalk.bold("\nResults:"));
-    const results = run.results;
-    results.forEach((result) => {
-      console.log(chalk.bold(`\n[${result.modelId}]`));
-      console.log(`Duration: ${result.duration}ms`);
-      if (result.timeToFirstToken) {
-        console.log(`TTFT: ${result.timeToFirstToken}ms`);
+  .description("Show benchmark run details")
+  .argument("<run-id>", "Run ID")
+  .action(async (runId) => {
+    try {
+      const run = await orchestrator.getRun(runId);
+      if (!run) {
+        console.error(chalk.red(`Run not found: ${runId}`));
+        return;
       }
-      if (result.tokenUsage) {
+
+      console.log(chalk.bold(`\nRun: ${run.id}`));
+      console.log(`Type: ${run.type}`);
+      console.log(`Status: ${statusColor(run.status)}`);
+      console.log(`Date: ${new Date(run.createdAt).toLocaleString()}`);
+      console.log(`Base Commit: ${run.baseCommit.substring(0, 8)}`);
+      
+      console.log(chalk.bold("\nResults:"));
+      
+      // Table Header
+      const modelW = 30;
+      const statusW = 10;
+      const durW = 10;
+      const linesW = 15;
+      const scoreW = 8;
+      
+      console.log(
+        `${"Model".padEnd(modelW)}${"Status".padEnd(statusW)}${"Duration".padEnd(durW)}${"Lines +/-".padEnd(linesW)}Score`
+      );
+      console.log("-".repeat(modelW + statusW + durW + linesW + scoreW));
+
+      run.results.forEach(res => {
+        const modelId = res.modelId.length > modelW - 2 ? `${res.modelId.substring(0, modelW - 2)}..` : res.modelId;
+        
+        const statusRaw = res.status === "success" ? "PASS" : 
+                       res.status === "error" ? "ERR" : "FAIL";
+        const statusColored = res.status === "success" ? chalk.green("PASS") : 
+                              res.status === "error" ? chalk.red("ERR") : chalk.yellow("FAIL");
+        const statusPadded = statusColored + " ".repeat(Math.max(0, statusW - statusRaw.length));
+
+        const duration = `${Math.round(res.duration / 1000)}s`;
+        const lines = res.metrics.code 
+          ? `+${res.metrics.code.linesAdded} / -${res.metrics.code.linesRemoved}`
+          : "N/A";
+        
+        const score = run.scores.find(s => s.modelId === res.modelId);
+        const scoreStr = score ? `${score.score}/5` : "-";
+
         console.log(
-          `Tokens: ${result.tokenUsage.total} (Prompt: ${result.tokenUsage.prompt}, Completion: ${result.tokenUsage.completion})`
+          `${modelId.padEnd(modelW)}${statusPadded}${duration.padEnd(durW)}${lines.padEnd(linesW)}${scoreStr}`
         );
-      }
-      if (result.bps) {
-        console.log(`Throughput: ${result.bps} B/s`);
-      }
-      if (result.responseSize) {
-        console.log(`Size: ${result.responseSize} bytes`);
-      }
-      if (result.cost) {
-        console.log(`Estimated Cost: $${result.cost.toFixed(6)}`);
+      });
+      console.log("");
+      
+      // Worktrees hint
+      console.log(chalk.gray(`Use 'bench worktrees cleanup ${runId}' to remove worktrees.`));
+
+    } catch (error) {
+      console.error(chalk.red("Failed to show run:"), error);
+    }
+  });
+
+// ============================================================================
+// WORKTREES COMMANDS
+// ============================================================================
+
+const worktreesCommand = benchmarkCommand.command("worktrees").description("Manage benchmark worktrees");
+
+worktreesCommand
+  .command("list")
+  .description("List active worktrees")
+  .action(async () => {
+    try {
+      const worktrees = await orchestrator.listWorktrees();
+      if (worktrees.length === 0) {
+        console.log("No active worktrees.");
+        return;
       }
 
-      if (result.error) {
-        console.log(chalk.red(`Error: ${result.error}`));
-      } else {
-        const outputStr =
-          typeof result.output === "string"
-            ? result.output
-            : JSON.stringify(result.output, null, 2);
-        const preview =
-          outputStr.length > 500
-            ? outputStr.substring(0, 500) + "..."
-            : outputStr;
-        console.log(`Output: ${preview}`);
-      }
-    });
+      console.log(chalk.bold(`\nActive Worktrees (${worktrees.length}):`));
+      worktrees.forEach(wt => {
+        console.log(`${chalk.cyan(wt.name)}`);
+        console.log(`  Run: ${wt.runId}`);
+        console.log(`  Model: ${wt.modelId}`);
+        console.log(`  Path: ${wt.path}`);
+        console.log("");
+      });
+    } catch (error) {
+      console.error(chalk.red("Failed to list worktrees:"), error);
+    }
   });
+
+worktreesCommand
+  .command("cleanup")
+  .description("Cleanup worktrees for a run")
+  .argument("<run-id>", "Run ID")
+  .action(async (runId) => {
+    try {
+      await orchestrator.cleanupRun(runId);
+      console.log(chalk.green(`Cleaned up worktrees for run: ${runId}`));
+    } catch (error) {
+      console.error(chalk.red("Failed to cleanup worktrees:"), error);
+    }
+  });
+
+// ============================================================================
+// SCORE COMMAND
+// ============================================================================
+
+benchmarkCommand
+  .command("score")
+  .description("Score a model's result")
+  .argument("<run-id>", "Run ID")
+  .requiredOption("-m, --model <model>", "Model ID")
+  .requiredOption("-s, --score <n>", "Score (1-5)", parseInt)
+  .option("-n, --note <text>", "Optional note")
+  .action(async (runId, options) => {
+    try {
+      const score: ModelScore = {
+        modelId: options.model,
+        score: options.score,
+        notes: options.note,
+        scoredAt: Date.now(),
+        scoredBy: "user" // Could get from git config user.name in future
+      };
+
+      await orchestrator.scoreModel(runId, score);
+      console.log(chalk.green(`Score recorded for ${options.model}`));
+    } catch (error) {
+      console.error(chalk.red("Failed to record score:"), error);
+    }
+  });
+
+// ============================================================================
+// COMPARE COMMAND
+// ============================================================================
 
 benchmarkCommand
   .command("compare")
-  .description("Compare results of a benchmark run")
-  .argument("<id>", "Run ID")
-  .action((id) => {
-    const run = benchmarkService.getRun(id);
-    if (!run) {
-      console.error(chalk.red(`Run ${id} not found`));
-      process.exit(1);
-    }
-
-    console.log(chalk.bold(`Comparison for Run: ${run.id}`));
-
-    // Simple comparison: Duration and Success/Fail
-    // In future could add diffing of outputs
-
-    const table = run.results.map((res) => ({
-      Model: res.modelId,
-      Status: res.error ? "FAILED" : "SUCCESS",
-      Duration: `${res.duration}ms`,
-      Tokens: res.tokenUsage ? res.tokenUsage.total : "?",
-      BPS: res.bps ? res.bps : "?",
-      Size: res.responseSize
-        ? res.responseSize
-        : res.output
-        ? JSON.stringify(res.output).length
-        : 0,
-    }));
-
-    console.table(table);
+  .description("Compare results across models (placeholder)")
+  .argument("<run-id>", "Run ID")
+  .action(async (_runId) => {
+    console.log("Compare visualizer coming soon. Use 'bench show' for metrics comparison.");
+    // Implementation of detailed comparison (diff visualization etc) would go here
   });
-
-benchmarkCommand
-  .command("execution")
-  .description("Run execution benchmark (Git Branch Isolation)")
-  .requiredOption("--task-id <id>", "Task ID to benchmark")
-  .requiredOption(
-    "--models <list>",
-    "Comma-separated list of models (provider:model)"
-  )
-  .option(
-    "--verify <command>",
-    "Verification command (can be used multiple times)",
-    (value: string, previous: string[] = []) => {
-      return [...previous, value];
-    }
-  )
-  .option(
-    "--max-retries <number>",
-    "Maximum retries per model",
-    (val) => parseInt(val),
-    3
-  )
-  .option("--no-keep-branches", "Delete benchmark branches after run")
-  .action(async (options) => {
-    try {
-      const modelStrings = options.models.split(",");
-      const models: BenchmarkModelConfig[] = modelStrings.map((s: string) =>
-        parseModelString(s.trim())
-      );
-
-      const config: BenchmarkConfig = {
-        models,
-        concurrency: 1, // Execution benchmarks must be serial due to git
-        delay: 0,
-      };
-
-      console.log(
-        chalk.blue.bold(
-          `\n🚀 Starting Execution Benchmark for Task ${options.taskId}`
-        )
-      );
-      console.log(chalk.dim(`Models: ${models.length}`));
-
-      // Prepare dashboard
-      const modelStatus = new Map<string, string>();
-      models.forEach((m) => {
-        const id = `${m.provider}:${m.model}`;
-        modelStatus.set(id, "Waiting...");
-        console.log(chalk.dim(`- ${id}: Waiting...`));
-      });
-      const totalModels = models.length;
-      let currentIndex = 0;
-
-      const run = await benchmarkService.runExecutionBenchmark(
-        {
-          taskId: options.taskId,
-          verificationCommands: options.verify,
-          maxRetries: options.maxRetries,
-          keepBranches: options.keepBranches,
-        },
-        config,
-        (event) => {
-          if (event.type === "start") {
-            currentIndex++;
-          }
-
-          let statusStr = "";
-          if (event.type === "start") {
-            statusStr = chalk.yellow("Running...");
-          } else if (event.type === "complete") {
-            statusStr = chalk.green(`PASS (${event.duration}ms)`);
-          } else if (event.type === "error") {
-            statusStr = chalk.red(
-              `FAIL: ${event.error ? event.error.substring(0, 50) : "Unknown"}`
-            );
-          }
-
-          // Simple progress update (overwrite line logic is complex with multiple logs in between)
-          // Since executeTaskCore logs a lot, we shouldn't try to be too fancy with cursor movement here.
-          // Instead, we just print the final status for the model.
-          if (event.type === "complete" || event.type === "error") {
-            console.log(`${chalk.bold(event.modelId)}: ${statusStr}`);
-          }
-        }
-      );
-
-      console.log(chalk.green(`\n✓ Execution Benchmark Completed!`));
-      console.log(chalk.bold("\nSummary:"));
-      console.log(
-        chalk.bold(
-          `${"Model".padEnd(30)} | ${"Status".padEnd(10)} | ${"Branch".padEnd(
-            40
-          )} | ${"Duration".padEnd(10)}`
-        )
-      );
-      console.log("-".repeat(100));
-
-      run.results.forEach((r) => {
-        const status =
-          r.output?.status === "PASS" ? chalk.green("PASS") : chalk.red("FAIL");
-        const branch = r.output?.branch || "-";
-        const duration = `${r.duration}ms`;
-
-        console.log(
-          `${r.modelId.padEnd(30)} | ${status.padEnd(
-            19 // +9 for color codes
-          )} | ${branch.padEnd(40)} | ${duration.padEnd(10)}`
-        );
-      });
-
-      console.log(chalk.dim(`\nRun ID: ${run.id}`));
-      console.log(
-        chalk.blue(`To switch to a branch: git checkout <branch_name>`)
-      );
-    } catch (error: any) {
-      displayError(error);
-      process.exit(1);
-    }
-  });
-
-benchmarkCommand
-  .command("execute-loop")
-  .description("Benchmark task loop execution across models")
-  .option(
-    "--status <status>",
-    "Filter tasks by status (todo/in-progress/completed)"
-  )
-  .option("--tag <tag>", "Filter tasks by tag")
-  .option(
-    "--ids <ids>",
-    "Comma-separated list of task IDs to execute",
-    (value: string) => value.split(",").map((id) => id.trim())
-  )
-  .requiredOption(
-    "--models <list>",
-    "Comma-separated list of models (provider:model)"
-  )
-  .option(
-    "--verify <command>",
-    "Verification command to run after each task (can be used multiple times)",
-    (value: string, previous: string[] = []) => {
-      return [...previous, value];
-    }
-  )
-  .option(
-    "--max-retries <number>",
-    "Maximum number of retries per task",
-    (value: string) => parseInt(value, 10),
-    3
-  )
-  .option(
-    "--try-models <models>",
-    "Progressive model/executor configs for each retry"
-  )
-  .option("--no-keep-branches", "Delete benchmark branches after run")
-  .action(async (options) => {
-    try {
-      const modelStrings = options.models.split(",");
-      const models: BenchmarkModelConfig[] = modelStrings.map((s: string) =>
-        parseModelString(s.trim())
-      );
-
-      const config: BenchmarkConfig = {
-        models,
-        concurrency: 1,
-        delay: 0,
-      };
-
-      // Parse tryModels
-      let tryModels: ModelAttemptConfig[] | undefined;
-      if (options.tryModels) {
-        tryModels = parseTryModels(options.tryModels);
-      }
-
-      console.log(chalk.blue.bold("\n🚀 Starting Execute Loop Benchmark"));
-      console.log(chalk.dim(`Models: ${models.length}`));
-
-      const loopOptions: ExecuteLoopOptions = {
-        filters: {
-          status: options.status,
-          tag: options.tag,
-          taskIds: options.ids,
-        },
-        tool: "opencode", // Default tool for benchmark
-        config: {
-          maxRetries: options.maxRetries,
-          verificationCommands: options.verify,
-          tryModels,
-          autoCommit: true, // Force auto-commit for git capture
-        },
-        dry: false,
-      };
-
-      // Dashboard setup
-      models.forEach((m) => {
-        const id = `${m.provider}:${m.model}`;
-        console.log(chalk.dim(`- ${id}: Waiting...`));
-      });
-
-      const run = await benchmarkService.runExecuteLoopBenchmark(
-        {
-          loopOptions,
-          keepBranches: options.keepBranches,
-        },
-        config,
-        (event) => {
-          let statusStr = "";
-          if (event.type === "start") {
-            statusStr = chalk.yellow("Running...");
-          } else if (event.type === "complete") {
-            statusStr = chalk.green(`PASS (${event.duration}ms)`);
-          } else if (event.type === "error") {
-            statusStr = chalk.red(
-              `FAIL: ${event.error ? event.error.substring(0, 50) : "Unknown"}`
-            );
-          }
-
-          if (event.type === "complete" || event.type === "error") {
-            console.log(`${chalk.bold(event.modelId)}: ${statusStr}`);
-          }
-        }
-      );
-
-      console.log(chalk.green(`\n✓ Execute Loop Benchmark Completed!`));
-      console.log(chalk.bold("\nSummary:"));
-      console.log(
-        chalk.bold(
-          `${"Model".padEnd(30)} | ${"Status".padEnd(10)} | ${"Branch".padEnd(
-            40
-          )} | ${"Duration".padEnd(10)}`
-        )
-      );
-      console.log("-".repeat(100));
-
-      run.results.forEach((r) => {
-        const status =
-          r.output?.status === "PASS" ? chalk.green("PASS") : chalk.red("FAIL");
-        const branch = r.output?.branch || "-";
-        const duration = `${r.duration}ms`;
-
-        console.log(
-          `${r.modelId.padEnd(30)} | ${status.padEnd(19)} | ${branch.padEnd(
-            40
-          )} | ${duration.padEnd(10)}`
-        );
-        if (r.error) {
-          console.log(chalk.red(`  Error: ${r.error}`));
-        }
-      });
-    } catch (error: any) {
-      displayError(error);
-      process.exit(1);
-    }
-  });
-
-benchmarkCommand
-  .command("workflow")
-  .description("Benchmark complete workflow execution across multiple models")
-  .requiredOption(
-    "--models <list>",
-    "Comma-separated list of models (provider:model[:reasoning=<tokens>])"
-  )
-  .option("--concurrency <number>", "Max concurrent requests", "3")
-  .option("--delay <number>", "Delay between requests in ms", "1000")
-
-  // Benchmark specific options
-  .option("--temp-dir <dir>", "Base directory for temporary projects")
-  .option("--execute", "Execute generated tasks in the benchmark")
-
-  // Inherit workflow options
-  .option("--skip-all", "Skip all optional steps (use defaults)")
-  .option("--project-name <name>", "Project name")
-  .option("--init-method <method>", "Initialization method: quick, custom, ai")
-  .option(
-    "--project-description <desc>",
-    "Project description for AI-assisted init"
-  )
-  .option("--frontend <framework>", "Frontend framework")
-  .option("--backend <framework>", "Backend framework")
-  .option("--auth", "Include authentication")
-
-  // PRD options
-  .option("--prd-method <method>", "PRD method: upload, manual, ai, skip")
-  .option("--prd-file <path>", "Path to existing PRD file")
-  .option("--prd-description <desc>", "Product description")
-
-  // Task options
-  .option("--skip-refine", "Skip PRD refinement")
-  .option("--skip-generate", "Skip task generation")
-  .option("--skip-split", "Skip task splitting")
-  .option(
-    "--generate-instructions <instructions>",
-    "Custom task generation instructions"
-  )
-  .option("--split-instructions <instructions>", "Custom split instructions")
-
-  .action(async (options) => {
-    try {
-      await runWorkflowBenchmark(options);
-    } catch (error: any) {
-      displayError(error);
-      process.exit(1);
-    }
-  });
-
-/**
- * Execute workflow benchmark across multiple models
- */
-async function runWorkflowBenchmark(options: any): Promise<void> {
-  console.log(chalk.blue.bold("\n🚀 Task-O-Matic Workflow Benchmark\n"));
-
-  // Parse models
-  const modelStrings = options.models.split(",");
-  const models: BenchmarkModelConfig[] = modelStrings.map((s: string) =>
-    parseModelString(s.trim())
-  );
-
-  const config: BenchmarkConfig = {
-    models,
-    concurrency: parseInt(options.concurrency, 10),
-    delay: parseInt(options.delay, 10),
-  };
-
-  console.log(
-    chalk.dim(
-      `Models: ${models.length}, Concurrency: ${config.concurrency}, Delay: ${config.delay}ms`
-    )
-  );
-
-  // Phase 1: Collect user responses interactively
-  console.log(chalk.blue.bold("\n📋 Phase 1: Collecting Workflow Responses\n"));
-  console.log(
-    chalk.gray(
-      "Please answer the following questions. Your responses will be used for all models."
-    )
-  );
-
-  const collectedResponses = await collectWorkflowResponses(options);
-
-  // Phase 2: Execute workflow on all models
-  console.log(chalk.blue.bold("\n⚡ Phase 2: Executing Workflows\n"));
-  console.log(chalk.gray(`Running workflow on ${models.length} models...\n`));
-
-  // Prepare workflow input
-  const workflowInput: WorkflowBenchmarkInput = {
-    collectedResponses,
-    workflowOptions: {
-      ...options,
-      executeTasks: options.execute, // Pass execute flag
-    } as WorkflowAutomationOptions,
-    tempDirBase: options.tempDir || "/tmp",
-  };
-
-  // Dashboard setup
-  const modelMap = new Map<string, number>();
-  models.forEach((m, i) => {
-    const id = `${m.provider}:${m.model}`;
-    modelMap.set(id, i);
-    console.log(chalk.dim(`- ${id}: Waiting...`));
-  });
-  const totalModels = models.length;
-
-  const run = await benchmarkService.runWorkflowBenchmark(
-    workflowInput,
-    config,
-    (event) => {
-      const index = modelMap.get(event.modelId);
-      if (index === undefined) return;
-
-      let statusStr = "";
-      if (event.type === "start") {
-        statusStr = chalk.yellow("Starting...");
-      } else if (event.type === "progress") {
-        statusStr = chalk.blue("Running...");
-      } else if (event.type === "complete") {
-        statusStr = chalk.green(`Completed (${event.duration}ms)`);
-      } else if (event.type === "error") {
-        statusStr = chalk.red(`Failed: ${event.error}`);
-      }
-
-      // Update display (simple update)
-      const up = totalModels - index;
-      process.stdout.write(`\x1B[${up}A`); // Move up
-      process.stdout.write(`\x1B[2K`); // Clear line
-      process.stdout.write(`- ${chalk.bold(event.modelId)}: ${statusStr}\r`);
-      process.stdout.write(`\x1B[${up}B`); // Move down
-    }
-  );
-
-  console.log(
-    chalk.green(`\n✅ Workflow benchmark completed! Run ID: ${run.id}`)
-  );
-
-  // Display results
-  await displayWorkflowBenchmarkResults(run);
-
-  // Optional: Let user select a model
-  await promptForModelSelection(run, collectedResponses);
-}
-
-/**
- * Collect workflow responses from user interactively
- */
-async function collectWorkflowResponses(
-  options: any
-): Promise<WorkflowBenchmarkInput["collectedResponses"]> {
-  // Use provided options or prompt user
-  const getOrPrompt = async <T>(
-    preAnswered: T | undefined,
-    promptFn: () => Promise<T>,
-    skipCondition: boolean = false
-  ): Promise<T> => {
-    if (skipCondition) {
-      throw new Error("Step skipped");
-    }
-    if (preAnswered !== undefined) {
-      return preAnswered;
-    }
-    return promptFn();
-  };
-
-  // Project setup questions
-  const projectName = await getOrPrompt(options.projectName, () =>
-    textInputPrompt("What is the name of your project?", "benchmark-proj")
-  );
-
-  const initMethod = await getOrPrompt(options.initMethod, () =>
-    selectPrompt("How would you like to configure your project stack?", [
-      { name: "Quick start (recommended defaults)", value: "quick" },
-      { name: "Custom configuration", value: "custom" },
-      { name: "AI-assisted (describe your project)", value: "ai" },
-    ])
-  );
-
-  let projectDescription: string | undefined;
-  if (initMethod === "ai") {
-    projectDescription = await getOrPrompt(options.projectDescription, () =>
-      textInputPrompt("Describe your project:")
-    );
-  }
-
-  // Stack configuration (if custom)
-  let stackConfig: any = {};
-  if (initMethod === "custom") {
-    stackConfig.frontend = await getOrPrompt(options.frontend, () =>
-      selectPrompt("Frontend framework:", ["next", "react", "vue"])
-    );
-    stackConfig.backend = await getOrPrompt(options.backend, () =>
-      selectPrompt("Backend framework:", ["hono", "express", "fastify"])
-    );
-    stackConfig.auth = await getOrPrompt(options.auth, () =>
-      confirmPrompt("Include authentication?", true)
-    );
-  }
-
-  // PRD questions
-  const prdMethod = await getOrPrompt(options.prdMethod, () =>
-    selectPrompt("How would you like to define your PRD?", [
-      { name: "AI-assisted creation", value: "ai" },
-      { name: "Upload existing file", value: "upload" },
-      { name: "Skip PRD", value: "skip" },
-    ])
-  );
-
-  let prdDescription: string | undefined;
-  let prdFile: string | undefined;
-
-  if (prdMethod === "ai") {
-    prdDescription = await getOrPrompt(options.prdDescription, () =>
-      textInputPrompt("Describe your product in detail:")
-    );
-  } else if (prdMethod === "upload") {
-    prdFile = await getOrPrompt(options.prdFile, () =>
-      textInputPrompt("Path to PRD file:")
-    );
-  }
-
-  const generateTasks = !options.skipGenerate && prdMethod !== "skip";
-  const customInstructions =
-    options.generateInstructions ||
-    (generateTasks
-      ? await textInputPrompt(
-          "Custom task generation instructions (optional):",
-          ""
-        )
-      : undefined);
-
-  const splitTasks =
-    !options.skipSplit && generateTasks
-      ? await confirmPrompt("Split complex tasks into subtasks?", true)
-      : false;
-
-  const splitInstructions =
-    splitTasks && options.splitInstructions
-      ? options.splitInstructions
-      : splitTasks
-      ? await textInputPrompt(
-          "Custom splitting instructions (optional):",
-          "Break into 2-4 hour chunks"
-        )
-      : undefined;
-
-  return {
-    projectName,
-    initMethod: initMethod as "quick" | "custom" | "ai",
-    projectDescription,
-    stackConfig,
-    prdMethod: prdMethod as "upload" | "manual" | "ai" | "skip",
-    prdContent: undefined,
-    prdDescription,
-    prdFile,
-    refinePrd: false, // Simplify benchmark for now
-    refineFeedback: undefined,
-    generateTasks,
-    customInstructions,
-    splitTasks,
-    splitInstructions,
-  };
-}
-
-/**
- * Display workflow benchmark results in a comprehensive format
- */
-async function displayWorkflowBenchmarkResults(run: any): Promise<void> {
-  console.log(chalk.bold("\n📊 Workflow Benchmark Results\n"));
-
-  console.log(
-    chalk.bold(
-      `${"Model".padEnd(40)} | ${"Duration".padEnd(10)} | ${"Tasks".padEnd(
-        8
-      )} | ${"Steps".padEnd(8)} | ${"Execution".padEnd(15)}`
-    )
-  );
-  console.log("-".repeat(100));
-
-  run.results.forEach((r: any) => {
-    const duration = `${r.duration}ms`.padEnd(10);
-    const taskCount = r.output?.stats?.totalTasks || 0;
-    const tasks = `${taskCount}`.padEnd(8);
-    const steps = r.output?.stats
-      ? `${r.output.stats.successfulSteps}/${r.output.stats.totalSteps}`.padEnd(
-          8
-        )
-      : "-".padEnd(8);
-
-    let execStatus = "-".padEnd(15);
-    if (r.output?.execution) {
-      const execRes = r.output.execution.result;
-      execStatus =
-        `${execRes.completedTasks} pass, ${execRes.failedTasks} fail`.padEnd(
-          15
-        );
-    }
-
-    console.log(
-      `${r.modelId.padEnd(
-        40
-      )} | ${duration} | ${tasks} | ${steps} | ${execStatus}`
-    );
-
-    if (r.error) {
-      console.log(chalk.red(`  Error: ${r.error}`));
-    }
-  });
-}
-
-async function promptForModelSelection(
-  run: any,
-  responses: any
-): Promise<void> {
-  const successfulResults = run.results.filter((r: any) => !r.error);
-  if (successfulResults.length === 0) return;
-
-  const shouldSelect = await confirmPrompt(
-    "Would you like to keep one of these project runs?",
-    false
-  );
-
-  if (!shouldSelect) return;
-
-  // Implementation of selection (copy folder to current dir) logic would go here
-  // Omitted for brevity as per instructions
-  console.log(
-    chalk.yellow(
-      "Selection logic implemented in temp directory. Manual copy required for now."
-    )
-  );
-}
