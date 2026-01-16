@@ -514,35 +514,27 @@ initCommand
           });
         }
 
-        // Handle --create-prd if analysis succeeded
-        if (options.createPrd) {
-          console.log(chalk.blue("\n📄 Generating PRD from codebase..."));
-          
-          try {
-            // Import dynamically to avoid circular deps if any, or just use existing service pattern
-            const { prdService } = await import("task-o-matic-core");
-            
-            // Generate PRD using the analysis we just did implicitly via generateFromCodebase
-            // Note: prdService.generateFromCodebase runs analysis internally again. 
-            // Ideally we should pass the analysis, but the interface might not support it yet.
-            // For now, calling generateFromCodebase is safer as it handles the full flow including AI call.
-            // It might re-analyze but that's acceptable for now to ensure consistency.
-            
-            const prdResult = await prdService.generateFromCodebase({
-              workingDirectory: workingDir,
-              outputFile: "current-state.md",
-              // Reuse options if applicable, or defaults
-            });
-
-            console.log(chalk.green(`  ✓ Generated PRD: ${prdResult.prdPath}`));
-          } catch (error) {
-            console.error(chalk.red("  ❌ Failed to generate PRD:"), error instanceof Error ? error.message : String(error));
-          }
-        }
-
       } else {
         console.log(chalk.yellow("⚠️  Analysis had issues:"));
         analysisResult?.warnings?.forEach((w) => console.log(chalk.yellow(`   - ${w}`)));
+      }
+    }
+
+    // Handle --create-prd (independent of analysis)
+    if (options.createPrd) {
+      console.log(chalk.blue("\n📄 Generating PRD from codebase..."));
+
+      try {
+        const { prdService } = await import("task-o-matic-core");
+
+        const prdResult = await prdService.generateFromCodebase({
+          workingDirectory: workingDir,
+          outputFile: "current-state.md",
+        });
+
+        console.log(chalk.green(`  ✓ Generated PRD: ${prdResult.prdPath}`));
+      } catch (error) {
+        console.error(chalk.red("  ❌ Failed to generate PRD:"), error instanceof Error ? error.message : String(error));
       }
     }
 

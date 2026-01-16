@@ -1102,6 +1102,27 @@ export class PRDService {
     
     return lines.join("\n");
   }
+
+  /**
+   * Resolve PRD file to consistent storage key
+   */
+  private resolvePRDKey(file: string, workingDirectory?: string): string {
+    if (workingDirectory) {
+      setupWorkingDirectory(workingDirectory);
+    }
+
+    const taskOMaticDir = configManager.getTaskOMaticDir();
+    const absolutePrdDir = join(taskOMaticDir, "prd");
+
+    if (file.startsWith(taskOMaticDir)) {
+      return relative(taskOMaticDir, file);
+    } else if (file.startsWith(absolutePrdDir)) {
+      return relative(taskOMaticDir, file);
+    } else {
+      return "prd/" + basename(file);
+    }
+  }
+
   /**
    * Create a new version snapshot of a PRD file.
    */
@@ -1116,26 +1137,8 @@ export class PRDService {
     validateFileExists(input.file, `PRD file not found: ${input.file}`);
 
     const prdContent = readFileSync(input.file, "utf-8");
-    
-    // Get relative path for storage
-    const taskOMaticDir = configManager.getTaskOMaticDir();
-    let relativePath = input.file;
-    if (input.file.startsWith(taskOMaticDir)) {
-      relativePath = relative(taskOMaticDir, input.file);
-    } else if (input.workingDirectory && input.file.startsWith(input.workingDirectory)) {
-      // Try to resolve relative to working dir if possible, but storage expects relative to .task-o-matic usually
-      // Actually FileSystemStorage expects the "key" to be whatever. 
-      // But for getPRDVersionsFilePath, we want a consistent key.
-      // If the file is in .task-o-matic/prd/foo.md, we want the key to be prd/foo.md
-      const absolutePath = input.file;
-      const absolutePrdDir = join(taskOMaticDir, "prd");
-      if (absolutePath.startsWith(absolutePrdDir)) {
-        relativePath = relative(taskOMaticDir, absolutePath);
-      } else {
-        // Fallback: just use filename if we can't determine relative path inside .task-o-matic
-        relativePath = "prd/" + basename(input.file); 
-      }
-    }
+
+    const relativePath = this.resolvePRDKey(input.file, input.workingDirectory);
 
     // Get latest version to determine next version number
     const latestVersion = await this.storage.getLatestPRDVersion(relativePath);
@@ -1163,19 +1166,7 @@ export class PRDService {
     file: string;
     workingDirectory?: string;
   }): Promise<PRDVersion[]> {
-    const taskOMaticDir = configManager.getTaskOMaticDir();
-    let relativePath = input.file;
-    
-    // Logic to determine consistent key (same as createVersion)
-    const absolutePrdDir = join(taskOMaticDir, "prd");
-    if (input.file.startsWith(absolutePrdDir)) {
-      relativePath = relative(taskOMaticDir, input.file);
-    } else if (input.file.includes("/prd/") && !input.file.startsWith("/")) {
-       // Already relative?
-       relativePath = input.file;
-    } else {
-       relativePath = "prd/" + basename(input.file);
-    }
+    const relativePath = this.resolvePRDKey(input.file, input.workingDirectory);
 
     const versionData = await this.storage.getPRDVersions(relativePath);
     return versionData?.versions || [];

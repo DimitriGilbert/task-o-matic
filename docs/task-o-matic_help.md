@@ -840,3 +840,488 @@ Options:
   -h, --help                   display help for command
 ```
 
+
+## Prompt Commands
+
+### prompt --help
+```
+Usage: task-o-matic prompt [options] [name]
+
+Build AI service prompts with variable replacement for external tools
+
+Arguments:
+  name                              Prompt name (e.g., prd-parsing,
+                                    task-enhancement, task-breakdown,
+                                    prd-rework, documentation-detection)
+
+Options:
+  -t, --type <type>                 Prompt type: system or user (default: user)
+                                    (default: "user")
+  -l, --list                        List all available prompts and exit
+                                    (default: false)
+  -m, --metadata <name>             Show metadata for a specific prompt and exit
+  --prd-content <content>           PRD content (for PRD-related prompts)
+  --prd-file <filepath>             Load PRD content from file
+  --task-title <title>              Task title (for task-related prompts)
+  --task-description <description>  Task description (for task-related prompts)
+  --task-file <filepath>            Load task description from file
+  --stack-info <info>               Technology stack information (e.g.,
+                                    "Frontend: Next.js, Backend: Convex")
+  --context-info <info>             Additional context information
+  --user-feedback <feedback>        User feedback (for prd-rework prompt)
+  --var <key=value>                 Custom variable in format key=value (can be
+                                    used multiple times) (default: [])
+  --full-context                    Include comprehensive project context (file
+                                    structure, dependencies, etc.) (default:
+                                    false)
+  --executor <type>                 Format output for specific executor:
+                                    opencode, claude, gemini, codex
+  -h, --help                        display help for command
+
+Examples:
+  # List all available prompts
+  $ task-o-matic prompt --list
+
+  # Show metadata for a specific prompt
+  $ task-o-matic prompt --metadata prd-parsing
+  $ task-o-matic prompt --metadata task-enhancement --type user
+
+  # Build PRD parsing prompt with content from file
+  $ task-o-matic prompt prd-parsing --prd-file ./my-prd.md
+
+  # Build task enhancement prompt with task info
+  $ task-o-matic prompt task-enhancement --task-title "Add user auth" --task-description "Implement JWT authentication"
+
+  # Build with custom variables
+  $ task-o-matic prompt prd-parsing --var PRD_CONTENT="My PRD content" --var STACK_INFO="Next.js, Convex"
+
+  # Build system prompt
+  $ task-o-matic prompt prd-parsing --type system
+```
+
+
+## Init Commands
+
+### init --help
+```
+Usage: task-o-matic init [options] [command]
+
+Initialize task-o-matic project and bootstrap projects (web/native/cli)
+
+Options:
+  -h, --help                  display help for command
+
+Commands:
+  init [options]              Initialize a new task-o-matic project in the
+                              current directory
+  bootstrap [options] <name>  Bootstrap a new project (web/native/cli)
+  attach [options]            Attach task-o-matic to an existing project (detect
+                              stack automatically)
+```
+
+### init init --help
+```
+Usage: task-o-matic init init [options]
+
+Initialize a new task-o-matic project in the current directory
+
+Options:
+  --ai-provider <provider>   AI provider (openrouter/anthropic/openai/custom)
+                             (default: "openrouter")
+  --ai-model <model>         AI model (default: "z-ai/glm-4.6")
+  --ai-key <key>             AI API key
+  --ai-provider-url <url>    AI provider URL
+  --max-tokens <tokens>      Max tokens for AI (min 32768 for 2025) (default:
+                             "32768")
+  --temperature <temp>       AI temperature (default: "0.5")
+  --no-bootstrap             Skip bootstrap after initialization
+  --project-name <name>      Project name for bootstrap
+  --frontend <frontends...>  Frontend framework(s) - space/comma-separated
+                             (next, native-bare, cli, etc.) (default: "next")
+  --backend <backend>        Backend framework for bootstrap (default: "convex")
+  --database <database>      Database for bootstrap
+  --auth <auth>              Authentication for bootstrap (default:
+                             "better-auth")
+  --context7-api-key <key>   Context7 API key
+  --directory <dir>          Working directory for the project
+  --package-manager <pm>     Package manager (npm/pnpm/bun) (default: "npm")
+  --runtime <runtime>        Runtime (bun/node) (default: "node")
+  --payment <payment>        Payment provider (none/polar) (default: "none")
+  --cli-deps <level>         CLI dependency level
+                             (minimal/standard/full/task-o-matic) (default:
+                             "standard")
+  -h, --help                 display help for command
+```
+
+### init bootstrap --help
+```
+Usage: task-o-matic init bootstrap [options] <name>
+
+Bootstrap a new project (web/native/cli)
+
+Arguments:
+  name                       Project name
+
+Options:
+  --frontend <frontends...>  Frontend framework(s) - space/comma-separated
+                             (next, native-bare, cli, etc.) (default: "next")
+  --backend <backend>        Backend framework
+                             (hono/express/fastify/elysia/convex/self/none)
+                             (default: "hono")
+  --database <database>      Database (sqlite/postgres/mysql/mongodb/none)
+                             (default: "sqlite")
+  --orm <orm>                ORM (drizzle/prisma/mongoose/none) (default:
+                             "drizzle")
+  --auth <auth>              Authentication (better-auth/clerk/none) (default:
+                             "better-auth")
+  --no-auth                  Exclude authentication
+  --addons <addons...>       Addons
+                             (turborepo/pwa/tauri/biome/husky/starlight/fumadocs/ultracite/oxlint/ruler/opentui/wxt)
+  --examples <examples...>   Examples to include (todo/ai)
+  --template <template>      Use a predefined template
+                             (mern/pern/t3/uniwind/none)
+  --no-git                   Skip git initialization
+  --package-manager <pm>     Package manager (npm/pnpm/bun) (default: "npm")
+  --no-install               Skip installing dependencies
+  --db-setup <setup>         Database setup
+                             (turso/neon/prisma-postgres/mongodb-atlas)
+  --runtime <runtime>        Runtime (bun/node) (default: "node")
+  --api <type>               API type (trpc/orpc)
+  --payment <payment>        Payment provider (none/polar) (default: "none")
+  --cli-deps <level>         CLI dependency level
+                             (minimal/standard/full/task-o-matic) (default:
+                             "standard")
+  -h, --help                 display help for command
+```
+
+### init attach --help
+```
+Usage: task-o-matic init attach [options]
+
+Attach task-o-matic to an existing project (detect stack automatically)
+
+Options:
+  --analyze                 Run full project analysis including TODOs and
+                            features
+  --create-prd              Auto-generate a PRD from codebase analysis
+  --dry-run                 Just detect, don't create files
+  --redetect                Force re-detection of stack (overwrites cached
+                            stack.json)
+  --ai-provider <provider>  AI provider (openrouter/anthropic/openai/custom)
+                            (default: "openrouter")
+  --ai-model <model>        AI model (default: "z-ai/glm-4.6")
+  --ai-key <key>            AI API key
+  --ai-provider-url <url>   AI provider URL
+  --max-tokens <tokens>     Max tokens for AI (min 32768 for 2025) (default:
+                            "32768")
+  --temperature <temp>      AI temperature (default: "0.5")
+  --context7-api-key <key>  Context7 API key
+  -h, --help                display help for command
+```
+
+
+## Workflow Commands
+
+### workflow --help
+```
+Usage: task-o-matic workflow [options]
+
+Interactive workflow for complete project setup and task management
+
+Options:
+  --stream                                Show streaming AI output
+  --ai-provider <provider>                AI provider override
+  --ai-model <model>                      AI model override
+  --ai-key <key>                          AI API key override
+  --ai-provider-url <url>                 AI provider URL override
+  --skip-all                              Skip all optional steps (use defaults)
+  --auto-accept                           Auto-accept all AI suggestions
+  --config-file <path>                    Load workflow options from JSON file
+  --skip-init                             Skip initialization step
+  --project-name <name>                   Project name
+  --init-method <method>                  Initialization method: quick, custom, ai
+  --project-description <desc>            Project description for AI-assisted init
+  --use-existing-config                   Use existing configuration if found
+  --frontend <framework>                  Frontend framework
+  --backend <framework>                   Backend framework
+  --database <db>                         Database choice
+  --auth                                  Include authentication
+  --no-auth                               Exclude authentication
+  --bootstrap                             Bootstrap with Better-T-Stack
+  --no-bootstrap                          Skip bootstrapping
+  --include-docs                          Include Task-O-Matic documentation in new project (default: true)
+  --no-include-docs                       Skip including documentation
+  --skip-prd                              Skip PRD definition
+  --prd-method <method>                   PRD method: upload, manual, ai, skip
+  --prd-file <path>                       Path to existing PRD file
+  --prd-description <desc>                Product description for AI-assisted PRD
+  --prd-content <content>                 Direct PRD content
+  --prd-multi-generation                  Generate multiple PRDs and compare
+  --skip-prd-multi-generation             Skip PRD multi-generation
+  --prd-multi-generation-models <models>  Comma-separated list of models for multi-generation
+  --prd-combine                           Combine generated PRDs into a master PRD
+  --skip-prd-combine                      Skip PRD combination
+  --prd-combine-model <model>             Model to use for combining PRDs (provider:model)
+  --skip-stack-suggestion                 Skip stack suggestion step
+  --suggest-stack-from-prd [path]         Get stack from PRD (path or current)
+  --skip-bootstrap                        Skip bootstrap step
+  --skip-prd-question-refine              Skip PRD question/refine step
+  --prd-question-refine                   Use question-based PRD refinement
+  --prd-answer-mode <mode>                Who answers questions: user, ai
+  --prd-answer-ai-provider <provider>     AI provider for answering (optional override)
+  --prd-answer-ai-model <model>           AI model for answering (optional override)
+  --prd-answer-ai-reasoning               Enable reasoning for AI answering model (if supported)
+  --skip-refine                           Skip PRD refinement
+  --refine-method <method>                Refinement method: manual, ai, skip
+  --refine-feedback <feedback>            Feedback for AI refinement
+  --skip-generate                         Skip task generation
+  --generate-method <method>              Generation method: standard, ai
+  --generate-instructions <instructions>  Custom task generation instructions
+  --skip-split                            Skip task splitting
+  --split-tasks <ids>                     Comma-separated task IDs to split
+  --split-all                             Split all tasks
+  --split-method <method>                 Split method: interactive, standard, custom
+  --split-instructions <instructions>     Custom split instructions
+  --execute                               Execute generated tasks immediately
+  --execute-concurrency <number>          Number of concurrent tasks (default: 1)
+  --no-auto-commit                        Disable auto-commit during execution
+  --execute-tool <tool>                   Executor tool (opencode/claude/gemini/codex)
+  --execute-model <model>                 Model override for execution
+  --execute-max-retries <number>          Max retries per task
+  --execute-plan                          Enable planning phase
+  --execute-plan-model <model>            Model for planning
+  --execute-review                        Enable review phase
+  --execute-review-model <model>          Model for review
+  --verify <command>                      Verification command to run after each task (can be used multiple times)
+  --validate <command>                    Alias for --verify (validation command, can be used multiple times)
+  --try-models <models>                   Progressive model/executor configs for each retry (e.g., 'gpt-4o-mini,gpt-4o,claude:sonnet-4')
+  -h, --help                              display help for command
+```
+
+
+## Benchmark Commands
+
+### benchmark --help
+```
+Usage: task-o-matic benchmark [options] [command]
+
+Run and manage AI benchmarks
+
+Options:
+  -h, --help                 display help for command
+
+Commands:
+  run [options] <operation>  Run a benchmark operation
+  list                       List past benchmark runs
+  operations                 List all available benchmark operations
+  show <id>                  Show details of a benchmark run
+  compare <id>               Compare results of a benchmark run
+  execution [options]        Run execution benchmark (Git Branch Isolation)
+  execute-loop [options]     Benchmark task loop execution across models
+  workflow [options]         Benchmark complete workflow execution across
+                             multiple models
+  help [command]             display help for command
+```
+
+### benchmark run --help
+```
+Usage: task-o-matic benchmark run [options] <operation>
+
+Run a benchmark operation
+
+Arguments:
+  operation               Operation to benchmark (e.g., prd-parse,
+                          task-breakdown, task-create, prd-create)
+
+Options:
+  --models <list>         Comma-separated list of models
+                          (provider:model[:reasoning=<tokens>])
+  --file <path>           Input file path (for PRD ops)
+  --task-id <id>          Task ID (for Task ops)
+  --concurrency <number>  Max concurrent requests (default: "5")
+  --delay <number>        Delay between requests in ms (default: "250")
+  --prompt <prompt>       Override prompt
+  --message <message>     User message
+  --tools                 Enable filesystem tools
+  --feedback <feedback>   Feedback (for prd-rework)
+  --title <title>         Task title (for task-create)
+  --content <content>     Task content (for task-create)
+  --parent-id <id>        Parent task ID (for task-create)
+  --effort <effort>       Effort estimate: small, medium, large (for
+                          task-create)
+  --force                 Force operation (for task-document)
+  --description <desc>    Project/PRD description (for prd-create, prd-combine)
+  --output-dir <dir>      Output directory (for prd-create, prd-combine)
+  --filename <name>       Output filename (for prd-create, prd-combine)
+  --prds <list>           Comma-separated list of PRD file paths (for
+                          prd-combine)
+  --question-mode <mode>  Question mode: user or ai (for prd-refine)
+  --answers <json>        JSON string of answers (for prd-refine user mode)
+  -h, --help              display help for command
+```
+
+### benchmark list --help
+```
+Usage: task-o-matic benchmark list [options]
+
+List past benchmark runs
+
+Options:
+  -h, --help  display help for command
+```
+
+### benchmark operations --help
+```
+Usage: task-o-matic benchmark operations [options]
+
+List all available benchmark operations
+
+Options:
+  -h, --help  display help for command
+```
+
+### benchmark show --help
+```
+Usage: task-o-matic benchmark show [options] <id>
+
+Show details of a benchmark run
+
+Arguments:
+  id          Run ID
+
+Options:
+  -h, --help  display help for command
+```
+
+### benchmark compare --help
+```
+Usage: task-o-matic benchmark compare [options] <id>
+
+Compare results of a benchmark run
+
+Arguments:
+  id          Run ID
+
+Options:
+  -h, --help  display help for command
+```
+
+### benchmark execution --help
+```
+Usage: task-o-matic benchmark execution [options]
+
+Run execution benchmark (Git Branch Isolation)
+
+Options:
+  --task-id <id>          Task ID to benchmark
+  --models <list>         Comma-separated list of models (provider:model)
+  --verify <command>      Verification command (can be used multiple times)
+  --max-retries <number>  Maximum retries per model (default: 3)
+  --no-keep-branches      Delete benchmark branches after run
+  -h, --help              display help for command
+```
+
+### benchmark execute-loop --help
+```
+Usage: task-o-matic benchmark execute-loop [options]
+
+Benchmark task loop execution across models
+
+Options:
+  --status <status>       Filter tasks by status (todo/in-progress/completed)
+  --tag <tag>             Filter tasks by tag
+  --ids <ids>             Comma-separated list of task IDs to execute
+  --models <list>         Comma-separated list of models (provider:model)
+  --verify <command>      Verification command to run after each task (can be
+                          used multiple times)
+  --max-retries <number>  Maximum number of retries per task (default: 3)
+  --try-models <models>   Progressive model/executor configs for each retry
+  --no-keep-branches      Delete benchmark branches after run
+  -h, --help              display help for command
+```
+
+### benchmark workflow --help
+```
+Usage: task-o-matic benchmark workflow [options]
+
+Benchmark complete workflow execution across multiple models
+
+Options:
+  --models <list>                         Comma-separated list of models (provider:model[:reasoning=<tokens>])
+  --concurrency <number>                  Max concurrent requests (default: "3")
+  --delay <number>                        Delay between requests in ms (default: "1000")
+  --temp-dir <dir>                        Base directory for temporary projects
+  --execute                               Execute generated tasks in the benchmark
+  --skip-all                              Skip all optional steps (use defaults)
+  --project-name <name>                   Project name
+  --init-method <method>                  Initialization method: quick, custom, ai
+  --project-description <desc>            Project description for AI-assisted init
+  --frontend <framework>                  Frontend framework
+  --backend <framework>                   Backend framework
+  --auth                                  Include authentication
+  --prd-method <method>                   PRD method: upload, manual, ai, skip
+  --prd-file <path>                       Path to existing PRD file
+  --prd-description <desc>                Product description
+  --skip-refine                           Skip PRD refinement
+  --skip-generate                         Skip task generation
+  --skip-split                            Skip task splitting
+  --generate-instructions <instructions>  Custom task generation instructions
+  --split-instructions <instructions>     Custom split instructions
+  -h, --help                              display help for command
+```
+
+### benchmark help --help
+```
+Usage: task-o-matic benchmark [options] [command]
+
+Run and manage AI benchmarks
+
+Options:
+  -h, --help                 display help for command
+
+Commands:
+  run [options] <operation>  Run a benchmark operation
+  list                       List past benchmark runs
+  operations                 List all available benchmark operations
+  show <id>                  Show details of a benchmark run
+  compare <id>               Compare results of a benchmark run
+  execution [options]        Run execution benchmark (Git Branch Isolation)
+  execute-loop [options]     Benchmark task loop execution across models
+  workflow [options]         Benchmark complete workflow execution across
+                             multiple models
+  help [command]             display help for command
+```
+
+
+## Install Commands
+
+### install --help
+```
+Usage: task-o-matic install [options] <target>
+
+Install task-o-matic documentation and agent guides into current project
+
+Arguments:
+  target      Installation target: doc, claude, or agents
+
+Options:
+  --force     Overwrite existing files (default: false)
+  -h, --help  display help for command
+```
+
+
+## Detect Commands
+
+### detect --help
+```
+Usage: task-o-matic detect [options]
+
+Detect technology stack of the current project
+
+Options:
+  --save      Save detected stack to .task-o-matic/stack.json
+  --json      Output result as JSON
+  -h, --help  display help for command
+```
+
+

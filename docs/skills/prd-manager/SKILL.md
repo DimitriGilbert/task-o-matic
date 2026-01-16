@@ -54,6 +54,19 @@ npx task-o-matic prd parse --file <path>
 
 ### 5. Change Management
 When requirements change:
-1. Update PRD (`edit` or `rework`).
-2. New Version is created.
-3. Generate new tasks for *delta* or update existing ones.
+
+1. **Update PRD content**:
+   - **Manual edit**: Directly edit the PRD file in your editor
+   - **AI refine**: `npx task-o-matic prd refine --file <path>` - answers clarifying questions to improve clarity
+   - **AI rework**: `npx task-o-matic prd rework --file <path> --feedback "...your feedback..."` - AI-assisted revision based on your feedback
+
+2. **Version the changes**:
+   ```bash
+   npx task-o-matic prd version --file <path> --message "Updated requirement X"
+   ```
+
+3. **Regenerate tasks**:
+   ```bash
+   npx task-o-matic prd parse --file <path>
+   ```
+   This generates new tasks for changed requirements and preserves task status for unchanged items.
