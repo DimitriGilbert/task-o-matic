@@ -3,9 +3,11 @@
 ## ABSOLUTE PROHIBITIONS
 
 ### NEVER PUBLISH PACKAGES
+
 **NEVER, UNDER ANY CIRCUMSTANCES, RUN ANY PUBLISH COMMAND.**
 
 This includes but is not limited to:
+
 - `npm publish`
 - `bun publish`
 - `pnpm publish`
@@ -17,6 +19,7 @@ This includes but is not limited to:
 Violations of this rule have caused version mismatches and broken releases. This is UNACCEPTABLE.
 
 ### NEVER RUN DESTRUCTIVE COMMANDS WITHOUT EXPLICIT USER REQUEST
+
 - No `rm -rf` on user directories
 - No `git push --force`
 - No database drops or resets
@@ -32,25 +35,30 @@ Violations of this rule have caused version mismatches and broken releases. This
 ## DEVELOPMENT WORKFLOW
 
 ### Environment
+
 - **Runtime**: Bun (uses `bun.lock` for dependencies).
 - **Monorepo**: Managed via Bun workspaces (`packages/cli`, `packages/core`).
 - **Language**: TypeScript (Strict mode).
 - **Module System**: CommonJS (compiled output).
 
 ### Build & Verification Commands
+
 Run these commands from the **project root**:
 
 - **Install Dependencies**:
+
   ```bash
   bun install
   ```
 
 - **Build All Packages**:
+
   ```bash
   bun run build
   ```
 
 - **Type Checking** (Run this before committing):
+
   ```bash
   bun run check-types
   ```
@@ -61,6 +69,7 @@ Run these commands from the **project root**:
   ```
 
 ### Running Specific Tests
+
 To run a single test file, use `mocha` directly from the relevant package directory.
 
 **1. Identify the Package**
@@ -69,20 +78,24 @@ Check which package the test belongs to (usually `packages/core` or `packages/cl
 **2. Run from Package Directory**
 Change directory to the package and run mocha with the project's setup file.
 
-*For `packages/core`:*
+_For `packages/core`:_
+
 ```bash
 workdir="packages/core"
 bash "npx mocha -r tsx/cjs src/test/test-setup.ts src/test/path/to/your.test.ts"
 ```
 
-*For `packages/cli`:*
+_For `packages/cli`:_
+
 ```bash
 workdir="packages/cli"
 bash "npx mocha -r tsx/cjs src/test/commands.test.ts"
 ```
-*(Note: CLI tests seem centralized in `commands.test.ts` based on package.json, but check for others if needed)*
+
+_(Note: CLI tests seem centralized in `commands.test.ts` based on package.json, but check for others if needed)_
 
 **3. Run from Root (Alternative)**
+
 ```bash
 bun run --filter task-o-matic-core test -- src/test/path/to/your.test.ts
 ```
@@ -90,28 +103,33 @@ bun run --filter task-o-matic-core test -- src/test/path/to/your.test.ts
 ## CODE STYLE & CONVENTIONS
 
 ### TypeScript
+
 - **Strict Mode**: Enabled. No `any` unless absolutely necessary.
 - **Async/Await**: Prefer over `.then()`.
 - **Imports**: standard ES imports (`import { ... } from "..."`).
 - **Exports**: Named exports preferred over default exports.
 
 ### Naming
+
 - **Variables/Functions**: `camelCase`
 - **Classes/Interfaces**: `PascalCase`
 - **Files**: `kebab-case.ts` (e.g., `task-service.ts`)
 - **Constants**: `UPPER_SNAKE_CASE`
 
 ### Architecture
+
 - **Core Logic**: `packages/core/src/lib/` or `src/services/`.
 - **CLI Logic**: `packages/cli/src/commands/`.
 - **Types**: Shared types in `packages/core/src/types/`.
 
 ### Error Handling
+
 - Use `TaskOMaticError` for expected domain errors.
 - Wrap async operations in `try/catch` blocks.
 - Do not suppress errors silently.
 
 ### Testing Guidelines
+
 - **Framework**: Mocha
 - **Runner**: tsx
 - **Assertions**: `node:assert` (import assert from "assert")
@@ -124,6 +142,13 @@ bun run --filter task-o-matic-core test -- src/test/path/to/your.test.ts
 - **Location**: `src/test/` directory within each package.
 
 ### File System Operations
+
 - Use absolute paths when using tool capabilities (`read`, `write`).
 - Construct paths using `path.join()`.
 - Be mindful of the monorepo structure; verify where you are before running commands.
+
+### IMPORTANT
+
+- NO `await import` are allowed ! STRICTLY FORBIDDEN !
+- `:any` and `as any` are forbidden ! STRICTLY FORBIDDEN !
+- LSP errors MUST be FIXED ! fixing LSP errors is NOT OPTIONAL !

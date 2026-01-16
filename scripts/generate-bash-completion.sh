@@ -1,96 +1,111 @@
 #!/usr/bin/env bash
-# Generate bash completion for task-o-matic
+# Generate bash completion for task-o-matic dynamically
 
+set -euo pipefail
+
+CLI_BIN="./packages/cli/dist/cli/bin.js"
 OUTPUT_FILE="completions/task-o-matic.bash"
+
+# Check if CLI is built
+if [ ! -f "$CLI_BIN" ]; then
+  echo "Error: CLI not built. Run 'bun run build' first."
+  exit 1
+fi
 
 mkdir -p completions
 
-cat > "$OUTPUT_FILE" << 'EOF'
+echo "Generating dynamic bash completion..."
+
+# Extract commands from help output
+# Format: capture lines after "Commands:" until we hit "Options:" or end
+# Each command is the first word on the line (after leading spaces)
+# Only match lines that start with spaces followed by a letter (actual commands)
+extract_commands() {
+    local help_output="$1"
+    echo "$help_output" | awk '/^Commands:$/ {in_commands=1; next} in_commands && /^(Options:|$)/ {exit} in_commands && /^  [a-z]/ {print $1}'
+}
+
+# Extract options from help output
+extract_options() {
+    local help_output="$1"
+    # Extract long and short options like --option or -o
+    echo "$help_output" | grep -oE '\-{1,2}[a-z-]+' | sort -u | tr '\n' ' ' | sed 's/  */ /g' | sed 's/^ *//;s/ *$//'
+}
+
+# Extract main commands
+MAIN_HELP=$(node "$CLI_BIN" --help 2>/dev/null || true)
+MAIN_COMMANDS=$(extract_commands "$MAIN_HELP")
+
+cat > "$OUTPUT_FILE" << EOF
 # Bash completion for task-o-matic
 # Source this file or copy to /etc/bash_completion.d/
+# Auto-generated - DO NOT EDIT MANUALLY
 
 _task_o_matic() {
     local cur prev words cword
     _init_completion || return
 
-    # Main commands
-    local main_commands="tasks prd config init"
-
-    # Task subcommands
-    local task_commands="list create show update delete status get-next next tree enhance split plan get-plan list-plan delete-plan set-plan document get-documentation add-documentation execute execute-loop tag untag"
-
-    # PRD subcommands
-    local prd_commands="parse rework ask"
-
-    # Config subcommands
-    local config_commands="get set reset"
-
-    # Init subcommands
-    local init_commands="init bootstrap"
+    # Main commands (dynamically extracted)
+    local main_commands="$MAIN_COMMANDS"
 
     # Handle main command completion
-    if [[ $cword -eq 1 ]]; then
-        COMPREPLY=( $(compgen -W "$main_commands --help --version" -- "$cur") )
+    if [[ \$cword -eq 1 ]]; then
+        COMPREPLY=( \$(compgen -W "\$main_commands --help --version" -- "\$cur") )
         return
     fi
 
-    # Handle subcommand completion
-    case "${words[1]}" in
-        tasks)
-            if [[ $cword -eq 2 ]]; then
-                COMPREPLY=( $(compgen -W "$task_commands --help" -- "$cur") )
-            else
-                # Complete options for specific task commands
-                case "${words[2]}" in
-                    list)
-                        COMPREPLY=( $(compgen -W "-s --status -t --tag --help" -- "$cur") )
-                        ;;
-                    get-next|next)
-                        COMPREPLY=( $(compgen -W "-s --status -t --tag -e --effort -p --priority --help" -- "$cur") )
-                        ;;
-                    status)
-                        COMPREPLY=( $(compgen -W "-i --id -s --status --help" -- "$cur") )
-                        ;;
-                    add-documentation)
-                        COMPREPLY=( $(compgen -W "-i --id -f --doc-file -o --overwrite --help" -- "$cur") )
-                        ;;
-                    *)
-                        COMPREPLY=( $(compgen -W "--help" -- "$cur") )
-                        ;;
-                esac
+    # Handle subcommand completion for each main command
+    case "\${words[1]}" in
+EOF
+
+# Extract subcommands for each main command
+for cmd in $MAIN_COMMANDS; do
+    echo "    Processing $cmd..." >&2
+    
+    # Try to get subcommands
+    CMD_HELP=$(node "$CLI_BIN" "$cmd" --help 2>/dev/null || true)
+    SUBCOMMANDS=$(extract_commands "$CMD_HELP")
+    
+    if [ -n "$SUBCOMMANDS" ]; then
+        echo "        $cmd)" >> "$OUTPUT_FILE"
+        echo "            local subcommands=\"$SUBCOMMANDS\"" >> "$OUTPUT_FILE"
+        echo "            if [[ \$cword -eq 2 ]]; then" >> "$OUTPUT_FILE"
+        echo "                COMPREPLY=( \$(compgen -W \"\$subcommands --help\" -- \"\$cur\") )" >> "$OUTPUT_FILE"
+        echo "            else" >> "$OUTPUT_FILE"
+        echo "                # Complete options for specific subcommands" >> "$OUTPUT_FILE"
+        echo "                case \"\${words[2]}\" in" >> "$OUTPUT_FILE"
+        
+        # Extract options for each subcommand
+        for subcmd in $SUBCOMMANDS; do
+            SUBCMD_HELP=$(node "$CLI_BIN" "$cmd" "$subcmd" --help 2>/dev/null || true)
+            OPTIONS=$(extract_options "$SUBCMD_HELP")
+            if [ -n "$OPTIONS" ]; then
+                echo "                    $subcmd)" >> "$OUTPUT_FILE"
+                echo "                        COMPREPLY=( \$(compgen -W \"$OPTIONS --help\" -- \"\$cur\") )" >> "$OUTPUT_FILE"
+                echo "                        ;;" >> "$OUTPUT_FILE"
             fi
-            ;;
-        prd)
-            if [[ $cword -eq 2 ]]; then
-                COMPREPLY=( $(compgen -W "$prd_commands --help" -- "$cur") )
-            else
-                COMPREPLY=( $(compgen -W "--help" -- "$cur") )
-            fi
-            ;;
-        config)
-            if [[ $cword -eq 2 ]]; then
-                COMPREPLY=( $(compgen -W "$config_commands --help" -- "$cur") )
-            else
-                COMPREPLY=( $(compgen -W "--help" -- "$cur") )
-            fi
-            ;;
-        init)
-            if [[ $cword -eq 2 ]]; then
-                COMPREPLY=( $(compgen -W "$init_commands --help" -- "$cur") )
-            else
-                case "${words[2]}" in
-                    init)
-                        COMPREPLY=( $(compgen -W "--ai-provider --ai-model --ai-key --ai-provider-url --max-tokens --temperature --no-bootstrap --project-name --frontend --backend --database --auth --context7-api-key --directory --package-manager --runtime --payment --cli-deps --tui-framework --help" -- "$cur") )
-                        ;;
-                    bootstrap)
-                        COMPREPLY=( $(compgen -W "--frontend --backend --database --orm --no-auth --addons --examples --no-git --package-manager --no-install --db-setup --runtime --api --payment --cli-deps --tui-framework --help" -- "$cur") )
-                        ;;
-                    *)
-                        COMPREPLY=( $(compgen -W "--help" -- "$cur") )
-                        ;;
-                esac
-            fi
-            ;;
+        done
+        
+        echo "                    *)" >> "$OUTPUT_FILE"
+        echo "                        COMPREPLY=( \$(compgen -W \"--help\" -- \"\$cur\") )" >> "$OUTPUT_FILE"
+        echo "                        ;;" >> "$OUTPUT_FILE"
+        echo "                esac" >> "$OUTPUT_FILE"
+        echo "            fi" >> "$OUTPUT_FILE"
+        echo "            ;;" >> "$OUTPUT_FILE"
+    else
+        echo "        $cmd)" >> "$OUTPUT_FILE"
+        # Just complete options for the main command
+        OPTIONS=$(extract_options "$CMD_HELP")
+        if [ -n "$OPTIONS" ]; then
+            echo "            COMPREPLY=( \$(compgen -W \"$OPTIONS --help\" -- \"\$cur\") )" >> "$OUTPUT_FILE"
+        else
+            echo "            COMPREPLY=( \$(compgen -W \"--help\" -- \"\$cur\") )" >> "$OUTPUT_FILE"
+        fi
+        echo "            ;;" >> "$OUTPUT_FILE"
+    fi
+done
+
+cat >> "$OUTPUT_FILE" << 'EOF'
     esac
 }
 

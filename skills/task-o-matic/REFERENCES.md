@@ -64,6 +64,75 @@ task-o-matic init bootstrap [options] <name>
 **Arguments:**
 - `name` - Project name
 
+### init attach
+
+Attach task-o-matic to an existing project with automatic stack detection.
+
+```bash
+task-o-matic init attach [options]
+```
+
+**Options:**
+
+| Option | Description | Default |
+|--------|-------------|---------|
+| `--analyze` | Run full project analysis (TODOs, features, structure) | - |
+| `--create-prd` | Auto-generate a PRD from codebase analysis | - |
+| `--dry-run` | Just detect stack, don't create files | - |
+| `--redetect` | Force re-detection (overwrites cached stack.json) | - |
+| `--ai-provider <provider>` | AI provider (openrouter/anthropic/openai/custom) | `openrouter` |
+| `--ai-model <model>` | AI model | `z-ai/glm-4.6` |
+| `--ai-key <key>` | AI API key | - |
+| `--ai-provider-url <url>` | AI provider URL | - |
+| `--max-tokens <tokens>` | Max tokens for AI | `32768` |
+| `--temperature <temp>` | AI temperature | `0.5` |
+| `--context7-api-key <key>` | Context7 API key | - |
+
+**Stack Detection:**
+
+The command automatically detects:
+- Language (TypeScript/JavaScript/Python/Go/Rust)
+- Framework(s) (Next.js, Express, Hono, Vue, Svelte, etc.)
+- Database (Postgres, MongoDB, SQLite, MySQL, Redis)
+- ORM (Prisma, Drizzle, TypeORM, Mongoose)
+- Auth (Better-Auth, Clerk, NextAuth, Auth0, Lucia)
+- Package Manager (npm, pnpm, bun, yarn)
+- Runtime (Node, Bun, Deno)
+- API style (tRPC, GraphQL, REST, oRPC)
+- Testing frameworks (Jest, Vitest, Mocha, Playwright)
+- Build tools (Vite, Webpack, esbuild, Turborepo)
+
+**Created Files:**
+
+```
+.task-o-matic/
+├── config.json       # AI configuration
+├── stack.json        # Cached stack detection (used by all AI operations)
+├── mcp.json          # Context7 configuration
+├── tasks/            # Task storage
+├── prd/              # PRD storage
+├── logs/             # Operation logs
+└── docs/             # Documentation
+```
+
+**Examples:**
+```bash
+# Basic attach (auto-detect stack)
+task-o-matic init attach
+
+# With full analysis (TODOs, features, structure)
+task-o-matic init attach --analyze
+
+# Dry run to preview detection
+task-o-matic init attach --dry-run
+
+# Re-detect after stack changes
+task-o-matic init attach --redetect
+
+# With custom AI provider
+task-o-matic init attach --ai-provider openrouter --ai-model anthropic/claude-3.5-sonnet
+```
+
 ---
 
 ## config
@@ -129,6 +198,25 @@ task-o-matic prd create [options] <description>
 | `--ai-model <model>` | AI model override |
 | `--ai-key <key>` | AI API key override |
 | `--ai-provider-url <url>` | AI provider URL override |
+
+### prd generate
+
+Generate a PRD from an existing codebase (reverse-engineering).
+
+```bash
+task-o-matic prd generate [options]
+```
+
+**Options:**
+
+| Option | Description |
+|--------|-------------|
+| `--from-codebase` | Analyze the current project and generate a PRD (default) |
+| `--output <filename>` | Output filename (default: current-state.md) |
+| `--ai <model>` | AI model to use (format: provider:model) |
+| `--stream` | Enable streaming output |
+| `--tools` | Enable filesystem tools for deeper analysis |
+| `--json` | Output result as JSON |
 
 ### prd combine
 

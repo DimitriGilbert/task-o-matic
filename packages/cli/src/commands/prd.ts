@@ -917,3 +917,132 @@ prdCommand
       process.exit(1);
     }
   });
+
+// Generate PRD from existing codebase
+prdCommand
+  .command("generate")
+  .description("Generate a PRD from an existing codebase (reverse-engineering)")
+  .option(
+    "--from-codebase",
+    "Analyze the current project and generate a PRD from it (default behavior)"
+  )
+  .option("--output <filename>", "Output filename", "current-state.md")
+  .option(
+    "--ai <provider:model>",
+    "AI model to use. Format: [provider:]model[;reasoning[=budget]]"
+  )
+  .option(
+    "--ai-reasoning <tokens>",
+    "Enable reasoning for OpenRouter models (max reasoning tokens)"
+  )
+  .option("--stream", "Enable streaming output")
+  .option("--tools", "Enable filesystem tools for deeper analysis")
+  .option("--json", "Output result as JSON")
+  .action(async (options) => {
+    try {
+      const workingDirectory = process.cwd();
+
+      // Load configuration
+      await configManager.load();
+      const aiConfig = configManager.getAIConfig();
+
+      // Determine which AI model to use
+      let aiProvider: string | undefined = aiConfig.provider;
+      let aiModel: string = aiConfig.model;
+      let aiReasoning: string | undefined = aiConfig.reasoning?.maxTokens?.toString();
+
+      if (options.ai) {
+        const modelConfig = parseModelString(options.ai);
+        aiProvider = modelConfig.provider || aiProvider;
+        aiModel = modelConfig.model;
+        if (modelConfig.reasoning) {
+          aiReasoning = modelConfig.reasoning.toString();
+        }
+      }
+
+      if (options.aiReasoning) {
+        aiReasoning = options.aiReasoning;
+      }
+
+      const streamingOptions = createStreamingOptions(
+        options.stream,
+        "Generating PRD from codebase"
+      );
+
+      console.log(chalk.blue("🔍 Analyzing existing codebase...\n"));
+
+      const result = await prdService.generateFromCodebase({
+        workingDirectory,
+        outputFile: options.output,
+        enableFilesystemTools: options.tools,
+        aiOptions: {
+          aiProvider,
+          aiModel,
+          aiReasoning,
+        },
+        streamingOptions,
+        callbacks: {
+          onProgress: displayProgress,
+          onError: displayError,
+        },
+      });
+
+      console.log("");
+
+      if (options.json) {
+        // JSON output mode
+        console.log(
+          JSON.stringify(
+            {
+              prdPath: result.prdPath,
+              projectName: result.analysis.projectName,
+              stack: result.analysis.stack,
+              features: result.analysis.existingFeatures.length,
+              todos: result.analysis.todos.length,
+              stats: result.stats,
+            },
+            null,
+            2
+          )
+        );
+      } else {
+        // Human-readable output
+        console.log(chalk.green("✓ PRD Generated from Codebase\n"));
+
+        console.log(chalk.cyan("Project Analysis:"));
+        console.log(
+          chalk.white(`  Project Name: ${result.analysis.projectName}`)
+        );
+        console.log(
+          chalk.white(
+            `  Stack: ${result.analysis.stack.frameworks.join(", ")} (${result.analysis.stack.language})`
+          )
+        );
+        console.log(
+          chalk.white(`  Features Detected: ${result.analysis.existingFeatures.length}`)
+        );
+        console.log(chalk.white(`  TODOs Found: ${result.analysis.todos.length}`));
+
+        console.log(chalk.blue("\nStats:"));
+        console.log(chalk.cyan(`  Duration: ${result.stats.duration}ms`));
+        if (result.stats.tokenUsage) {
+          console.log(chalk.cyan(`  Tokens: ${result.stats.tokenUsage.total}`));
+        }
+        if (result.stats.timeToFirstToken) {
+          console.log(chalk.cyan(`  TTFT: ${result.stats.timeToFirstToken}ms`));
+        }
+
+        console.log(chalk.green(`\n✓ PRD saved to: ${result.prdPath}`));
+        console.log(
+          chalk.dim(
+            "\nTip: Use 'task-o-matic prd parse --file " +
+              result.prdPath +
+              "' to extract tasks"
+          )
+        );
+      }
+    } catch (error) {
+      displayError(error);
+      process.exit(1);
+    }
+  });

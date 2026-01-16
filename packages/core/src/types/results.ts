@@ -4,6 +4,7 @@ import {
   DocumentationDetection,
   BTSConfig,
 } from "./index";
+import { ProjectAnalysis } from "./project-analysis";
 
 /**
  * Generic operation result using discriminated union pattern.
@@ -203,6 +204,27 @@ export interface SuggestStackResult {
   stack: BTSConfig;
   reasoning: string;
   savedPath?: string;
+  stats: {
+    duration: number;
+    tokenUsage?: {
+      prompt: number;
+      completion: number;
+      total: number;
+    };
+    timeToFirstToken?: number;
+    cost?: number;
+  };
+}
+
+/**
+ * Result of PRD from codebase generation operation.
+ * Always returns success; throws exception on error.
+ */
+export interface PRDFromCodebaseResult {
+  success: true;
+  prdPath: string;
+  content: string;
+  analysis: ProjectAnalysis;
   stats: {
     duration: number;
     tokenUsage?: {

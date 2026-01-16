@@ -13,7 +13,7 @@ import { join, basename, relative } from "path";
 import { getAIOperations, getStorage } from "../utils/ai-service-factory";
 import { buildAIConfig, AIOptions } from "../utils/ai-config-builder";
 import { AIConfig, StreamingOptions } from "../types";
-import { PRDParseResult, SuggestStackResult } from "../types/results";
+import { PRDParseResult, SuggestStackResult, PRDFromCodebaseResult } from "../types/results";
 import { configManager, setupWorkingDirectory } from "../lib/config";
 import { isValidAIProvider } from "../lib/validation";
 import { ProgressCallback } from "../types/callbacks";
@@ -23,6 +23,7 @@ import {
   savePRDFile,
   saveStackFile,
 } from "../utils/file-utils";
+import { getProjectAnalysisService } from "./project-analysis";
 
 /**
  * Dependencies for PRDService
@@ -824,6 +825,284 @@ export class PRDService {
         cost,
       },
     };
+  }
+
+  /**
+   * Generate a PRD from an existing codebase by analyzing the project.
+   * This reverse-engineers a PRD from the current project state.
+   */
+  async generateFromCodebase(input: {
+    workingDirectory?: string;
+    outputFile?: string;
+    aiOptions?: AIOptions;
+    streamingOptions?: StreamingOptions;
+    callbacks?: ProgressCallback;
+    enableFilesystemTools?: boolean;
+    includeImplemented?: boolean;
+    includePlanned?: boolean;
+  }): Promise<PRDFromCodebaseResult> {
+    const startTime = Date.now();
+
+    input.callbacks?.onProgress?.({
+      type: "started",
+      message: "Analyzing existing codebase...",
+    });
+
+    // Set working directory and reload config
+    const workingDir = input.workingDirectory || process.cwd();
+    await setupWorkingDirectory(workingDir);
+
+    // Validate AI provider if specified
+    if (
+      input.aiOptions?.aiProvider &&
+      !isValidAIProvider(input.aiOptions.aiProvider)
+    ) {
+      throw createStandardError(
+        TaskOMaticErrorCodes.AI_CONFIGURATION_ERROR,
+        `Invalid AI provider: ${input.aiOptions.aiProvider}`,
+        {
+          suggestions: ["Use a valid AI provider, e.g., 'openai', 'anthropic'"],
+        }
+      );
+    }
+
+    input.callbacks?.onProgress?.({
+      type: "progress",
+      message: "Running project analysis...",
+    });
+
+    // Use ProjectAnalysisService to analyze the codebase
+    const analysisService = getProjectAnalysisService();
+    const analysisResult = await analysisService.analyzeProject(workingDir);
+
+    if (!analysisResult.success) {
+      throw createStandardError(
+        TaskOMaticErrorCodes.CONFIGURATION_ERROR,
+        `Project analysis failed: ${analysisResult.warnings?.join(", ") || "Unknown error"}`,
+        {
+          suggestions: [
+            "Ensure you are in a valid project directory",
+            "Check that package.json exists",
+          ],
+        }
+      );
+    }
+
+    const analysis = analysisResult.analysis;
+
+    input.callbacks?.onProgress?.({
+      type: "progress",
+      message: `Detected ${analysis.stack.frameworks.join(", ")} project. Generating PRD...`,
+    });
+
+    // Format analysis data for AI
+    const stackInfo = this.formatStackForAI(analysis.stack);
+    const structureInfo = this.formatStructureForAI(analysis.structure);
+    const existingFeatures = this.formatFeaturesForAI(analysis.existingFeatures);
+    const documentation = this.formatDocsForAI(analysis.documentation);
+    const todos = this.formatTodosForAI(analysis.todos);
+    const fileTree = this.buildFileTree(analysis.structure);
+
+    const aiConfig = buildAIConfig(input.aiOptions);
+
+    // Use utility to wrap streaming options and capture metrics
+    const { options: metricsStreamingOptions, getMetrics } =
+      createMetricsStreamingOptions(input.streamingOptions, startTime);
+
+    const content = await this.aiOperations.generatePRDFromCodebase(
+      {
+        projectName: analysis.projectName,
+        projectDescription: analysis.description,
+        fileTree,
+        stackInfo,
+        existingFeatures,
+        documentation,
+        todos,
+        structureInfo,
+      },
+      aiConfig,
+      metricsStreamingOptions,
+      undefined,
+      input.enableFilesystemTools
+    );
+
+    // Get metrics after AI operation
+    const { tokenUsage, timeToFirstToken } = getMetrics();
+
+    // Calculate cost if needed
+    let cost: number | undefined;
+    if (tokenUsage && tokenUsage.total > 0) {
+      cost = tokenUsage.total * 0.000001;
+    }
+
+    // Save file
+    const taskOMaticDir = configManager.getTaskOMaticDir();
+    const prdDir = join(taskOMaticDir, "prd");
+
+    if (!existsSync(prdDir)) {
+      mkdirSync(prdDir, { recursive: true });
+    }
+
+    const filename = input.outputFile || "current-state.md";
+    const prdPath = join(prdDir, filename);
+    writeFileSync(prdPath, content, "utf-8");
+
+    input.callbacks?.onProgress?.({
+      type: "completed",
+      message: `PRD generated from codebase and saved to ${prdPath}`,
+    });
+
+    return {
+      success: true,
+      prdPath,
+      content,
+      analysis,
+      stats: {
+        duration: Date.now() - startTime,
+        tokenUsage,
+        timeToFirstToken,
+        cost,
+      },
+    };
+  }
+
+  /**
+   * Format detected stack for AI prompt
+   */
+  private formatStackForAI(stack: import("../types/project-analysis").DetectedStack): string {
+    const parts: string[] = [];
+    parts.push(`- **Language**: ${stack.language}`);
+    parts.push(`- **Framework(s)**: ${stack.frameworks.join(", ")}`);
+    if (stack.database && stack.database !== "none") {
+      parts.push(`- **Database**: ${stack.database}`);
+    }
+    if (stack.orm && stack.orm !== "none") {
+      parts.push(`- **ORM**: ${stack.orm}`);
+    }
+    if (stack.auth && stack.auth !== "none") {
+      parts.push(`- **Auth**: ${stack.auth}`);
+    }
+    if (stack.api && stack.api !== "none") {
+      parts.push(`- **API Style**: ${stack.api}`);
+    }
+    parts.push(`- **Package Manager**: ${stack.packageManager}`);
+    parts.push(`- **Runtime**: ${stack.runtime}`);
+    if (stack.testing && stack.testing.length > 0) {
+      parts.push(`- **Testing**: ${stack.testing.join(", ")}`);
+    }
+    if (stack.buildTools && stack.buildTools.length > 0) {
+      parts.push(`- **Build Tools**: ${stack.buildTools.join(", ")}`);
+    }
+    parts.push(`- **Detection Confidence**: ${Math.round(stack.confidence * 100)}%`);
+    return parts.join("\n");
+  }
+
+  /**
+   * Format project structure for AI prompt
+   */
+  private formatStructureForAI(structure: import("../types/project-analysis").ProjectStructure): string {
+    const parts: string[] = [];
+    parts.push(`- **Project Type**: ${structure.isMonorepo ? "Monorepo" : "Single Package"}`);
+    if (structure.packages && structure.packages.length > 0) {
+      parts.push(`- **Packages**: ${structure.packages.join(", ")}`);
+    }
+    if (structure.sourceDirectories.length > 0) {
+      const dirs = structure.sourceDirectories.map(d => `${d.path} (${d.fileCount} files)`);
+      parts.push(`- **Source Directories**: ${dirs.join(", ")}`);
+    }
+    parts.push(`- **Has Tests**: ${structure.hasTests ? "Yes" : "No"}`);
+    parts.push(`- **Has Documentation**: ${structure.hasDocs ? "Yes" : "No"}`);
+    parts.push(`- **Has CI/CD**: ${structure.hasCICD ? "Yes" : "No"}`);
+    parts.push(`- **Has Docker**: ${structure.hasDocker ? "Yes" : "No"}`);
+    if (structure.entryPoints.length > 0) {
+      parts.push(`- **Entry Points**: ${structure.entryPoints.join(", ")}`);
+    }
+    if (structure.configFiles.length > 0) {
+      parts.push(`- **Config Files**: ${structure.configFiles.join(", ")}`);
+    }
+    return parts.join("\n");
+  }
+
+  /**
+   * Format detected features for AI prompt
+   */
+  private formatFeaturesForAI(features: import("../types/project-analysis").DetectedFeature[]): string {
+    if (features.length === 0) {
+      return "No specific features detected.";
+    }
+    return features.map(f => {
+      let text = `### ${f.name}\n`;
+      text += `- **Description**: ${f.description}\n`;
+      text += `- **Category**: ${f.category}\n`;
+      text += `- **Confidence**: ${Math.round(f.confidence * 100)}%\n`;
+      if (f.files.length > 0) {
+        text += `- **Related Files**: ${f.files.slice(0, 5).join(", ")}${f.files.length > 5 ? ` (+${f.files.length - 5} more)` : ""}\n`;
+      }
+      return text;
+    }).join("\n");
+  }
+
+  /**
+   * Format documentation files for AI prompt
+   */
+  private formatDocsForAI(docs: import("../types/project-analysis").DocumentationFile[]): string {
+    if (docs.length === 0) {
+      return "No documentation files found.";
+    }
+    return docs.map(d => {
+      const sizeKB = Math.round(d.size / 1024);
+      return `- **${d.path}** (${d.type}, ${sizeKB}KB)${d.title ? `: ${d.title}` : ""}`;
+    }).join("\n");
+  }
+
+  /**
+   * Format TODOs/FIXMEs for AI prompt
+   */
+  private formatTodosForAI(todos: import("../types/project-analysis").CodeComment[]): string {
+    if (todos.length === 0) {
+      return "No TODO/FIXME comments found.";
+    }
+    // Group by type
+    const grouped: Record<string, typeof todos> = {};
+    for (const todo of todos) {
+      if (!grouped[todo.type]) {
+        grouped[todo.type] = [];
+      }
+      grouped[todo.type].push(todo);
+    }
+    
+    return Object.entries(grouped).map(([type, items]) => {
+      const header = `### ${type} (${items.length})\n`;
+      const itemsList = items.slice(0, 10).map(t => 
+        `- \`${t.file}:${t.line}\`: ${t.text}`
+      ).join("\n");
+      const more = items.length > 10 ? `\n_...and ${items.length - 10} more_` : "";
+      return header + itemsList + more;
+    }).join("\n\n");
+  }
+
+  /**
+   * Build a simplified file tree string
+   */
+  private buildFileTree(structure: import("../types/project-analysis").ProjectStructure): string {
+    const lines: string[] = [];
+    lines.push(basename(structure.root) + "/");
+    
+    // Add source directories
+    for (const dir of structure.sourceDirectories) {
+      lines.push(`  ${dir.path}/ (${dir.fileCount} files)`);
+    }
+    
+    // Add config files at root
+    for (const config of structure.configFiles.slice(0, 10)) {
+      lines.push(`  ${config}`);
+    }
+    
+    if (structure.configFiles.length > 10) {
+      lines.push(`  ... and ${structure.configFiles.length - 10} more config files`);
+    }
+    
+    return lines.join("\n");
   }
 }
 

@@ -2,9 +2,9 @@
 
 import { Command } from "commander";
 import chalk from "chalk";
-import { existsSync, mkdirSync, writeFileSync } from "fs";
+import { existsSync, mkdirSync, writeFileSync, readFileSync } from "fs";
 import { resolve, join } from "path";
-import { configManager, Config } from "task-o-matic-core";
+import { configManager, Config, ProjectAnalysisService } from "task-o-matic-core";
 import { displayError } from "../cli/display/progress";
 import {
   createStandardError,
@@ -298,6 +298,245 @@ initCommand
     }
   });
 
+// Attach to existing project
+initCommand
+  .command("attach")
+  .description("Attach task-o-matic to an existing project (detect stack automatically)")
+  .option("--analyze", "Run full project analysis including TODOs and features")
+  .option("--create-prd", "Auto-generate a PRD from codebase analysis")
+  .option("--dry-run", "Just detect, don't create files")
+  .option("--redetect", "Force re-detection of stack (overwrites cached stack.json)")
+  .option(
+    "--ai-provider <provider>",
+    "AI provider (openrouter/anthropic/openai/custom)",
+    "openrouter"
+  )
+  .option("--ai-model <model>", "AI model", "z-ai/glm-4.6")
+  .option("--ai-key <key>", "AI API key")
+  .option("--ai-provider-url <url>", "AI provider URL")
+  .option(
+    "--max-tokens <tokens>",
+    "Max tokens for AI (min 32768 for 2025)",
+    "32768"
+  )
+  .option("--temperature <temp>", "AI temperature", "0.5")
+  .option("--context7-api-key <key>", "Context7 API key")
+  .action(async (options) => {
+    const workingDir = configManager.getWorkingDirectory() || process.cwd();
+    const taskOMaticDir = join(workingDir, ".task-o-matic");
+
+    console.log(chalk.blue("🔗 Attaching task-o-matic to existing project..."));
+    console.log(chalk.cyan(`  📁 Working directory: ${workingDir}`));
+
+    // Check if already initialized (unless --redetect is passed)
+    if (existsSync(join(taskOMaticDir, "config.json")) && !options.redetect) {
+      console.log(
+        chalk.yellow("⚠️  This project is already initialized with task-o-matic.")
+      );
+      console.log(chalk.cyan("   Use --redetect to re-analyze the stack."));
+      return;
+    }
+
+    // Check for project markers
+    const hasPackageJson = existsSync(join(workingDir, "package.json"));
+    const hasGit = existsSync(join(workingDir, ".git"));
+
+    if (!hasPackageJson) {
+      console.log(
+        chalk.red("❌ No package.json found in this directory.")
+      );
+      console.log(
+        chalk.cyan("   Run 'task-o-matic init init' to create a new project.")
+      );
+      return;
+    }
+
+    console.log(chalk.blue("\n📊 Analyzing project..."));
+
+    // Run ProjectAnalysisService
+    const analysisService = new ProjectAnalysisService();
+
+    // Detect stack
+    const stackResult = await analysisService.detectStack(workingDir);
+
+    if (!stackResult.success) {
+      console.log(chalk.yellow("⚠️  Stack detection had issues:"));
+      stackResult.warnings?.forEach((w) => console.log(chalk.yellow(`   - ${w}`)));
+    }
+
+    const stack = stackResult.stack;
+
+    // Display detected stack
+    console.log(chalk.green("\n✅ Stack detected:"));
+    console.log(`   Language: ${chalk.cyan(stack.language)}`);
+    console.log(`   Framework(s): ${chalk.cyan(stack.frameworks.join(", "))}`);
+    if (stack.database) console.log(`   Database: ${chalk.cyan(stack.database)}`);
+    if (stack.orm) console.log(`   ORM: ${chalk.cyan(stack.orm)}`);
+    if (stack.auth) console.log(`   Auth: ${chalk.cyan(stack.auth)}`);
+    console.log(`   Package Manager: ${chalk.cyan(stack.packageManager)}`);
+    console.log(`   Runtime: ${chalk.cyan(stack.runtime)}`);
+    if (stack.api) console.log(`   API: ${chalk.cyan(stack.api)}`);
+    console.log(`   Confidence: ${chalk.cyan(`${Math.round(stack.confidence * 100)}%`)}`);
+
+    // If dry run, stop here
+    if (options.dryRun) {
+      console.log(chalk.cyan("\n📋 Dry run complete. No files created."));
+      return;
+    }
+
+    // Create .task-o-matic directory structure
+    const dirs = ["tasks", "prd", "logs", "docs"];
+    if (!existsSync(taskOMaticDir)) {
+      mkdirSync(taskOMaticDir, { recursive: true });
+      console.log(chalk.green(`\n✓ Created ${taskOMaticDir}`));
+    }
+
+    dirs.forEach((dir) => {
+      const fullPath = join(taskOMaticDir, dir);
+      if (!existsSync(fullPath)) {
+        mkdirSync(fullPath, { recursive: true });
+        console.log(chalk.green(`  ✓ Created ${fullPath}`));
+      }
+    });
+
+    // Write stack.json (cached stack detection)
+    const stackFilePath = join(taskOMaticDir, "stack.json");
+    writeFileSync(stackFilePath, JSON.stringify(stack, null, 2));
+    console.log(chalk.green(`  ✓ Created ${stackFilePath}`));
+
+    // Initialize config with provided options
+    const config: Config = {
+      ai: {
+        provider: options.aiProvider,
+        model: options.aiModel,
+        maxTokens: parseInt(options.maxTokens) || 32768,
+        temperature: parseFloat(options.temperature) || 0.5,
+      },
+    };
+
+    // Add API key if provided
+    if (options.aiKey) {
+      config.ai.apiKey = options.aiKey;
+    }
+
+    // Add provider URL if provided
+    if (options.aiProviderUrl) {
+      config.ai.baseURL = options.aiProviderUrl;
+    }
+
+    // Set working directory and save config
+    configManager.setWorkingDirectory(workingDir);
+    configManager.setConfig(config);
+    configManager.save();
+    console.log(chalk.green(`  ✓ Created ${taskOMaticDir}/config.json`));
+
+    // Initialize mcp.json with context7 config
+    const mcpConfig: {
+      context7: {
+        apiKey?: string;
+      };
+    } = {
+      context7: {},
+    };
+
+    if (options.context7ApiKey) {
+      mcpConfig.context7.apiKey = options.context7ApiKey;
+    }
+
+    const mcpFilePath = join(taskOMaticDir, "mcp.json");
+    writeFileSync(mcpFilePath, JSON.stringify(mcpConfig, null, 2));
+    console.log(chalk.green(`  ✓ Created ${mcpFilePath}`));
+
+    // Run full analysis if requested
+    if (options.analyze) {
+      console.log(chalk.blue("\n📊 Running full project analysis..."));
+      const analysisResult = await analysisService.analyzeProject(workingDir);
+
+      if (analysisResult.success) {
+        const analysis = analysisResult.analysis;
+
+        console.log(chalk.green("\n✅ Project analysis complete:"));
+        console.log(`   Project: ${chalk.cyan(analysis.projectName)}`);
+        if (analysis.version) console.log(`   Version: ${chalk.cyan(analysis.version)}`);
+
+        console.log(chalk.blue("\n📁 Structure:"));
+        console.log(`   Monorepo: ${analysis.structure.isMonorepo ? "Yes" : "No"}`);
+        console.log(`   Source directories: ${analysis.structure.sourceDirectories.length}`);
+        console.log(`   Has tests: ${analysis.structure.hasTests ? "Yes" : "No"}`);
+        console.log(`   Has CI/CD: ${analysis.structure.hasCICD ? "Yes" : "No"}`);
+        console.log(`   Has Docker: ${analysis.structure.hasDocker ? "Yes" : "No"}`);
+
+        if (analysis.documentation.length > 0) {
+          console.log(chalk.blue(`\n📚 Documentation found: ${analysis.documentation.length} files`));
+        }
+
+        if (analysis.todos.length > 0) {
+          console.log(chalk.blue(`\n📝 TODOs found: ${analysis.todos.length} comments`));
+          // Show first 5 TODOs
+          analysis.todos.slice(0, 5).forEach((todo) => {
+            console.log(chalk.gray(`   [${todo.type}] ${todo.file}:${todo.line} - ${todo.text.substring(0, 60)}${todo.text.length > 60 ? "..." : ""}`));
+          });
+          if (analysis.todos.length > 5) {
+            console.log(chalk.gray(`   ... and ${analysis.todos.length - 5} more`));
+          }
+        }
+
+        if (analysis.existingFeatures.length > 0) {
+          console.log(chalk.blue(`\n🔧 Features detected: ${analysis.existingFeatures.length}`));
+          analysis.existingFeatures.forEach((feature) => {
+            console.log(chalk.gray(`   - ${feature.name}: ${feature.description}`));
+          });
+        }
+
+        // Save analysis result
+        const analysisFilePath = join(taskOMaticDir, "analysis.json");
+        writeFileSync(analysisFilePath, JSON.stringify(analysis, null, 2));
+        console.log(chalk.green(`\n  ✓ Saved analysis to ${analysisFilePath}`));
+
+        // Show suggestions
+        if (analysisResult.suggestions && analysisResult.suggestions.length > 0) {
+          console.log(chalk.blue("\n💡 Suggestions:"));
+          analysisResult.suggestions.forEach((suggestion) => {
+            console.log(chalk.cyan(`   - ${suggestion}`));
+          });
+        }
+      } else {
+        console.log(chalk.yellow("⚠️  Analysis had issues:"));
+        analysisResult.warnings?.forEach((w) => console.log(chalk.yellow(`   - ${w}`)));
+      }
+    }
+
+    // Update .gitignore if git exists
+    if (hasGit) {
+      const gitignorePath = join(workingDir, ".gitignore");
+      const taskOMaticEntries = [
+        "",
+        "# Task-O-Matic",
+        ".task-o-matic/logs/",
+        ".task-o-matic/config.json",
+        ".task-o-matic/mcp.json",
+      ];
+
+      if (existsSync(gitignorePath)) {
+        const existing = readFileSync(gitignorePath, "utf-8");
+        if (!existing.includes(".task-o-matic/")) {
+          writeFileSync(gitignorePath, existing + taskOMaticEntries.join("\n") + "\n");
+          console.log(chalk.green("  ✓ Updated .gitignore"));
+        }
+      } else {
+        writeFileSync(gitignorePath, taskOMaticEntries.join("\n") + "\n");
+        console.log(chalk.green("  ✓ Created .gitignore"));
+      }
+    }
+
+    console.log(chalk.green("\n✅ Task-O-Matic attached successfully!"));
+
+    console.log(chalk.cyan("\nNext steps:"));
+    console.log("  1. Configure AI provider: task-o-matic config set-ai-provider <provider> <model>");
+    console.log("  2. Generate PRD from codebase: task-o-matic prd generate --from-codebase");
+    console.log('  3. Create your first task: task-o-matic tasks create --title "Your first task"');
+  });
+
 // Default action - show help
 initCommand.action(() => {
   console.log(chalk.blue("TaskOMatic Initialization"));
@@ -307,10 +546,19 @@ initCommand.action(() => {
     "  task-o-matic init init                    Initialize task-o-matic project"
   );
   console.log(
+    "  task-o-matic init attach                  Attach to existing project"
+  );
+  console.log(
     "  task-o-matic init bootstrap <name>        Bootstrap Better-T-Stack project"
   );
   console.log("");
   console.log(chalk.cyan("Examples:"));
+  console.log("  # Attach to existing project:");
+  console.log("  task-o-matic init attach");
+  console.log("  task-o-matic init attach --analyze");
+  console.log("  task-o-matic init attach --dry-run");
+  console.log("  task-o-matic init attach --redetect");
+  console.log("");
   console.log("  # Basic initialization:");
   console.log("  task-o-matic init init");
   console.log("  task-o-matic init init --project-name my-app");
@@ -398,4 +646,19 @@ initCommand.action(() => {
   console.log("  --package-manager <pm>       Package manager (npm/pnpm/bun)");
   console.log("  --runtime <runtime>          Runtime (node/bun)");
   console.log("  --payment <payment>          Payment provider (none/polar)");
+
+  console.log("");
+  console.log(chalk.cyan("Attach Options:"));
+  console.log(
+    "  --analyze                    Run full project analysis (TODOs, features)"
+  );
+  console.log(
+    "  --create-prd                 Auto-generate a PRD from codebase analysis"
+  );
+  console.log(
+    "  --dry-run                    Just detect stack, don't create files"
+  );
+  console.log(
+    "  --redetect                   Force re-detection (overwrites stack.json)"
+  );
 });

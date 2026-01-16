@@ -12,6 +12,7 @@ This project is organized as a monorepo with two packages:
 ## ✨ Features
 
 - 🤖 **AI-Powered**: Parse PRDs and enhance tasks using multiple AI providers
+- 🔗 **Existing Project Support**: Attach to any existing codebase with automatic stack detection
 - 🎭 **Interactive Workflow**: Guided setup from project init to task generation with AI assistance
 - ❓ **PRD Question/Refine**: AI generates clarifying questions and can answer them automatically
 - 🧠 **AI Reasoning Support**: Enable advanced reasoning for better PRD refinement
@@ -314,9 +315,37 @@ task-o-matic init init --project-name my-app
 task-o-matic init init --project-name my-app --ai-provider openrouter --ai-key your-key --frontend next --backend hono
 ```
 
+#### 2. Attach to Existing Project
+
+For existing codebases, use `init attach` instead of `init init`:
+
+```bash
+# Attach to existing project with automatic stack detection
+task-o-matic init attach
+
+# With full project analysis (TODOs, features, structure)
+task-o-matic init attach --analyze
+
+# Preview what would be detected without creating files
+task-o-matic init attach --dry-run
+
+# Force re-detection after stack changes
+task-o-matic init attach --redetect
+```
+
+**What gets detected:**
+- Language (TypeScript/JavaScript)
+- Frameworks (Next.js, Express, Hono, Vue, Svelte, etc.)
+- Database (Postgres, MongoDB, SQLite, MySQL)
+- ORM (Prisma, Drizzle, TypeORM)
+- Auth (Better-Auth, Clerk, NextAuth, Auth0)
+- Package Manager & Runtime
+- Testing & Build tools
+
 This creates a `.task-o-matic/` directory with:
 
 - `config.json` - AI configuration
+- `stack.json` - Detected technology stack (cached for AI context)
 - `tasks/` - Task JSON files
 - `prd/` - PRD versions and logs
 - `logs/` - Operation logs
@@ -556,6 +585,38 @@ task-o-matic init bootstrap my-app
 task-o-matic tasks create --title "Set up development environment" --ai-enhance --stream
 ```
 
+### Workflow 5: Existing Project Adoption
+
+For existing codebases where you want to start using task-o-matic:
+
+```bash
+# 1. Attach task-o-matic to existing project (auto-detects stack)
+cd /path/to/existing-project
+task-o-matic init attach --analyze
+
+# 2. Configure AI provider
+task-o-matic config set-ai-provider anthropic claude-3-5-sonnet
+
+# 3. Review detected stack
+cat .task-o-matic/stack.json
+
+# 4. Generate PRD from existing codebase
+task-o-matic prd generate --from-codebase
+
+# 5. Or manually create tasks for planned work
+task-o-matic tasks create --title "Add user dashboard" --ai-enhance --stream
+
+# 6. Split complex tasks
+task-o-matic tasks split --task-id <id> --stream
+
+# 7. Execute tasks
+task-o-matic tasks execute-loop --status todo
+```
+
+**Why `init attach` instead of `init init`?**
+- `init init` is for **new projects** (optionally bootstraps with Better-T-Stack)
+- `init attach` is for **existing projects** (detects existing stack, never modifies code)
+
 ## 📊 Benchmarking Commands
 
 ### Basic Model Benchmarking
@@ -735,7 +796,10 @@ task-o-matic benchmark workflow \
 your-project/
 ├── .task-o-matic/
 │   ├── config.json          # AI configuration
+│   ├── stack.json           # Detected technology stack (cached)
+│   ├── mcp.json             # Context7/MCP configuration
 │   ├── bts-config.json      # Better-T-Stack configuration (if bootstrapped)
+│   ├── analysis.json        # Project analysis results (if --analyze used)
 │   ├── tasks/              # Task JSON files
 │   │   ├── {task-id}.json
 │   │   └── ...

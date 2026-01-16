@@ -11,6 +11,7 @@ AI-powered task management CLI for single projects. Helps initialize projects, p
 
 Use when the user wants to:
 - Initialize a new project with task-o-matic
+- Attach task-o-matic to an existing project (detect stack automatically)
 - Parse a PRD (Product Requirements Document) into structured tasks
 - Break down tasks into smaller subtasks using AI
 - Enhance tasks with AI-powered documentation research
@@ -28,10 +29,18 @@ Or if installed globally: `task-o-matic <command> [options]`
 ## Core Workflow
 
 ```
+# New project workflow
 1. Initialize project (task-o-matic init init)
 2. Configure AI provider (task-o-matic config set-ai-provider)
 3. Parse PRD into tasks (task-o-matic prd parse)
 4. Split tasks into subtasks (task-o-matic tasks split --all)
+5. Execute tasks (task-o-matic tasks execute-loop)
+
+# Existing project workflow
+1. Attach to existing project (task-o-matic init attach)
+2. Configure AI provider (task-o-matic config set-ai-provider)
+3. Generate PRD from codebase (task-o-matic prd generate --from-codebase)
+4. Create tasks from PRD (task-o-matic prd parse)
 5. Execute tasks (task-o-matic tasks execute-loop)
 ```
 
@@ -60,6 +69,50 @@ task-o-matic init init --project-name my-app --frontend next --backend convex --
 - `--auth <auth>`: Authentication (default: better-auth)
 - `--directory <dir>`: Working directory
 
+### Attach to Existing Project
+
+```bash
+# Attach to existing project (auto-detect stack)
+task-o-matic init attach
+
+# With full project analysis
+task-o-matic init attach --analyze
+
+# Dry run (just show detection, don't create files)
+task-o-matic init attach --dry-run
+
+# Force re-detection (update cached stack.json)
+task-o-matic init attach --redetect
+```
+
+**Options:**
+- `--analyze`: Run full project analysis (TODOs, features, structure)
+- `--dry-run`: Just detect stack, don't create files
+- `--redetect`: Force re-detection (overwrites cached stack.json)
+- `--ai-provider <provider>`: AI provider (openrouter/anthropic/openai/custom)
+- `--ai-model <model>`: AI model
+- `--context7-api-key <key>`: Context7 API key
+
+**What it detects:**
+- Language (TypeScript/JavaScript)
+- Framework(s) (Next.js, Express, Hono, etc.)
+- Database (Postgres, MongoDB, SQLite, etc.)
+- ORM (Prisma, Drizzle, etc.)
+- Auth (Better-Auth, Clerk, NextAuth, etc.)
+- Package Manager (npm, pnpm, bun, yarn)
+- Runtime (Node, Bun)
+- API style (tRPC, GraphQL, REST)
+- Testing frameworks
+- Build tools
+
+**What it creates:**
+- `.task-o-matic/config.json` - AI settings
+- `.task-o-matic/stack.json` - Cached stack detection (used by AI context)
+- `.task-o-matic/mcp.json` - Context7 config
+- `.task-o-matic/tasks/` - Task storage
+- `.task-o-matic/prd/` - PRD storage
+- Updates `.gitignore` if git exists
+
 ### Configure AI Provider
 
 ```bash
@@ -71,6 +124,19 @@ task-o-matic config set-ai-provider custom https://api.example.com
 
 # Check current config
 task-o-matic config get-ai-config
+```
+
+### Generate PRD from Codebase
+
+```bash
+# Analyze current project and generate PRD
+task-o-matic prd generate
+
+# With streaming output
+task-o-matic prd generate --stream
+
+# With custom output filename
+task-o-matic prd generate --output my-project-prd.md
 ```
 
 ### Parse PRD

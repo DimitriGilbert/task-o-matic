@@ -5,10 +5,14 @@ Auto-generated documentation for all task-o-matic commands.
 ## Table of Contents
 
 - [Main Command](#main-command)
-- [Tasks Commands](#tasks-commands)
-- [PRD Commands](#prd-commands)
-- [Config Commands](#config-commands)
-- [Init Commands](#init-commands)
+- [config Commands](#config-commands)
+- [tasks Commands](#tasks-commands)
+- [prd Commands](#prd-commands)
+- [prompt Commands](#prompt-commands)
+- [init Commands](#init-commands)
+- [workflow Commands](#workflow-commands)
+- [benchmark Commands](#benchmark-commands)
+- [install Commands](#install-commands)
 
 ---
 
@@ -31,13 +35,84 @@ Commands:
   prompt [options] [name]     Build AI service prompts with variable replacement
                               for external tools
   init                        Initialize task-o-matic project and bootstrap
-                              projects (web/native/cli/tui)
+                              projects (web/native/cli)
   workflow [options]          Interactive workflow for complete project setup
                               and task management
   benchmark                   Run and manage AI benchmarks
   install [options] <target>  Install task-o-matic documentation and agent
                               guides into current project
 ```
+
+## Config Commands
+
+### config --help
+```
+Usage: task-o-matic config [options] [command]
+
+Manage task-o-matic configuration
+
+Options:
+  -h, --help                          display help for command
+
+Commands:
+  get-ai-config                       Get the current AI configuration
+  set-ai-provider <provider> [model]  Set the AI provider and model
+  info                                Get information about the current
+                                      task-o-matic project
+  help [command]                      display help for command
+```
+
+### config get-ai-config --help
+```
+Usage: task-o-matic config get-ai-config [options]
+
+Get the current AI configuration
+
+Options:
+  -h, --help  display help for command
+```
+
+### config set-ai-provider --help
+```
+Usage: task-o-matic config set-ai-provider [options] <provider> [model]
+
+Set the AI provider and model
+
+Arguments:
+  provider    AI provider (e.g., openrouter, openai)
+  model       AI model (optional)
+
+Options:
+  -h, --help  display help for command
+```
+
+### config info --help
+```
+Usage: task-o-matic config info [options]
+
+Get information about the current task-o-matic project
+
+Options:
+  -h, --help  display help for command
+```
+
+### config help --help
+```
+Usage: task-o-matic config [options] [command]
+
+Manage task-o-matic configuration
+
+Options:
+  -h, --help                          display help for command
+
+Commands:
+  get-ai-config                       Get the current AI configuration
+  set-ai-provider <provider> [model]  Set the AI provider and model
+  info                                Get information about the current
+                                      task-o-matic project
+  help [command]                      display help for command
+```
+
 
 ## Tasks Commands
 
@@ -168,124 +243,28 @@ Options:
   -h, --help             display help for command
 ```
 
-### tasks get-next --help
+### tasks add-tags --help
 ```
-Usage: task-o-matic tasks get-next [options]
+Usage: task-o-matic tasks add-tags [options]
 
-Get the next task to work on (defaults to hierarchical order)
+Add tags to a task
 
 Options:
-  -s, --status <status>      Filter by status (todo/in-progress)
-  -t, --tag <tag>            Filter by tag
-  -e, --effort <effort>      Filter by effort (small/medium/large)
-  -p, --priority <priority>  Sort priority (newest/oldest/effort) (default:
-                             "hierarchical")
-  -h, --help                 display help for command
+  --id <id>      Task ID
+  --tags <tags>  Tags to add (comma-separated)
+  -h, --help     display help for command
 ```
 
-### tasks next --help
+### tasks remove-tags --help
 ```
-Usage: task-o-matic tasks [options] [command]
+Usage: task-o-matic tasks remove-tags [options]
+
+Remove tags from a task
 
 Options:
-  -h, --help                   display help for command
-
-Commands:
-  list [options]               List all tasks
-  create [options]             Create a new task with AI enhancement using
-                               Context7
-  show [options]               Show detailed information about a task
-  update [options]             Update an existing task
-  delete [options]             Delete a task
-  status [options]             Set task status
-  add-tags [options]           Add tags to a task
-  remove-tags [options]        Remove tags from a task
-  plan [options]               Create detailed implementation plan for a task or
-                               subtask
-  get-plan [options]           View existing implementation plan for a task or
-                               subtask
-  list-plan                    List all available implementation plans
-  delete-plan [options]        Delete implementation plan for a task
-  set-plan [options]           Set implementation plan for a task
-  enhance [options]            Enhance an existing task with AI using Context7
-                               documentation
-  split [options]              Split a task into smaller subtasks using AI
-  document [options]           Analyze and fetch documentation for a task using
-                               AI with Context7
-  get-documentation [options]  Get existing documentation for a task
-  add-documentation [options]  Add documentation to a task from a file
-  execute [options]            Execute a task using an external coding assistant
-  execute-loop [options]       Execute multiple tasks in a loop with retry logic
-                               and verification
-  subtasks [options]           List subtasks for a task
-  tree [options]               Display hierarchical task tree
-  get-next [options]           Get the next task to work on (defaults to
-                               hierarchical order)
-  help [command]               display help for command
-```
-
-### tasks tree --help
-```
-Usage: task-o-matic tasks tree [options]
-
-Display hierarchical task tree
-
-Options:
-  --id <id>   Root task ID (optional - shows full tree if not specified)
-  -h, --help  display help for command
-```
-
-### tasks enhance --help
-```
-Usage: task-o-matic tasks enhance [options]
-
-Enhance an existing task with AI using Context7 documentation
-
-Options:
-  --task-id <id>            Task ID to enhance
-  --all                     Enhance all existing tasks
-  --status <status>         Filter tasks by status (todo/in-progress/completed)
-  --tag <tag>               Filter tasks by tag
-  --dry                     Preview what would be enhanced without making
-                            changes
-  --force                   Skip confirmation prompt for bulk operations
-  --stream                  Show streaming AI output during enhancement
-  --ai-provider <provider>  AI provider override
-  --ai-model <model>        AI model override
-  --ai-key <key>            AI API key override
-  --ai-provider-url <url>   AI provider URL override
-  --reasoning <tokens>      Enable reasoning for OpenRouter models (max
-                            reasoning tokens)
-  -h, --help                display help for command
-```
-
-### tasks split --help
-```
-Usage: task-o-matic tasks split [options]
-
-Split a task into smaller subtasks using AI
-
-Options:
-  --task-id <id>                 Task ID to split
-  --all                          Split all existing tasks that don't have
-                                 subtasks
-  --status <status>              Filter tasks by status
-                                 (todo/in-progress/completed)
-  --tag <tag>                    Filter tasks by tag
-  --dry                          Preview what would be split without making
-                                 changes
-  --force                        Skip confirmation prompt for bulk operations
-  --stream                       Show streaming AI output during breakdown
-  --ai-provider <provider>       AI provider override
-  --ai-key <key>                 AI API key override
-  --ai-provider-url <url>        AI provider URL override
-  --ai <models...>               AI model(s) to use. Format:
-                                 [provider:]model[;reasoning[=budget]]
-  --combine-ai <provider:model>  AI model to combine multiple split results
-  --reasoning <tokens>           Enable reasoning for OpenRouter models (max
-                                 reasoning tokens)
-  --tools                        Enable filesystem tools for project analysis
-  -h, --help                     display help for command
+  --id <id>      Task ID
+  --tags <tags>  Tags to remove (comma-separated)
+  -h, --help     display help for command
 ```
 
 ### tasks plan --help
@@ -349,6 +328,59 @@ Options:
   --plan <text>       Plan text (use quotes for multi-line)
   --plan-file <path>  Path to file containing the plan
   -h, --help          display help for command
+```
+
+### tasks enhance --help
+```
+Usage: task-o-matic tasks enhance [options]
+
+Enhance an existing task with AI using Context7 documentation
+
+Options:
+  --task-id <id>            Task ID to enhance
+  --all                     Enhance all existing tasks
+  --status <status>         Filter tasks by status (todo/in-progress/completed)
+  --tag <tag>               Filter tasks by tag
+  --dry                     Preview what would be enhanced without making
+                            changes
+  --force                   Skip confirmation prompt for bulk operations
+  --stream                  Show streaming AI output during enhancement
+  --ai-provider <provider>  AI provider override
+  --ai-model <model>        AI model override
+  --ai-key <key>            AI API key override
+  --ai-provider-url <url>   AI provider URL override
+  --reasoning <tokens>      Enable reasoning for OpenRouter models (max
+                            reasoning tokens)
+  -h, --help                display help for command
+```
+
+### tasks split --help
+```
+Usage: task-o-matic tasks split [options]
+
+Split a task into smaller subtasks using AI
+
+Options:
+  --task-id <id>                 Task ID to split
+  --all                          Split all existing tasks that don't have
+                                 subtasks
+  --status <status>              Filter tasks by status
+                                 (todo/in-progress/completed)
+  --tag <tag>                    Filter tasks by tag
+  --dry                          Preview what would be split without making
+                                 changes
+  --force                        Skip confirmation prompt for bulk operations
+  --stream                       Show streaming AI output during breakdown
+  --ai-provider <provider>       AI provider override
+  --ai-key <key>                 AI API key override
+  --ai-provider-url <url>        AI provider URL override
+  --ai <models...>               AI model(s) to use. Format:
+                                 [provider:]model[;reasoning[=budget]]
+  --combine-ai <provider:model>  AI model to combine multiple split results
+  --reasoning <tokens>           Enable reasoning for OpenRouter models (max
+                                 reasoning tokens)
+  --tools                        Enable filesystem tools for project analysis
+  -h, --help                     display help for command
 ```
 
 ### tasks document --help
@@ -421,11 +453,14 @@ Options:
                           (default: false)
   --plan-model <model>    Model/executor to use for planning (e.g.,
                           'opencode:gpt-4o' or 'gpt-4o')
+  --plan-tool <tool>      Tool/Executor to use for planning (defaults to --tool)
   --review-plan           Pause for human review of the plan (default: false)
   --review                Run AI review after execution (default: false)
   --review-model <model>  Model/executor to use for review (e.g.,
                           'opencode:gpt-4o' or 'gpt-4o')
   --auto-commit           Automatically commit changes after execution (default:
+                          false)
+  --include-prd           Include PRD content in execution context (default:
                           false)
   -h, --help              display help for command
 ```
@@ -445,6 +480,7 @@ Options:
   --max-retries <number>  Maximum number of retries per task (default: 3)
   --try-models <models>   Progressive model/executor configs for each retry
                           (e.g., 'gpt-4o-mini,gpt-4o,claude:sonnet-4')
+  -m, --model <model>     Model to force for execution
   --verify <command>      Verification command to run after each task (can be
                           used multiple times)
   --validate <command>    Alias for --verify (validation command, can be used
@@ -459,16 +495,60 @@ Options:
                           (default: false)
   --plan-model <model>    Model/executor to use for planning (e.g.,
                           'opencode:gpt-4o' or 'gpt-4o')
+  --plan-tool <tool>      Tool/Executor to use for planning (defaults to --tool)
   --review-plan           Pause for human review of the plan (default: false)
   --review                Run AI review after execution (default: false)
   --review-model <model>  Model/executor to use for review (e.g.,
                           'opencode:gpt-4o' or 'gpt-4o')
+  --include-completed     Include already-completed tasks in execution (default:
+                          false)
+  --include-prd           Include PRD content in execution context (default:
+                          false)
+  --notify <target>       Notify on completion via URL or command (can be used
+                          multiple times)
   --dry                   Show what would be executed without running it
                           (default: false)
   -h, --help              display help for command
 ```
 
-### tasks tag --help
+### tasks subtasks --help
+```
+Usage: task-o-matic tasks subtasks [options]
+
+List subtasks for a task
+
+Options:
+  --id <id>   Parent task ID
+  -h, --help  display help for command
+```
+
+### tasks tree --help
+```
+Usage: task-o-matic tasks tree [options]
+
+Display hierarchical task tree
+
+Options:
+  --id <id>   Root task ID (optional - shows full tree if not specified)
+  -h, --help  display help for command
+```
+
+### tasks get-next --help
+```
+Usage: task-o-matic tasks get-next [options]
+
+Get the next task to work on (defaults to hierarchical order)
+
+Options:
+  -s, --status <status>      Filter by status (todo/in-progress)
+  -t, --tag <tag>            Filter by tag
+  -e, --effort <effort>      Filter by effort (small/medium/large)
+  -p, --priority <priority>  Sort priority (newest/oldest/effort) (default:
+                             "hierarchical")
+  -h, --help                 display help for command
+```
+
+### tasks help --help
 ```
 Usage: task-o-matic tasks [options] [command]
 
@@ -509,48 +589,8 @@ Commands:
   help [command]               display help for command
 ```
 
-### tasks untag --help
-```
-Usage: task-o-matic tasks [options] [command]
 
-Options:
-  -h, --help                   display help for command
-
-Commands:
-  list [options]               List all tasks
-  create [options]             Create a new task with AI enhancement using
-                               Context7
-  show [options]               Show detailed information about a task
-  update [options]             Update an existing task
-  delete [options]             Delete a task
-  status [options]             Set task status
-  add-tags [options]           Add tags to a task
-  remove-tags [options]        Remove tags from a task
-  plan [options]               Create detailed implementation plan for a task or
-                               subtask
-  get-plan [options]           View existing implementation plan for a task or
-                               subtask
-  list-plan                    List all available implementation plans
-  delete-plan [options]        Delete implementation plan for a task
-  set-plan [options]           Set implementation plan for a task
-  enhance [options]            Enhance an existing task with AI using Context7
-                               documentation
-  split [options]              Split a task into smaller subtasks using AI
-  document [options]           Analyze and fetch documentation for a task using
-                               AI with Context7
-  get-documentation [options]  Get existing documentation for a task
-  add-documentation [options]  Add documentation to a task from a file
-  execute [options]            Execute a task using an external coding assistant
-  execute-loop [options]       Execute multiple tasks in a loop with retry logic
-                               and verification
-  subtasks [options]           List subtasks for a task
-  tree [options]               Display hierarchical task tree
-  get-next [options]           Get the next task to work on (defaults to
-                               hierarchical order)
-  help [command]               display help for command
-```
-
-## PRD Commands
+## Prd Commands
 
 ### prd --help
 ```
@@ -568,7 +608,49 @@ Commands:
   rework [options]                Rework a PRD based on user feedback
   question [options]              Generate clarifying questions for a PRD
   refine [options]                Refine PRD by answering clarifying questions
+  get-stack [options]             Suggest optimal technology stack based on PRD
+                                  analysis
   help [command]                  display help for command
+```
+
+### prd create --help
+```
+Usage: task-o-matic prd create [options] <description>
+
+Generate PRD(s) from a product description
+
+Arguments:
+  description                    Product description
+
+Options:
+  --ai <models...>               AI model(s) to use. Format:
+                                 [provider:]model[;reasoning[=budget]]. Example:
+                                 openrouter:openai/gpt-5;reasoning=2000
+  --combine-ai <provider:model>  AI model to combine multiple PRDs into master
+                                 PRD
+  --output-dir <path>            Directory to save PRDs (default:
+                                 ".task-o-matic/prd")
+  --ai-reasoning <tokens>        Enable reasoning for OpenRouter models (max
+                                 reasoning tokens)
+  --stream                       Enable streaming output (only for single AI)
+  -h, --help                     display help for command
+```
+
+### prd combine --help
+```
+Usage: task-o-matic prd combine [options]
+
+Combine multiple PRD files into a master PRD
+
+Options:
+  --files <paths...>       PRD files to combine
+  --description <text>     Original product description
+  --ai <provider:model>    AI model to use for combining
+  --output <path>          Output file path (default: "prd-master.md")
+  --ai-reasoning <tokens>  Enable reasoning for OpenRouter models (max reasoning
+                           tokens)
+  --stream                 Enable streaming output
+  -h, --help               display help for command
 ```
 
 ### prd parse --help
@@ -618,7 +700,80 @@ Options:
   -h, --help                display help for command
 ```
 
-### prd ask --help
+### prd question --help
+```
+Usage: task-o-matic prd question [options]
+
+Generate clarifying questions for a PRD
+
+Options:
+  --file <path>             Path to PRD file
+  --output <path>           Output JSON file path (default: prd-questions.json)
+  --prompt <prompt>         Override prompt
+  --message <message>       User message
+  --ai-provider <provider>  AI provider override
+  --ai-model <model>        AI model override
+  --ai-key <key>            AI API key override
+  --ai-provider-url <url>   AI provider URL override
+  --ai-reasoning <tokens>   Enable reasoning for OpenRouter models (max
+                            reasoning tokens)
+  --stream                  Show streaming AI output
+  --tools                   Enable filesystem tools for project analysis
+  -h, --help                display help for command
+```
+
+### prd refine --help
+```
+Usage: task-o-matic prd refine [options]
+
+Refine PRD by answering clarifying questions
+
+Options:
+  --file <path>             Path to PRD file
+  --questions <path>        Path to questions JSON file (optional, will generate
+                            if missing)
+  --output <path>           Output file path (default: overwrite original)
+  --prompt <prompt>         Override prompt
+  --message <message>       User message
+  --ai-provider <provider>  AI provider override
+  --ai-model <model>        AI model override
+  --ai-key <key>            AI API key override
+  --ai-provider-url <url>   AI provider URL override
+  --ai-reasoning <tokens>   Enable reasoning for OpenRouter models (max
+                            reasoning tokens)
+  --stream                  Show streaming AI output
+  --tools                   Enable filesystem tools for project analysis
+  -h, --help                display help for command
+```
+
+### prd get-stack --help
+```
+Usage: task-o-matic prd get-stack [options]
+
+Suggest optimal technology stack based on PRD analysis
+
+Options:
+  --file <path>             Path to PRD file
+  --content <text>          PRD content as string (mutually exclusive with
+                            --file)
+  --project-name <name>     Project name (inferred from PRD if not provided)
+  --save                    Save suggested stack to .task-o-matic/stack.json
+  --output <path>           Custom output path (implies --save)
+  --json                    Output result as JSON
+  --prompt <prompt>         Override prompt
+  --message <message>       User message
+  --ai-provider <provider>  AI provider override
+  --ai-model <model>        AI model override
+  --ai-key <key>            AI API key override
+  --ai-provider-url <url>   AI provider URL override
+  --ai-reasoning <tokens>   Enable reasoning for OpenRouter models (max
+                            reasoning tokens)
+  --stream                  Show streaming AI output
+  --tools                   Enable filesystem tools for project analysis
+  -h, --help                display help for command
+```
+
+### prd help --help
 ```
 Usage: task-o-matic prd [options] [command]
 
@@ -634,131 +789,67 @@ Commands:
   rework [options]                Rework a PRD based on user feedback
   question [options]              Generate clarifying questions for a PRD
   refine [options]                Refine PRD by answering clarifying questions
+  get-stack [options]             Suggest optimal technology stack based on PRD
+                                  analysis
   help [command]                  display help for command
 ```
 
-## Config Commands
 
-### config --help
+## Prompt Commands
+
+### prompt --help
 ```
-Usage: task-o-matic config [options] [command]
+Usage: task-o-matic prompt [options] [name]
 
-Manage task-o-matic configuration
+Build AI service prompts with variable replacement for external tools
+
+Arguments:
+  name                              Prompt name (e.g., prd-parsing,
+                                    task-enhancement, task-breakdown,
+                                    prd-rework, documentation-detection)
 
 Options:
-  -h, --help                          display help for command
+  -t, --type <type>                 Prompt type: system or user (default: user)
+                                    (default: "user")
+  -l, --list                        List all available prompts and exit
+                                    (default: false)
+  -m, --metadata <name>             Show metadata for a specific prompt and exit
+  --prd-content <content>           PRD content (for PRD-related prompts)
+  --prd-file <filepath>             Load PRD content from file
+  --task-title <title>              Task title (for task-related prompts)
+  --task-description <description>  Task description (for task-related prompts)
+  --task-file <filepath>            Load task description from file
+  --stack-info <info>               Technology stack information (e.g.,
+                                    "Frontend: Next.js, Backend: Convex")
+  --context-info <info>             Additional context information
+  --user-feedback <feedback>        User feedback (for prd-rework prompt)
+  --var <key=value>                 Custom variable in format key=value (can be
+                                    used multiple times) (default: [])
+  --full-context                    Include comprehensive project context (file
+                                    structure, dependencies, etc.) (default:
+                                    false)
+  --executor <type>                 Format output for specific executor:
+                                    opencode, claude, gemini, codex
+  -h, --help                        display help for command
 
-Commands:
-  get-ai-config                       Get the current AI configuration
-  set-ai-provider <provider> [model]  Set the AI provider and model
-  info                                Get information about the current
-                                      task-o-matic project
-  help [command]                      display help for command
-```
+Examples:
+  # List all available prompts
+  $ task-o-matic prompt --list
 
-### config get --help
-```
-Usage: task-o-matic config [options] [command]
+  # Show metadata for a specific prompt
+  $ task-o-matic prompt --metadata prd-parsing
+  $ task-o-matic prompt --metadata task-enhancement --type user
 
-Manage task-o-matic configuration
+  # Build PRD parsing prompt with content from file
+  $ task-o-matic prompt prd-parsing --prd-file ./my-prd.md
 
-Options:
-  -h, --help                          display help for command
+  # Build task enhancement prompt with task info
+  $ task-o-matic prompt task-enhancement --task-title "Add user auth" --task-description "Implement JWT authentication"
 
-Commands:
-  get-ai-config                       Get the current AI configuration
-  set-ai-provider <provider> [model]  Set the AI provider and model
-  info                                Get information about the current
-                                      task-o-matic project
-  help [command]                      display help for command
-```
+  # Build with custom variables
+  $ task-o-matic prompt prd-parsing --var PRD_CONTENT="My PRD content" --var STACK_INFO="Next.js, Convex"
 
-### config set --help
-```
-Usage: task-o-matic config [options] [command]
-
-Manage task-o-matic configuration
-
-Options:
-  -h, --help                          display help for command
-
-Commands:
-  get-ai-config                       Get the current AI configuration
-  set-ai-provider <provider> [model]  Set the AI provider and model
-  info                                Get information about the current
-                                      task-o-matic project
-  help [command]                      display help for command
-```
-
-### config reset --help
-```
-Usage: task-o-matic config [options] [command]
-
-Manage task-o-matic configuration
-
-Options:
-  -h, --help                          display help for command
-
-Commands:
-  get-ai-config                       Get the current AI configuration
-  set-ai-provider <provider> [model]  Set the AI provider and model
-  info                                Get information about the current
-                                      task-o-matic project
-  help [command]                      display help for command
-```
-
-## Init Commands
-
-### init --help
-```
-Usage: task-o-matic init [options] [command]
-
-Initialize task-o-matic project and bootstrap projects (web/native/cli/tui)
-
-Options:
-  -h, --help                  display help for command
-
-Commands:
-  init [options]              Initialize a new task-o-matic project in the
-                              current directory
-  bootstrap [options] <name>  Bootstrap a new project (web/native/cli/tui)
-```
-
-### init init --help
-```
-Usage: task-o-matic init init [options]
-
-Initialize a new task-o-matic project in the current directory
-
-Options:
-  --ai-provider <provider>     AI provider (openrouter/anthropic/openai/custom)
-                               (default: "openrouter")
-  --ai-model <model>           AI model (default: "z-ai/glm-4.6")
-  --ai-key <key>               AI API key
-  --ai-provider-url <url>      AI provider URL
-  --max-tokens <tokens>        Max tokens for AI (min 32768 for 2025) (default:
-                               "32768")
-  --temperature <temp>         AI temperature (default: "0.5")
-  --no-bootstrap               Skip bootstrap after initialization
-  --project-name <name>        Project name for bootstrap
-  --frontend <frontends...>    Frontend framework(s) - space/comma-separated
-                               (next, native-bare, cli, tui, etc.) (default:
-                               "next")
-  --backend <backend>          Backend framework for bootstrap (default:
-                               "convex")
-  --database <database>        Database for bootstrap
-  --auth <auth>                Authentication for bootstrap (default:
-                               "better-auth")
-  --context7-api-key <key>     Context7 API key
-  --directory <dir>            Working directory for the project
-  --package-manager <pm>       Package manager (npm/pnpm/bun) (default: "npm")
-  --runtime <runtime>          Runtime (bun/node) (default: "node")
-  --payment <payment>          Payment provider (none/polar) (default: "none")
-  --cli-deps <level>           CLI dependency level
-                               (minimal/standard/full/task-o-matic) (default:
-                               "standard")
-  --tui-framework <framework>  TUI framework (solid/vue/react) (default:
-                               "solid")
-  -h, --help                   display help for command
+  # Build system prompt
+  $ task-o-matic prompt prd-parsing --type system
 ```
 

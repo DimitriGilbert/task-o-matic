@@ -12,6 +12,7 @@ import {
   TaskAIMetadata,
   TaskDocumentation,
   DocumentationDetection,
+  BTSConfig,
 } from "../types";
 import { ProgressCallback } from "../types/callbacks";
 import {
@@ -170,7 +171,7 @@ export class TaskService {
     const startTime = Date.now();
 
     let content = input.content;
-    let aiMetadata;
+    let aiMetadata: TaskAIMetadata | undefined;
 
     if (input.aiEnhance) {
       this.hooks.emit("task:progress", {
@@ -179,7 +180,10 @@ export class TaskService {
       });
 
       // Build context with error handling (Bug fix 2.2)
-      let context;
+      let context: {
+        stack?: BTSConfig;
+        existingResearch?: Record<string, Array<{ query: string; doc: string }>>;
+      };
       try {
         context = await this.contextBuilder.buildContextForNewTask(
           input.title,
@@ -571,13 +575,14 @@ export class TaskService {
         return filteredTasks.sort((a, b) => b.createdAt - a.createdAt)[0];
       case "oldest":
         return filteredTasks.sort((a, b) => a.createdAt - b.createdAt)[0];
-      case "effort":
+      case "effort": {
         const effortOrder = { small: 1, medium: 2, large: 3 };
         return filteredTasks.sort(
           (a, b) =>
             (effortOrder[a.estimatedEffort || "medium"] || 2) -
             (effortOrder[b.estimatedEffort || "medium"] || 2)
         )[0];
+      }
       default:
         // Default: task ID order (1, 1.1, 1.2, 2, 2.1, etc.)
         return filteredTasks.sort((a, b) => a.id.localeCompare(b.id))[0];

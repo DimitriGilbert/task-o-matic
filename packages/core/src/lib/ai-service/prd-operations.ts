@@ -19,6 +19,7 @@ import {
   PRD_GENERATION_SYSTEM_PROMPT,
   PRD_COMBINATION_SYSTEM_PROMPT,
   PRD_SUGGEST_STACK_SYSTEM_PROMPT,
+  PRD_FROM_CODEBASE_SYSTEM_PROMPT,
 } from "../../prompts";
 import { JSONParser } from "./json-parser";
 import { RetryHandler } from "./retry-handler";
@@ -824,6 +825,115 @@ Use these tools to understand the current project structure, existing code patte
       },
       retryConfig,
       "Stack suggestion"
+    );
+  }
+
+  /**
+   * Generate a PRD from an existing codebase analysis.
+   * This uses ProjectAnalysisService output to create a reverse-engineered PRD.
+   */
+  async generatePRDFromCodebase(
+    analysisContext: {
+      projectName: string;
+      projectDescription?: string;
+      fileTree: string;
+      stackInfo: string;
+      existingFeatures: string;
+      documentation: string;
+      todos: string;
+      structureInfo: string;
+    },
+    config?: Partial<AIConfig>,
+    streamingOptions?: StreamingOptions,
+    retryConfig?: Partial<RetryConfig>,
+    enableFilesystemTools?: boolean
+  ): Promise<string> {
+    return this.retryHandler.executeWithRetry(
+      async () => {
+        // Build the user prompt with all analysis context
+        const userContent = `
+# Project Analysis for: ${analysisContext.projectName}
+
+${analysisContext.projectDescription ? `## Description\n${analysisContext.projectDescription}\n` : ""}
+
+## Technology Stack
+${analysisContext.stackInfo}
+
+## Project Structure
+${analysisContext.structureInfo}
+
+## File Tree
+\`\`\`
+${analysisContext.fileTree}
+\`\`\`
+
+## Detected Features
+${analysisContext.existingFeatures || "No specific features detected."}
+
+## Existing Documentation
+${analysisContext.documentation || "No documentation found."}
+
+## TODO/FIXME Comments
+${analysisContext.todos || "No TODO comments found."}
+
+---
+
+Based on this analysis, please generate a comprehensive PRD that documents the current state of this project and suggests improvements.
+`;
+
+        if (enableFilesystemTools) {
+          const model = this.modelProvider.getModel({
+            ...this.modelProvider.getAIConfig(),
+            ...config,
+          });
+
+          const allTools = {
+            ...filesystemTools,
+          };
+
+          const result = await streamText({
+            model,
+            tools: allTools,
+            system:
+              PRD_FROM_CODEBASE_SYSTEM_PROMPT +
+              `\n\nYou have access to filesystem tools that allow you to:\n- readFile: Read the contents of any file in the project\n- listDirectory: List contents of directories\n\nUse these tools to gather additional context if needed to create a more accurate PRD.`,
+            messages: [{ role: "user", content: userContent }],
+            maxRetries: 0,
+            onChunk: streamingOptions?.onChunk
+              ? ({ chunk }) => {
+                  if (chunk.type === "text-delta") {
+                    streamingOptions.onChunk!(chunk.text);
+                  } else if (chunk.type === "reasoning-delta") {
+                    streamingOptions.onReasoning?.(chunk.text);
+                  }
+                }
+              : undefined,
+            onFinish: streamingOptions?.onFinish
+              ? ({ text, finishReason, usage }) => {
+                  streamingOptions.onFinish!({
+                    text,
+                    finishReason,
+                    usage,
+                    isAborted: false,
+                  });
+                }
+              : undefined,
+          });
+
+          return await result.text;
+        } else {
+          return this.streamText(
+            "",
+            config,
+            PRD_FROM_CODEBASE_SYSTEM_PROMPT,
+            userContent,
+            streamingOptions,
+            { maxAttempts: 1 }
+          );
+        }
+      },
+      retryConfig,
+      "PRD from codebase generation"
     );
   }
 

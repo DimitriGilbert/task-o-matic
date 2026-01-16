@@ -1,9 +1,12 @@
-import { join } from "path";
-import { Task, TaskContext, BTSConfig, TaskDocumentation } from "../types";
-import { TaskRepository } from "./storage/types";
+import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
+import { join } from "node:path";
+
+import { getProjectAnalysisService } from "../services/project-analysis";
+import { BTSConfig, Task, TaskContext, TaskDocumentation } from "../types";
+import { ProjectAnalysis } from "../types/project-analysis";
 import { configManager } from "./config";
-import { readFileSync, existsSync, readdirSync, statSync } from "fs";
 import { logger } from "./logger";
+import { TaskRepository } from "./storage/types";
 
 export interface FileStats {
   mtime: number;
@@ -134,6 +137,39 @@ export class ContextBuilder {
       documentation: undefined, // New tasks don't have documentation yet
       existingContent: undefined,
       prdContent,
+    };
+  }
+
+  /**
+   * Build context for existing project with optional analysis
+   */
+  async buildContextForExistingProject(options?: {
+    includeSourceFiles?: boolean;
+    maxFiles?: number;
+    filePatterns?: string[];
+  }): Promise<TaskContext & { existingCode: ProjectAnalysis }> {
+    this.ensureInitialized();
+
+    const stack = await this.getStackConfig();
+
+    const analysisService = getProjectAnalysisService();
+    const workingDir = configManager.getWorkingDirectory();
+    const analysisResult = await analysisService.analyzeProject(workingDir);
+
+    const existingCode = analysisResult.analysis;
+
+    return {
+      task: {
+        id: "project-context",
+        title: "Project Analysis",
+        description: "Context for existing project",
+        fullContent: undefined,
+      },
+      stack,
+      existingCode,
+      documentation: undefined,
+      existingContent: undefined,
+      prdContent: undefined,
     };
   }
 
@@ -362,6 +398,24 @@ export class ContextBuilder {
         formatted += `- **Addons**: ${context.stack.addons.join(", ")}\n`;
       }
       formatted += `- **Package Manager**: ${context.stack.packageManager}\n`;
+      formatted += `\n`;
+    }
+
+    if (context.existingCode) {
+      const analysis = context.existingCode;
+      formatted += `## Existing Project Analysis\n`;
+      formatted += `- **Structure**: ${
+        analysis.structure.isMonorepo ? "Monorepo" : "Single Package"
+      }\n`;
+      formatted += `- **Source Dirs**: ${analysis.structure.sourceDirectories
+        .map((d) => d.path)
+        .join(", ")}\n`;
+      formatted += `- **Features**: ${analysis.existingFeatures.length} detected\n`;
+      if (analysis.existingFeatures.length > 0) {
+        analysis.existingFeatures.forEach((f) => {
+          formatted += `  - ${f.name} (${f.category})\n`;
+        });
+      }
       formatted += `\n`;
     }
 

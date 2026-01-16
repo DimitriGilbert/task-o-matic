@@ -341,6 +341,8 @@ export interface TaskAIMetadata {
   splitAt?: number;
 }
 
+import { ProjectAnalysis } from "./project-analysis";
+
 // Context Builder Types
 export interface TaskContext {
   task: {
@@ -350,6 +352,7 @@ export interface TaskContext {
     fullContent?: string;
   };
   stack?: BTSConfig;
+  existingCode?: ProjectAnalysis;
   documentation?: {
     recap: string;
     files: Array<{
@@ -623,9 +626,19 @@ export type {
   DocumentTaskResult,
   DeleteTaskResult,
   PRDParseResult,
+  ContinueResult, // New result type
 } from "./results";
 
 export * from "./workflow-options";
 export * from "./options";
 export * from "./results";
 export * from "./callbacks";
+export * from "./project-analysis";
+
+// Continue Workflow Types
+export type ContinueAction = 
+  | "add-feature"      // Add new feature to PRD
+  | "update-prd"       // Update PRD with progress
+  | "generate-tasks"   // Create tasks for unimplemented parts
+  | "review-status"    // Show project overview
+  | "generate-plan";   // Create implementation plan

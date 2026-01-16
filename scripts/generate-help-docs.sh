@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
-# Generate comprehensive help documentation for all task-o-matic commands
+# Generate comprehensive help documentation for all task-o-matic commands (dynamic)
 
 set -euo pipefail
 
 OUTPUT_FILE="docs/task-o-matic_help.md"
-CLI_BIN="./dist/cli/bin.js"
+CLI_BIN="./packages/cli/dist/cli/bin.js"
 
 # Check if CLI is built
 if [ ! -f "$CLI_BIN" ]; then
@@ -12,7 +12,21 @@ if [ ! -f "$CLI_BIN" ]; then
   exit 1
 fi
 
-echo "Generating help documentation..."
+echo "Generating dynamic help documentation..."
+
+# Function to extract commands from help output
+extract_commands() {
+    local help_output="$1"
+    # Extract commands after "Commands:" section, before "Options:"
+    # Pattern: capture lines after "Commands:" until we hit "Options:" or EOF
+    # Each command is at the start of a line, followed by options in brackets
+    # Only match lines that start with spaces followed by a letter (actual commands)
+    echo "$help_output" | awk '/^Commands:$/ { in_commands=1; next } in_commands && /^(Options:|$)/ { exit } in_commands && /^  [a-z]/ { print $1 }' | grep -v '^$'
+}
+
+# Extract main commands first (for TOC)
+MAIN_HELP=$(node "$CLI_BIN" --help 2>/dev/null || true)
+MAIN_COMMANDS=$(extract_commands "$MAIN_HELP")
 
 # Initialize output file
 cat > "$OUTPUT_FILE" << 'EOF'
@@ -23,14 +37,15 @@ Auto-generated documentation for all task-o-matic commands.
 ## Table of Contents
 
 - [Main Command](#main-command)
-- [Tasks Commands](#tasks-commands)
-- [PRD Commands](#prd-commands)
-- [Config Commands](#config-commands)
-- [Init Commands](#init-commands)
-
----
-
 EOF
+
+# Add TOC links for main commands
+for cmd in $MAIN_COMMANDS; do
+    echo "- [$cmd Commands](#$cmd-commands)" >> "$OUTPUT_FILE"
+done
+echo "" >> "$OUTPUT_FILE"
+echo "---" >> "$OUTPUT_FILE"
+echo "" >> "$OUTPUT_FILE"
 
 # Main help
 echo "## Main Command" >> "$OUTPUT_FILE"
@@ -40,105 +55,38 @@ node "$CLI_BIN" --help >> "$OUTPUT_FILE" 2>&1 || true
 echo '```' >> "$OUTPUT_FILE"
 echo "" >> "$OUTPUT_FILE"
 
-# Tasks commands
-echo "## Tasks Commands" >> "$OUTPUT_FILE"
-echo "" >> "$OUTPUT_FILE"
-
-echo "### tasks --help" >> "$OUTPUT_FILE"
-echo '```' >> "$OUTPUT_FILE"
-node "$CLI_BIN" tasks --help >> "$OUTPUT_FILE" 2>&1 || true
-echo '```' >> "$OUTPUT_FILE"
-echo "" >> "$OUTPUT_FILE"
-
-# Individual task commands
-TASK_COMMANDS=(
-  "list"
-  "create"
-  "show"
-  "update"
-  "delete"
-  "status"
-  "get-next"
-  "next"
-  "tree"
-  "enhance"
-  "split"
-  "plan"
-  "get-plan"
-  "list-plan"
-  "delete-plan"
-  "set-plan"
-  "document"
-  "get-documentation"
-  "add-documentation"
-  "execute"
-  "execute-loop"
-  "tag"
-  "untag"
-)
-
-for cmd in "${TASK_COMMANDS[@]}"; do
-  echo "### tasks $cmd --help" >> "$OUTPUT_FILE"
-  echo '```' >> "$OUTPUT_FILE"
-  node "$CLI_BIN" tasks "$cmd" --help >> "$OUTPUT_FILE" 2>&1 || true
-  echo '```' >> "$OUTPUT_FILE"
-  echo "" >> "$OUTPUT_FILE"
+# Generate docs for each main command
+for cmd in $MAIN_COMMANDS; do
+    echo "Processing $cmd..." >&2
+    
+    # Capitalize for section heading
+    CMD_TITLE=$(echo "$cmd" | awk '{print toupper(substr($0,1,1)) substr($0,2)}')
+    
+    echo "## $CMD_TITLE Commands" >> "$OUTPUT_FILE"
+    echo "" >> "$OUTPUT_FILE"
+    
+    # Main command help
+    echo "### $cmd --help" >> "$OUTPUT_FILE"
+    echo '```' >> "$OUTPUT_FILE"
+    node "$CLI_BIN" "$cmd" --help >> "$OUTPUT_FILE" 2>&1 || true
+    echo '```' >> "$OUTPUT_FILE"
+    echo "" >> "$OUTPUT_FILE"
+    
+    # Extract subcommands
+    CMD_HELP=$(node "$CLI_BIN" "$cmd" --help 2>/dev/null || true)
+    SUBCOMMANDS=$(extract_commands "$CMD_HELP")
+    
+    if [ -n "$SUBCOMMANDS" ]; then
+        for subcmd in $SUBCOMMANDS; do
+            echo "### $cmd $subcmd --help" >> "$OUTPUT_FILE"
+            echo '```' >> "$OUTPUT_FILE"
+            node "$CLI_BIN" "$cmd" "$subcmd" --help >> "$OUTPUT_FILE" 2>&1 || true
+            echo '```' >> "$OUTPUT_FILE"
+            echo "" >> "$OUTPUT_FILE"
+        done
+    fi
+    
+    echo "" >> "$OUTPUT_FILE"
 done
-
-# PRD commands
-echo "## PRD Commands" >> "$OUTPUT_FILE"
-echo "" >> "$OUTPUT_FILE"
-
-echo "### prd --help" >> "$OUTPUT_FILE"
-echo '```' >> "$OUTPUT_FILE"
-node "$CLI_BIN" prd --help >> "$OUTPUT_FILE" 2>&1 || true
-echo '```' >> "$OUTPUT_FILE"
-echo "" >> "$OUTPUT_FILE"
-
-PRD_COMMANDS=("parse" "rework" "ask")
-
-for cmd in "${PRD_COMMANDS[@]}"; do
-  echo "### prd $cmd --help" >> "$OUTPUT_FILE"
-  echo '```' >> "$OUTPUT_FILE"
-  node "$CLI_BIN" prd "$cmd" --help >> "$OUTPUT_FILE" 2>&1 || true
-  echo '```' >> "$OUTPUT_FILE"
-  echo "" >> "$OUTPUT_FILE"
-done
-
-# Config commands
-echo "## Config Commands" >> "$OUTPUT_FILE"
-echo "" >> "$OUTPUT_FILE"
-
-echo "### config --help" >> "$OUTPUT_FILE"
-echo '```' >> "$OUTPUT_FILE"
-node "$CLI_BIN" config --help >> "$OUTPUT_FILE" 2>&1 || true
-echo '```' >> "$OUTPUT_FILE"
-echo "" >> "$OUTPUT_FILE"
-
-CONFIG_COMMANDS=("get" "set" "reset")
-
-for cmd in "${CONFIG_COMMANDS[@]}"; do
-  echo "### config $cmd --help" >> "$OUTPUT_FILE"
-  echo '```' >> "$OUTPUT_FILE"
-  node "$CLI_BIN" config "$cmd" --help >> "$OUTPUT_FILE" 2>&1 || true
-  echo '```' >> "$OUTPUT_FILE"
-  echo "" >> "$OUTPUT_FILE"
-done
-
-# Init commands
-echo "## Init Commands" >> "$OUTPUT_FILE"
-echo "" >> "$OUTPUT_FILE"
-
-echo "### init --help" >> "$OUTPUT_FILE"
-echo '```' >> "$OUTPUT_FILE"
-node "$CLI_BIN" init --help >> "$OUTPUT_FILE" 2>&1 || true
-echo '```' >> "$OUTPUT_FILE"
-echo "" >> "$OUTPUT_FILE"
-
-echo "### init init --help" >> "$OUTPUT_FILE"
-echo '```' >> "$OUTPUT_FILE"
-node "$CLI_BIN" init init --help >> "$OUTPUT_FILE" 2>&1 || true
-echo '```' >> "$OUTPUT_FILE"
-echo "" >> "$OUTPUT_FILE"
 
 echo "✓ Help documentation generated: $OUTPUT_FILE"

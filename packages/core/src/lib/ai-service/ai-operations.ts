@@ -307,4 +307,31 @@ export class AIOperations extends BaseOperations {
       enableFilesystemTools
     );
   }
+
+  // PRD from Codebase - Delegated to PRDOperations
+
+  async generatePRDFromCodebase(
+    analysisContext: {
+      projectName: string;
+      projectDescription?: string;
+      fileTree: string;
+      stackInfo: string;
+      existingFeatures: string;
+      documentation: string;
+      todos: string;
+      structureInfo: string;
+    },
+    config?: Partial<AIConfig>,
+    streamingOptions?: StreamingOptions,
+    retryConfig?: Partial<RetryConfig>,
+    enableFilesystemTools?: boolean
+  ): Promise<string> {
+    return this.prdOps.generatePRDFromCodebase(
+      analysisContext,
+      config,
+      streamingOptions,
+      retryConfig,
+      enableFilesystemTools
+    );
+  }
 }
