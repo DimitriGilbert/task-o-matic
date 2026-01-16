@@ -153,3 +153,5 @@ bun run --filter task-o-matic-core test -- src/test/path/to/your.test.ts
 - `require` is punishable by death ! STRICTLY FORBIDDEN !
 - `:any` and `as any` are forbidden ! STRICTLY FORBIDDEN !
 - LSP errors MUST be FIXED ! fixing LSP errors is NOT OPTIONAL !
+- LSP errors **MUST be FIXED** ! fixing LSP errors is **NOT OPTIONAL** !
+- **LSP errors MUST be FIXED** ! fixing LSP errors is **NOT OPTIONAL** !
