@@ -1,12 +1,12 @@
 ## TECHNICAL BULLETIN NO. 002
 ### WORKFLOW SERVICE - PROJECT WORKFLOW SURVIVAL SYSTEM
 
-**DOCUMENT ID:** `task-o-matic-workflow-v1`  
-**CLEARANCE:** `All Personnel`  
+**DOCUMENT ID:** `task-o-matic-workflow-v1`
+**CLEARANCE:** `All Personnel`
 **MANDATORY COMPLIANCE:** `Yes`
 
 ### ⚠️ CRITICAL SURVIVAL NOTICE
-Citizen, the WorkflowService is your command center for project survival in the post-deadline wasteland. Ignore this documentation and your projects will crumble into disorganized chaos faster than a sandstorm in the radiation zone. This service orchestrates the complete project lifecycle from initialization to task generation.
+Citizen, the WorkflowService is your command center for project survival in the post-deadline wasteland. Ignore this documentation and your projects will crumble into disorganized chaos faster than a sandstorm in the radiation zone. This service orchestrates the complete project lifecycle from initialization to task execution.
 
 ### SYSTEM ARCHITECTURE OVERVIEW
 
@@ -25,6 +25,7 @@ The WorkflowService serves as the high-level orchestration layer that coordinate
 3. **PRD Refinement**: Improve PRD based on feedback
 4. **Task Generation**: Extract tasks from PRD
 5. **Task Splitting**: Break down complex tasks into subtasks
+6. **Task Execution**: Execute generated tasks with AI assistance
 
 ### COMPLETE API DOCUMENTATION
 
@@ -457,7 +458,6 @@ async splitTasks(input: {
 const result = await workflowService.splitTasks({
   taskIds: ["1", "2", "3"],
   splitMethod: "standard",
-  projectDir: "/path/to/project",
   callbacks: {
     onProgress: (event) => console.log(event.message)
   }
@@ -493,6 +493,189 @@ if (!splitResult.error) {
   splitResult.subtasks.forEach(subtask => {
     console.log(`  - ${subtask.title}`);
   });
+}
+```
+
+---
+
+#### continueProject
+
+```typescript
+async continueProject(input: {
+  projectDir?: string;
+  action?: ContinueAction;
+  aiOptions?: AIOptions;
+  streamingOptions?: StreamingOptions;
+  callbacks?: ProgressCallback;
+}): Promise<ContinueResult>
+```
+
+**Parameters:**
+- `input.projectDir` (string, optional): Project directory (defaults to cwd)
+- `input.action` (ContinueAction, optional): Specific action to execute
+  - `"status"`: Review current project status
+  - `"generate-plan"`: Generate implementation plan
+  - `"add-feature"`: Add new feature to project
+  - `"update-prd"`: Update PRD with recent progress
+  - `"generate-tasks"`: Generate tasks from updated PRD
+- `input.aiOptions` (AIOptions, optional): AI configuration override
+- `input.streamingOptions` (StreamingOptions, optional): Streaming callbacks
+- `input.callbacks` (ProgressCallback, optional): Progress handlers
+
+**Returns:** ContinueResult containing:
+- `success` (boolean): Operation success status
+- `action` (string): Action executed
+- `projectStatus` (object, optional): Project status information
+  - `tasks` (object): Task statistics
+    - `total` (number): Total task count
+    - `completed` (number): Completed task count
+    - `inProgress` (number): In-progress task count
+    - `todo` (number): Todo task count
+    - `completionPercentage` (number): Project completion percentage
+  - `prd` (object): PRD information
+    - `exists` (boolean): Whether PRD exists
+    - `path` (string): Path to PRD file
+  - `nextSteps` (string[]): Recommended next steps
+- `message` (string, optional): Status message or error details
+
+**Error Conditions:**
+- Project not initialized (no `.task-o-matic` directory)
+- PRD not found when required for action
+
+**Example: Check Project Status**
+```typescript
+const result = await workflowService.continueProject({
+  projectDir: "/path/to/project",
+  callbacks: {
+    onProgress: (event) => console.log(event.message)
+  }
+});
+
+if (result.success && result.projectStatus) {
+  const { tasks, prd, nextSteps } = result.projectStatus;
+  console.log(`Project Completion: ${tasks.completionPercentage}%`);
+  console.log(`Total Tasks: ${tasks.total} (${tasks.completed} completed)`);
+  console.log(`PRD Status: ${prd.exists ? "Found" : "Not found"}`);
+  console.log("\nRecommended Next Steps:");
+  nextSteps.forEach(step => console.log(`  - ${step}`));
+}
+```
+
+**Example: Generate Tasks from Existing PRD**
+```typescript
+const result = await workflowService.continueProject({
+  projectDir: "/path/to/project",
+  action: "generate-tasks",
+  callbacks: {
+    onProgress: (event) => console.log(event.message)
+  }
+});
+
+console.log(`Action: ${result.action}`);
+if (result.message) {
+  console.log(`Message: ${result.message}`);
+}
+```
+
+**Example: Review Project Status with Specific Directory**
+```typescript
+const result = await workflowService.continueProject({
+  projectDir: "/path/to/another/project",
+  action: "review-status",
+  callbacks: {
+    onProgress: (event) => console.log(`[${event.message}]`)
+  }
+});
+
+if (result.success && result.projectStatus) {
+  console.log("Project Analysis Complete");
+  console.log(`Tasks: ${result.projectStatus.tasks.todo} todo, ${result.projectStatus.tasks.inProgress} in progress`);
+}
+```
+
+---
+
+#### executeTasks
+
+```typescript
+async executeTasks(input: {
+  options: ExecuteLoopOptions;
+  callbacks?: ProgressCallback;
+}): Promise<{ success: boolean; result: ExecuteLoopResult }>
+```
+
+**Parameters:**
+- `input.options` (ExecuteLoopOptions, required): Execution loop configuration
+  - `status` (string, required): Task status filter (e.g., "todo", "in-progress")
+  - `tool` (string): Execution tool to use
+  - `maxRetries` (number): Maximum retry attempts per task
+  - `tryModels` (array): Array of AI models to try in sequence
+  - `verify` (string | string[]): Verification command(s) to run after each task
+  - `plan` (boolean): Generate implementation plan before execution
+  - `review` (boolean): Review generated code before applying
+  - `autoCommit` (boolean): Automatically commit successful changes
+- `input.callbacks` (ProgressCallback, optional): Progress event handlers
+
+**Returns:** Object containing:
+- `success` (boolean): Whether all tasks executed successfully
+- `result` (ExecuteLoopResult): Execution results
+  - `completedTasks` (number): Number of tasks completed
+  - `failedTasks` (number): Number of tasks that failed
+  - `details` (array): Individual task execution details
+
+**Error Conditions:**
+- Invalid task status filter
+- No tasks matching status filter
+- Execution tool errors
+- Verification command failures
+
+**Example: Execute All Todo Tasks with Verification**
+```typescript
+const { success, result } = await workflowService.executeTasks({
+  options: {
+    status: "todo",
+    tool: "opencode",
+    maxRetries: 3,
+    tryModels: [
+      { provider: "openai", model: "gpt-4o-mini" },
+      { provider: "openai", model: "gpt-4o" },
+      { provider: "anthropic", model: "claude-3.5-sonnet" },
+    ],
+    verify: "bun test",
+    plan: true,
+    review: true,
+    autoCommit: true,
+  },
+  callbacks: {
+    onProgress: (event) => console.log(`Progress: ${event.message}`),
+    onError: (error) => console.error(`Error: ${error.message}`),
+  },
+});
+
+console.log(`Execution ${success ? "completed" : "failed"}`);
+console.log(`Tasks completed: ${result.completedTasks}`);
+console.log(`Tasks failed: ${result.failedTasks}`);
+```
+
+**Example: Execute with Multiple Verification Commands**
+```typescript
+const { success, result } = await workflowService.executeTasks({
+  options: {
+    status: "todo",
+    tool: "opencode",
+    maxRetries: 2,
+    verify: ["bun test", "bun run build"],
+    plan: true,
+  },
+  callbacks: {
+    onProgress: (event) => console.log(event.message),
+  },
+});
+
+if (success) {
+  console.log("All tasks executed and verified successfully!");
+} else {
+  console.log(`${result.failedTasks} tasks failed execution`);
 }
 ```
 
@@ -565,8 +748,7 @@ const tasksResult = await workflowService.generateTasks({
 // Step 4: Split complex tasks
 const splitResult = await workflowService.splitTasks({
   taskIds: tasksResult.tasks.slice(0, 3).map(t => t.id), // Split first 3 tasks
-  splitMethod: "standard",
-  projectDir: initResult.projectDir
+  splitMethod: "standard"
 });
 
 console.log(`Project setup complete: ${tasksResult.stats.tasksCreated} tasks created`);
@@ -619,6 +801,57 @@ const tasksResult = await workflowService.generateTasks({
 console.log(`Refined PRD generated ${tasksResult.stats.tasksCreated} tasks`);
 ```
 
+**Scenario 4: Continue Project and Check Status**
+```typescript
+// Check on an existing project
+const result = await workflowService.continueProject({
+  projectDir: "/path/to/existing-project",
+  callbacks: {
+    onProgress: (event) => console.log(`Analyzing: ${event.message}`)
+  }
+});
+
+if (result.success && result.projectStatus) {
+  const { tasks, prd, nextSteps } = result.projectStatus;
+  console.log(`\n📊 Project Status:`);
+  console.log(`   Completion: ${tasks.completionPercentage}%`);
+  console.log(`   Tasks: ${tasks.total} total (${tasks.completed} completed, ${tasks.todo} todo)`);
+  console.log(`   PRD: ${prd.exists ? "✓ Present" : "✗ Missing"}`);
+  console.log(`\n📋 Recommended Actions:`);
+  nextSteps.forEach(step => console.log(`   → ${step}`));
+}
+```
+
+**Scenario 5: Execute Tasks with Retry Logic**
+```typescript
+// Execute all todo tasks with progressive model escalation
+const { success, result } = await workflowService.executeTasks({
+  options: {
+    status: "todo",
+    tool: "opencode",
+    maxRetries: 3,
+    tryModels: [
+      { provider: "openai", model: "gpt-4o-mini" },  // Fast, cheap - try first
+      { provider: "openai", model: "gpt-4o" },      // Better quality - try second
+      { provider: "anthropic", model: "claude-3.5-sonnet" }, // Best quality - try last
+    ],
+    verify: "bun test",
+    plan: true,
+    review: true,
+    autoCommit: true,
+  },
+  callbacks: {
+    onProgress: (event) => console.log(`[${event.message}]`),
+    onError: (error) => console.error(`Execution error: ${error.message}`),
+  },
+});
+
+console.log(`\nExecution Summary:`);
+console.log(`  ✅ Completed: ${result.completedTasks}`);
+console.log(`  ❌ Failed: ${result.failedTasks}`);
+console.log(`  📈 Success Rate: ${Math.round((result.completedTasks / (result.completedTasks + result.failedTasks)) * 100)}%`);
+```
+
 ### TECHNICAL SPECIFICATIONS
 
 **Directory Structure Created:**
@@ -643,7 +876,7 @@ project/
 ```typescript
 const defaultStack = {
   frontend: "next",
-  backend: "hono", 
+  backend: "hono",
   database: "sqlite",
   auth: true,
   reasoning: "Modern, well-supported stack"
@@ -655,11 +888,24 @@ const defaultStack = {
 - Detailed error messages with suggestions
 - Progress callbacks for user feedback
 - Cleanup of temporary resources on failure
+- Aggregated results for batch operations (e.g., splitTasks)
 
 **Performance Considerations:**
 - Concurrent PRD generation for multi-model scenarios
 - Streaming responses for real-time feedback
 - Efficient file operations with proper error handling
 - Memory-conscious processing of large PRDs
+- Progressive model escalation for task execution retries
 
 **Remember:** Citizen, the WorkflowService is your project command center. Master its workflow stages, understand its integration points, and it will guide your projects from conception to completion through the harshest development conditions. Each method is a survival tool - use them wisely or perish in project chaos.
+
+---
+
+**DOCUMENT CONTROL:**
+
+- **Version:** 1.1
+- **Clearance:** All Personnel
+- **Classification:** For Citizens' Eyes Only
+- **Last Updated:** Technical Bulletin Update
+
+[Stay organized. Stay safe. Survive.]

@@ -2,8 +2,8 @@
 ## TECHNICAL BULLETIN NO. 003
 ### MODEL PROVIDER - AI ABSTRACTION SURVIVAL SYSTEM
 
-**DOCUMENT ID:** `task-o-matic-model-provider-v1`  
-**CLEARANCE:** `All Personnel`  
+**DOCUMENT ID:** `task-o-matic-model-provider-v2`
+**CLEARANCE:** `All Personnel`
 **MANDATORY COMPLIANCE:** `Yes`
 
 ### ⚠️ CRITICAL SURVIVAL NOTICE
@@ -11,7 +11,7 @@ Citizen, Model Provider is your gateway to AI services in the wasteland. Without
 
 ### SYSTEM ARCHITECTURE OVERVIEW
 
-Model Provider provides a unified abstraction layer for multiple AI service providers, enabling seamless switching between OpenAI, Anthropic, OpenRouter, and custom endpoints while maintaining consistent interfaces and configuration management.
+Model Provider provides a unified abstraction layer for multiple AI service providers, enabling seamless switching between OpenAI, Anthropic, OpenRouter, Z.AI, and custom endpoints while maintaining consistent interfaces and configuration management.
 
 **Core Design Principles:**
 - **Provider Abstraction**: Single interface for multiple AI providers
@@ -22,9 +22,13 @@ Model Provider provides a unified abstraction layer for multiple AI service prov
 
 **Supported Providers**:
 - **OpenAI**: GPT models with official SDK
-- **Anthropic**: Claude models with official SDK  
+- **Anthropic**: Claude models with official SDK
 - **OpenRouter**: Multi-provider access with unified interface
+- **Z.AI**: Anthropic-compatible API for coding assistance
 - **Custom**: OpenAI-compatible endpoints with configurable URLs
+
+**Disabled Providers** (Code present but not active):
+- **Gemini**: Google's Gemini models (temporarily disabled due to import issues)
 
 ### COMPLETE API DOCUMENTATION
 
@@ -32,7 +36,11 @@ Model Provider provides a unified abstraction layer for multiple AI service prov
 
 **Purpose**: Centralized AI model provider management and instantiation with configuration merging.
 
-**Constructor**: No explicit constructor required. Uses singleton pattern through ConfigManager.
+**Constructor**: Uses default constructor. Create instances directly or use singleton pattern through dependency injection.
+
+```typescript
+const modelProvider = new ModelProvider();
+```
 
 ---
 
@@ -51,9 +59,8 @@ public getAIConfig(): AIConfig
 - `AIConfig`: Complete AI configuration with all sources merged
 
 **Configuration Precedence** (Highest to Lowest):
-1. **ConfigManager Settings**: Project-specific configuration from `.task-o-matic/config.json`
-2. **Environment Variables**: System-wide API keys and endpoints
-3. **Provider Defaults**: Fallback values for all settings
+1. **Environment Variables**: System-wide API keys and endpoints (override ConfigManager)
+2. **ConfigManager Settings**: Project-specific configuration from `.task-o-matic/config.json`
 
 **Environment Variable Mapping**:
 ```typescript
@@ -63,6 +70,9 @@ const envConfigMap = {
   },
   anthropic: {
     apiKey: process.env.ANTHROPIC_API_KEY
+  },
+  zai: {
+    apiKey: process.env.ZAI_API_KEY
   },
   openrouter: {
     apiKey: process.env.OPENROUTER_API_KEY,
@@ -90,12 +100,13 @@ console.log("API Key:", config.apiKey ? "***configured***" : "missing");
 **Configuration Structure**:
 ```typescript
 interface AIConfig {
-  provider: "openai" | "anthropic" | "openrouter" | "custom";
+  provider: "openai" | "anthropic" | "openrouter" | "custom" | "zai";
   model: string;
   apiKey?: string;
   baseURL?: string;
   temperature?: number;
   maxTokens?: number;
+  context7Enabled?: boolean;
   reasoning?: {
     maxTokens?: number;
   };
@@ -111,14 +122,14 @@ interface AIConfig {
 
 **Signature**:
 ```typescript
-getModel(aiConfig: AIConfig): LanguageModelV2
+getModel(aiConfig: AIConfig): LanguageModel
 ```
 
 **Parameters**:
 - `aiConfig` (AIConfig, required): Complete AI configuration
 
 **Return Value**:
-- `LanguageModelV2`: Configured AI model instance
+- `LanguageModel`: Configured AI model instance from Vercel AI SDK
 
 **Error Conditions**:
 - Throws TaskOMaticError with AI_CONFIGURATION_ERROR for missing API keys
@@ -144,7 +155,7 @@ const model = modelProvider.getModel({
 // Required: apiKey
 // Optional: model (defaults to claude-3-sonnet)
 const model = modelProvider.getModel({
-  provider: "anthropic", 
+  provider: "anthropic",
   model: "claude-3-opus",
   apiKey: "sk-ant-..."
 });
@@ -161,6 +172,20 @@ const model = modelProvider.getModel({
   apiKey: "sk-or-..."
 });
 // Returns: openRouterProvider("anthropic/claude-3.5-sonnet") instance
+// Note: Provider automatically adds HTTP-Referer and X-Title headers
+```
+
+**Z.AI Provider**:
+```typescript
+// Required: apiKey
+// Optional: model
+const model = modelProvider.getModel({
+  provider: "zai",
+  model: "claude-3-5-sonnet",
+  apiKey: "zai-key"
+});
+// Returns: Anthropic-compatible provider with custom baseURL
+// Points to: https://api.z.ai/api/anthropic/v1
 ```
 
 **Custom Provider**:
@@ -205,9 +230,16 @@ const openaiModel = modelProvider.getModel({
 
 // Switch to Anthropic
 const anthropicModel = modelProvider.getModel({
-  provider: "anthropic", 
+  provider: "anthropic",
   model: "claude-3-sonnet",
   apiKey: process.env.ANTHROPIC_API_KEY
+});
+
+// Switch to Z.AI
+const zaiModel = modelProvider.getModel({
+  provider: "zai",
+  model: "claude-3-5-sonnet",
+  apiKey: process.env.ZAI_API_KEY
 });
 
 // Switch to OpenRouter
@@ -252,9 +284,27 @@ try {
   console.error("Provider error:", error.message);
   // Output: "Unsupported provider: unsupported-provider"
   // Suggestions: [
-  //   "Use one of the supported providers: 'openai', 'anthropic', 'openrouter', 'custom'.",
+  //   "Use one of the supported providers: 'openai', 'anthropic', 'openrouter', 'custom', 'zai'.",
   //   "Run `task-o-matic config set-ai-provider <provider>`"
   // ]
+}
+
+try {
+  // This will throw - missing ZAI API key
+  const model = modelProvider.getModel({
+    provider: "zai",
+    model: "claude-3-5-sonnet"
+    // apiKey missing
+  });
+} catch (error) {
+  if (error.code === TaskOMaticErrorCodes.AI_CONFIGURATION_ERROR) {
+    console.error("Configuration error:", error.message);
+    // Output: "Z.AI Coding plan API key is required"
+    // Suggestions: [
+    //   "Set the ZAI_API_KEY environment variable.",
+    //   "Run `task-o-matic config set-ai-key <key>`"
+    // ]
+  }
 }
 ```
 
@@ -283,21 +333,40 @@ const reasoningModel = modelProvider.getModel({
 });
 ```
 
+---
+
+#### Private Method: getEnvConfig()
+
+**Purpose**: Retrieve environment-based configuration for a specific provider.
+
+**Signature**:
+```typescript
+private getEnvConfig(provider: string): { apiKey?: string; baseURL?: string }
+```
+
+**Parameters**:
+- `provider` (string, required): Provider identifier
+
+**Return Value**:
+- `{ apiKey?: string; baseURL?: string }`: Environment variables for the provider
+
+**Note**: This is a private method used internally by `getAIConfig()`. It provides a fallback mechanism to read environment variables when ConfigManager settings are unavailable.
+
+---
+
 ### INTEGRATION PROTOCOLS
 
 #### Configuration Management Protocol
 Configuration follows this merge order:
-1. **Base Defaults**: Provider-specific default values
-2. **Environment Variables**: System-wide API keys and endpoints
-3. **ConfigManager**: Project-specific overrides from `.task-o-matic/config.json`
-4. **Method Parameters**: Runtime overrides (highest priority)
+1. **Base Config**: Configuration from ConfigManager (`.task-o-matic/config.json`)
+2. **Environment Override**: Environment variables override ConfigManager settings (highest priority)
 
 #### Provider Selection Protocol
 Provider selection follows this logic:
 1. **Explicit Provider**: Use provider specified in configuration
 2. **Environment Fallback**: Check for provider-specific environment variables
-3. **Default Fallback**: Use configured default provider
-4. **Validation**: Ensure required parameters are present
+3. **Validation**: Ensure required parameters are present
+4. **Instantiation**: Create model instance with validated configuration
 
 #### Error Handling Protocol
 All provider errors follow this pattern:
@@ -312,15 +381,15 @@ All provider errors follow this pattern:
 ```typescript
 class AIServiceManager {
   private modelProvider = new ModelProvider();
-  
+
   async generateWithProvider(provider: string, prompt: string) {
     const baseConfig = this.modelProvider.getAIConfig();
-    
+
     const providerConfig = {
       ...baseConfig,
       provider: provider as any
     };
-    
+
     try {
       const model = this.modelProvider.getModel(providerConfig);
       return await generateText({ model, prompt });
@@ -329,11 +398,11 @@ class AIServiceManager {
       throw error;
     }
   }
-  
+
   async testAllProviders(prompt: string) {
-    const providers = ["openai", "anthropic", "openrouter"];
+    const providers = ["openai", "anthropic", "openrouter", "zai"];
     const results = [];
-    
+
     for (const provider of providers) {
       try {
         const result = await this.generateWithProvider(provider, prompt);
@@ -342,7 +411,7 @@ class AIServiceManager {
         results.push({ provider, error: error.message, success: false });
       }
     }
-    
+
     return results;
   }
 }
@@ -352,46 +421,46 @@ class AIServiceManager {
 ```typescript
 class ConfigurationValidator {
   private modelProvider = new ModelProvider();
-  
+
   validateConfiguration(): { valid: boolean; issues: string[] } {
     const issues: string[] = [];
-    
+
     try {
       const config = this.modelProvider.getAIConfig();
-      
+
       // Test model instantiation
       this.modelProvider.getModel(config);
-      
+
       // Check for common issues
       if (!config.apiKey) {
         issues.push(`API key missing for ${config.provider} provider`);
       }
-      
+
       if (!config.model) {
         issues.push("No model specified");
       }
-      
+
       return { valid: issues.length === 0, issues };
     } catch (error) {
-      return { 
-        valid: false, 
-        issues: [error.message] 
+      return {
+        valid: false,
+        issues: [error.message]
       };
     }
   }
-  
+
   async testProvider(): Promise<boolean> {
     try {
       const config = this.modelProvider.getAIConfig();
       const model = this.modelProvider.getModel(config);
-      
+
       // Test with minimal request
       await generateText({
         model,
         prompt: "test",
         maxTokens: 1
       });
-      
+
       return true;
     } catch (error) {
       console.error("Provider test failed:", error.message);
@@ -406,7 +475,7 @@ class ConfigurationValidator {
 class DynamicAIService {
   private modelProvider = new ModelProvider();
   private currentProvider: string = "openai";
-  
+
   async switchProvider(newProvider: string) {
     try {
       // Test new provider before switching
@@ -414,46 +483,46 @@ class DynamicAIService {
         ...this.modelProvider.getAIConfig(),
         provider: newProvider as any
       };
-      
+
       this.modelProvider.getModel(testConfig);
       this.currentProvider = newProvider;
-      
+
       console.log(`Switched to ${newProvider} provider`);
     } catch (error) {
       console.error(`Failed to switch to ${newProvider}:`, error.message);
       throw error;
     }
   }
-  
+
   async generateWithCurrentProvider(prompt: string) {
     const config = {
       ...this.modelProvider.getAIConfig(),
       provider: this.currentProvider as any
     };
-    
+
     const model = this.modelProvider.getModel(config);
     return await generateText({ model, prompt });
   }
-  
+
   async getBestProvider(prompt: string): Promise<string> {
-    const providers = ["openai", "anthropic", "openrouter"];
+    const providers = ["openai", "anthropic", "openrouter", "zai"];
     let bestProvider = this.currentProvider;
     let bestScore = 0;
-    
+
     for (const provider of providers) {
       try {
         const config = {
           ...this.modelProvider.getAIConfig(),
           provider: provider as any
         };
-        
+
         const model = this.modelProvider.getModel(config);
         const result = await generateText({
           model,
           prompt: `Rate this prompt's suitability for ${provider}: ${prompt}`,
           maxTokens: 10
         });
-        
+
         const score = parseInt(result.text) || 0;
         if (score > bestScore) {
           bestScore = score;
@@ -464,7 +533,7 @@ class DynamicAIService {
         continue;
       }
     }
-    
+
     return bestProvider;
   }
 }
@@ -474,7 +543,7 @@ class DynamicAIService {
 ```typescript
 class CustomProviderManager {
   private modelProvider = new ModelProvider();
-  
+
   setupLocalProvider() {
     // Configure for local Ollama instance
     const localConfig = {
@@ -484,7 +553,7 @@ class CustomProviderManager {
       baseURL: "http://localhost:11434/v1",
       temperature: 0.1
     };
-    
+
     try {
       const model = this.modelProvider.getModel(localConfig);
       console.log("Local provider configured successfully");
@@ -494,7 +563,7 @@ class CustomProviderManager {
       throw error;
     }
   }
-  
+
   setupCloudflareProvider() {
     // Configure for Cloudflare Workers AI
     const cloudflareConfig = {
@@ -504,10 +573,21 @@ class CustomProviderManager {
       baseURL: "https://api.cloudflare.com/client/v4/accounts/ACCOUNT_ID/ai/v1",
       maxTokens: 4096
     };
-    
+
     return this.modelProvider.getModel(cloudflareConfig);
   }
-  
+
+  setupZAIProvider() {
+    // Configure for Z.AI coding assistance
+    const zaiConfig = {
+      provider: "zai" as const,
+      model: "claude-3-5-sonnet",
+      apiKey: process.env.ZAI_API_KEY
+    };
+
+    return this.modelProvider.getModel(zaiConfig);
+  }
+
   async testCustomProvider(config: AIConfig) {
     try {
       const model = this.modelProvider.getModel(config);
@@ -516,7 +596,7 @@ class CustomProviderManager {
         prompt: "Hello from custom provider!",
         maxTokens: 50
       });
-      
+
       console.log("Custom provider response:", result.text);
       return true;
     } catch (error) {
@@ -530,8 +610,8 @@ class CustomProviderManager {
 ### TECHNICAL SPECIFICATIONS
 
 #### Performance Characteristics
-- **Model Caching**: Model instances cached for repeated use
-- **Connection Reuse**: HTTP connections reused when possible
+- **Model Caching**: Model instances created fresh for each call (no caching)
+- **Connection Reuse**: HTTP connections reused when possible by underlying SDKs
 - **Configuration Overhead**: Minimal impact on performance
 - **Provider Switching**: Fast switching between pre-configured providers
 
@@ -542,16 +622,76 @@ class CustomProviderManager {
 - **Environment Isolation**: Provider-specific environment variable handling
 
 #### Reliability Features
-- **Graceful Degradation**: Fallback behavior for provider failures
+- **Graceful Degradation**: Clear error messages when providers are unavailable
 - **Error Recovery**: Detailed error messages with recovery suggestions
 - **Configuration Validation**: Pre-flight checks before model instantiation
 - **Provider Health**: Basic connectivity testing capabilities
 
+#### OpenRouter-Specific Features
+When using the OpenRouter provider, ModelProvider automatically adds these headers:
+- `HTTP-Referer`: "https://task-o-matic.dev" - Identifies the application
+- `X-Title`: "Task-O-Matic" - Provides application name for analytics
+
+#### Z.AI Provider Details
+The Z.AI provider uses the Anthropic SDK with a custom baseURL:
+- **Base URL**: `https://api.z.ai/api/anthropic/v1`
+- **Compatibility**: Fully compatible with Anthropic models
+- **Error Messages**: "Z.AI Coding plan API key is required" when key is missing
+
 #### Monitoring Integration
-- **Provider Metrics**: Usage tracking per provider
-- **Performance Monitoring**: Response time and success rate tracking
-- **Error Analytics**: Provider-specific error classification
-- **Configuration Auditing**: Configuration change tracking
+- **Provider Metrics**: Usage tracking per provider (application-level)
+- **Performance Monitoring**: Response time and success rate tracking (application-level)
+- **Error Analytics**: Provider-specific error classification (application-level)
+- **Configuration Auditing**: Configuration change tracking (application-level)
+
+### SUPPORTED PROVIDERS SUMMARY
+
+| Provider | Status | API Key Env Var | Base URL | SDK |
+|----------|--------|-----------------|----------|-----|
+| **OpenAI** | ✅ Active | `OPENAI_API_KEY` | N/A | `@ai-sdk/openai` |
+| **Anthropic** | ✅ Active | `ANTHROPIC_API_KEY` | N/A | `@ai-sdk/anthropic` |
+| **OpenRouter** | ✅ Active | `OPENROUTER_API_KEY` | `https://openrouter.ai/api/v1` | `@openrouter/ai-sdk-provider` |
+| **Z.AI** | ✅ Active | `ZAI_API_KEY` | `https://api.z.ai/api/anthropic/v1` | `@ai-sdk/anthropic` (custom) |
+| **Custom** | ✅ Active | `CUSTOM_API_KEY` | `CUSTOM_API_URL` (required) | `@ai-sdk/openai-compatible` |
+| **Gemini** | ❌ Disabled | `GEMINI_API_KEY` | N/A | `ai-sdk-provider-gemini-cli` |
+
+### PROVIDER-SPECIFIC NOTES
+
+#### OpenAI
+- Supports all OpenAI models (GPT-3.5, GPT-4, GPT-4o, etc.)
+- Requires `OPENAI_API_KEY` environment variable
+- Compatible with OpenAI-compatible endpoints via Custom provider
+
+#### Anthropic
+- Supports all Claude models (Claude 3, Claude 3.5, etc.)
+- Requires `ANTHROPIC_API_KEY` environment variable
+- Best for complex reasoning and detailed analysis
+
+#### OpenRouter
+- Access to 100+ models through single API
+- Requires `OPENROUTER_API_KEY` environment variable
+- Supports extended reasoning tokens on compatible models
+- Automatic header injection for analytics
+
+#### Z.AI
+- Anthropic-compatible API for coding assistance
+- Requires `ZAI_API_KEY` environment variable
+- Uses Anthropic SDK with custom endpoint
+- Error message: "Z.AI Coding plan API key is required"
+
+#### Custom
+- For any OpenAI-compatible API endpoint
+- Requires both `CUSTOM_API_KEY` and `CUSTOM_API_URL` environment variables
+- Supports local models (Ollama, LM Studio, etc.)
+- Compatible with Cloudflare Workers AI, Azure OpenAI, etc.
+
+#### Gemini (Disabled)
+- Code present in repository but not active
+- Disabled due to import errors
+- May be re-enabled in future updates
+- Currently not supported
+
+---
 
 **Remember:** Citizen, Model Provider is your universal translator in the AI wasteland. Without it, you're shouting into different service endpoints with incompatible protocols. Master this abstraction layer, or watch your integration efforts dissolve into a mess of provider-specific code and API key management nightmares.
 

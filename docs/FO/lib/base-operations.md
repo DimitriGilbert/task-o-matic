@@ -2,12 +2,15 @@
 ## TECHNICAL BULLETIN NO. 002
 ### BASE OPERATIONS - FOUNDATION SURVIVAL SYSTEM
 
-**DOCUMENT ID:** `task-o-matic-base-operations-v1`  
-**CLEARANCE:** `All Personnel`  
+**DOCUMENT ID:** `task-o-matic-base-operations-v1`
+**CLEARANCE:** `All Personnel`
 **MANDATORY COMPLIANCE:** `Yes`
 
 ### ⚠️ CRITICAL SURVIVAL NOTICE
+
 Citizen, Base Operations is the bedrock of your AI survival kit. Without understanding this foundation, you're building on radioactive waste - everything will collapse. Master this system or perish in the chaos of uninitialized connections and failed configurations.
+
+**File Location:** `packages/core/src/lib/ai-service/base-operations.ts`
 
 ### SYSTEM ARCHITECTURE OVERVIEW
 
@@ -22,7 +25,7 @@ Base Operations provides the fundamental infrastructure for all AI operations in
 
 **Component Dependencies:**
 - JSONParser: Response parsing and normalization
-- Context7Client: External documentation service integration
+- Context7Client: Context7 MCP client for documentation
 - RetryHandler: Exponential backoff retry mechanisms
 - ModelProvider: AI model abstraction and configuration management
 - Vercel AI SDK: Streaming text generation and tool execution
@@ -62,6 +65,8 @@ protected mergeAIConfig(config?: Partial<AIConfig>): AIConfig
 3. Environment variables (OPENAI_API_KEY, ANTHROPIC_API_KEY, etc.)
 4. Provider defaults (defined in config.ts)
 
+**Implementation Detail**: The method retrieves the base configuration from `modelProvider.getAIConfig()` (which includes ConfigManager, environment variables, and defaults), then applies operation-specific overrides on top using spread syntax.
+
 **Examples**:
 
 **Basic Configuration Merge**:
@@ -70,10 +75,10 @@ class MyOperations extends BaseOperations {
   async myOperation() {
     // Use default config (ConfigManager + env vars + defaults)
     const defaultConfig = this.mergeAIConfig();
-    
+
     // Override just the model for this operation
     const customConfig = this.mergeAIConfig({ model: "gpt-4o" });
-    
+
     // Override multiple settings
     const fullOverride = this.mergeAIConfig({
       model: "claude-3-sonnet",
@@ -119,6 +124,10 @@ protected handleContext7ToolResult(chunk: any): void
 3. Saves documentation using Context7Client for caching
 4. Handles both object and string content formats
 
+**Implementation Detail**: The method extracts documentation from `chunk.output` and saves it with library ID and topic from `chunk.input`. It supports two formats:
+- Object format with `docs.content` property
+- String format directly as documentation
+
 **Examples**:
 
 **Manual Tool Result Handling**:
@@ -129,10 +138,10 @@ class MyOperations extends BaseOperations {
     if (chunk.type === "text-delta") {
       console.log(chunk.text);
     }
-    
+
     // Handle Context7 tool results
     this.handleContext7ToolResult(chunk);
-    
+
     // Handle other chunk types...
   }
 }
@@ -200,6 +209,15 @@ interface StreamingOptions {
 }
 ```
 
+**Implementation Details**:
+1. Merges configuration using `mergeAIConfig()`
+2. Wraps entire operation in retry logic using `retryHandler.executeWithRetry()`
+3. Creates model instance from merged configuration
+4. Configures streaming with proper callbacks
+5. Automatically handles Context7 tool result caching via `handleContext7ToolResult()`
+6. Supports OpenRouter reasoning tokens via provider options
+7. Collects all text chunks and returns complete response
+
 **Examples**:
 
 **Basic Streaming Text Generation**:
@@ -221,7 +239,7 @@ class MyOperations extends BaseOperations {
 class MyOperations extends BaseOperations {
   async generateWithStreaming() {
     let fullText = "";
-    
+
     const response = await this.streamText(
       "Write a story about a robot discovering emotions",
       {
@@ -249,7 +267,7 @@ class MyOperations extends BaseOperations {
       },
       { maxAttempts: 3, baseDelay: 1000 }
     );
-    
+
     return response;
   }
 }
@@ -275,7 +293,7 @@ class MyOperations extends BaseOperations {
         onReasoning: (text) => console.log("Thinking:", text)
       }
     );
-    
+
     return response;
   }
 }
@@ -304,7 +322,7 @@ class MyOperations extends BaseOperations {
           retryableErrors: ["RATE_LIMIT", "NETWORK_ERROR"]
         }
       );
-      
+
       return response;
     } catch (error) {
       console.error("All retry attempts failed:", error);
@@ -317,6 +335,7 @@ class MyOperations extends BaseOperations {
 ### INTEGRATION PROTOCOLS
 
 #### Configuration Management Protocol
+
 All configuration operations follow strict precedence:
 1. **Method Parameters**: Immediate operation overrides
 2. **ConfigManager**: Project-level settings from `.task-o-matic/config.json`
@@ -324,6 +343,7 @@ All configuration operations follow strict precedence:
 4. **Provider Defaults**: Fallback values for all settings
 
 #### Streaming Protocol Implementation
+
 Streaming operations follow this execution flow:
 1. **Configuration Merge**: Apply precedence hierarchy
 2. **Model Instantiation**: Create configured AI model instance
@@ -332,7 +352,10 @@ Streaming operations follow this execution flow:
 5. **Error Handling**: Apply retry logic with exponential backoff
 6. **Response Aggregation**: Collect and return complete text
 
+**Retry Integration**: The entire streaming operation is wrapped in retry logic via `retryHandler.executeWithRetry()`. This means if the stream fails, the entire operation will be retried according to the retry configuration, not just individual chunks.
+
 #### Context7 Integration Protocol
+
 Documentation research follows this pattern:
 1. **Tool Detection**: Monitor streaming chunks for Context7 tool calls
 2. **Result Extraction**: Parse tool results for documentation content
@@ -340,8 +363,9 @@ Documentation research follows this pattern:
 4. **Format Handling**: Support both object and string content formats
 
 #### Error Propagation Protocol
+
 All operations implement consistent error handling:
-1. **Retry Logic**: Automatic retry for transient failures
+1. **Retry Logic**: Automatic retry for transient failures (via retry wrapper)
 2. **Error Classification**: Distinguish retryable vs. fatal errors
 3. **Context Preservation**: Maintain operation context through retries
 4. **Clean Propagation**: Throw original errors without modification
@@ -349,12 +373,13 @@ All operations implement consistent error handling:
 ### SURVIVAL SCENARIOS
 
 #### Scenario 1: Custom Operation Class
+
 ```typescript
 class CustomAIOperations extends BaseOperations {
   async analyzeCode(code: string, language: string) {
     const systemPrompt = `You are an expert ${language} code analyst.`;
     const userPrompt = `Analyze this code for bugs, performance issues, and improvements:\n\n${code}`;
-    
+
     return this.streamText(
       userPrompt,
       { model: "claude-3-sonnet", temperature: 0.1 },
@@ -367,10 +392,10 @@ class CustomAIOperations extends BaseOperations {
       { maxAttempts: 2 }
     );
   }
-  
+
   async generateTests(functionCode: string, functionName: string) {
     const prompt = `Generate comprehensive unit tests for this function:\n\n${functionCode}`;
-    
+
     return this.streamText(
       prompt,
       { model: "gpt-4o" },
@@ -386,11 +411,12 @@ class CustomAIOperations extends BaseOperations {
 ```
 
 #### Scenario 2: Configuration Override Patterns
+
 ```typescript
 class ConfigurableOperations extends BaseOperations {
   async performOperation(operationType: string) {
     let config: Partial<AIConfig> = {};
-    
+
     switch (operationType) {
       case "creative":
         config = {
@@ -399,7 +425,7 @@ class ConfigurableOperations extends BaseOperations {
           maxTokens: 4000
         };
         break;
-        
+
       case "analytical":
         config = {
           model: "gpt-4o",
@@ -407,7 +433,7 @@ class ConfigurableOperations extends BaseOperations {
           maxTokens: 2000
         };
         break;
-        
+
       case "coding":
         config = {
           model: "claude-3-sonnet",
@@ -416,7 +442,7 @@ class ConfigurableOperations extends BaseOperations {
         };
         break;
     }
-    
+
     return this.streamText(
       `Perform ${operationType} task`,
       config
@@ -426,16 +452,17 @@ class ConfigurableOperations extends BaseOperations {
 ```
 
 #### Scenario 3: Advanced Streaming with Tool Integration
+
 ```typescript
 class ToolEnabledOperations extends BaseOperations {
   async researchAndExplain(topic: string) {
     // This would be extended to use tools in specialized classes
-    const systemPrompt = `You are a research assistant. 
-    When asked about technical topics, provide comprehensive explanations 
+    const systemPrompt = `You are a research assistant.
+    When asked about technical topics, provide comprehensive explanations
     with current best practices and real-world examples.`;
-    
+
     let researchData = "";
-    
+
     return this.streamText(
       `Provide a comprehensive explanation of ${topic}`,
       { model: "claude-3-sonnet" },
@@ -460,6 +487,7 @@ class ToolEnabledOperations extends BaseOperations {
 ```
 
 #### Scenario 4: Error-Resilient Operations
+
 ```typescript
 class ResilientOperations extends BaseOperations {
   async criticalOperation(data: any) {
@@ -470,13 +498,13 @@ class ResilientOperations extends BaseOperations {
       backoffFactor: 1.5,
       retryableErrors: [
         "RATE_LIMIT",
-        "NETWORK_ERROR", 
+        "NETWORK_ERROR",
         "ECONNRESET",
         "ETIMEDOUT",
         "TEMPORARY_FAILURE"
       ]
     };
-    
+
     try {
       return await this.streamText(
         `Process critical data: ${JSON.stringify(data)}`,

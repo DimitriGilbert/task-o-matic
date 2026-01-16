@@ -2,12 +2,14 @@
 ## TECHNICAL BULLETIN NO. 005
 ### BENCHMARK COMMANDS - PERFORMANCE ANALYSIS FIELD OPERATIONS
 
-**DOCUMENT ID:** `task-o-matic-cli-benchmark-commands-v1`  
-**CLEARANCE:** `All Personnel`  
+**DOCUMENT ID:** `task-o-matic-cli-benchmark-commands-v2`
+**CLEARANCE:** `All Personnel`
 **MANDATORY COMPLIANCE:** `Yes`
 
 ### ⚠️ CRITICAL SURVIVAL NOTICE
 Citizen, benchmark commands are your intelligence gathering tools in the post-deadline wasteland. Without proper performance analysis, you're flying blind into AI provider selection storms. These commands provide the data needed to make informed decisions about which AI models and tools will keep your projects alive.
+
+The benchmark system has been upgraded with Git Branch Isolation capabilities. This means you can now test different AI models in isolation—each model gets its own temporary branch. No cross-contamination. No overwritten work. Pure, comparative analysis in the safety of your own bunker.
 
 ### COMMAND ARCHITECTURE OVERVIEW
 The benchmark command group represents the performance analysis and optimization layer of Task-O-Matic. It provides comprehensive testing capabilities across multiple AI providers, models, and workflows. The architecture supports concurrent testing, progressive model escalation, and detailed performance metrics collection.
@@ -16,7 +18,8 @@ The benchmark command group represents the performance analysis and optimization
 - **Multi-Provider Testing**: Compare performance across OpenRouter, Anthropic, OpenAI, and custom endpoints
 - **Model Benchmarking**: Detailed performance metrics for individual AI models
 - **Workflow Analysis**: End-to-end workflow performance across complete project lifecycles
-- **Progressive Escalation**: Automatic retry with better models on failure
+- **Execution Benchmarking**: Git Branch Isolation for safe, concurrent model testing
+- **Loop Benchmarking**: Batch task execution with progressive model escalation
 - **Comprehensive Metrics**: Latency, throughput, cost, and quality measurements
 
 ### COMPLETE BENCHMARK COMMAND DOCUMENTATION
@@ -120,45 +123,6 @@ task-o-matic benchmark run task-enhance \
   --tools
 ```
 
-#### Workflow Benchmarking
-```bash
-# Complete workflow benchmark
-task-o-matic benchmark run workflow-full \
-  --models "anthropic:claude-3.5-sonnet,openai:gpt-4" \
-  --project-name "Wasteland Shelter" \
-  --init-method ai \
-  --project-description "Emergency shelter management system"
-
-# Multi-step workflow benchmark
-task-o-matic benchmark run workflow-full \
-  --models "openrouter:anthropic/claude-3.5-sonnet,openrouter:openai/gpt-4o,openrouter:google/gemini-2.0-flash-exp" \
-  --auto-accept \
-  --skip-refine \
-  --generate-method ai \
-  --split-all
-```
-
-#### Custom Operation Benchmarking
-```bash
-# PRD rework benchmark
-task-o-matic benchmark run prd-rework \
-  --models "anthropic:claude-3.5-sonnet,openai:gpt-4" \
-  --file ./requirements.md \
-  --feedback "Add more security requirements and technical specifications"
-
-# PRD question generation benchmark
-task-o-matic benchmark run prd-question \
-  --models "openrouter:anthropic/claude-3.5-sonnet,openai:gpt-4" \
-  --file ./prd.md \
-  --tools
-
-# PRD refine benchmark
-task-o-matic benchmark run prd-refine \
-  --models "anthropic:claude-3.5-sonnet,openai:gpt-4" \
-  --question-mode ai \
-  --file ./prd.md
-```
-
 ### MODEL FORMAT SPECIFICATIONS
 
 #### Basic Model Format
@@ -238,7 +202,7 @@ openrouter:anthropic/claude-3.5-sonnet     | 2450ms   | 135ms    | 1180     | 0.
 # TPS Calculation
 TPS = Total Tokens / (Duration / 1000)
 
-# BPS Calculation  
+# BPS Calculation
 BPS = Response Size / (Duration / 1000)
 
 # Cost Estimation
@@ -278,9 +242,6 @@ task-o-matic benchmark list
 ```bash
 # List all benchmark runs
 task-o-matic benchmark list
-
-# List with details
-task-o-matic benchmark list --verbose
 ```
 
 ### LIST OUTPUT FORMAT
@@ -291,30 +252,6 @@ Benchmark Runs:
 - 2024-01-15_14-30-22_prd-parse (2024-01-15 2:30:22 PM) - prd-parse
 - 2024-01-15_13-45-10_task-create (2024-01-15 1:45:10 PM) - task-create
 - 2024-01-14_16-20-45_workflow-full (2024-01-14 4:20:45 PM) - workflow-full
-```
-
-#### Detailed Output with Metadata
-```
-Benchmark Runs:
-ID: 2024-01-15_14-30-22_prd-parse
-Date: 2024-01-15 2:30:22 PM
-Operation: prd-parse
-Models: anthropic:claude-3.5-sonnet, openai:gpt-4
-Duration: 5460ms
-Success Rate: 100%
-Average TTFT: 145ms
-Total Tokens: 2450
-Estimated Cost: $0.043650
-
-ID: 2024-01-15_13-45-10_task-create
-Date: 2024-01-15 1:45:10 PM
-Operation: task-create
-Models: openrouter:anthropic/claude-3.5-sonnet
-Duration: 2340ms
-Success Rate: 100%
-Average TTFT: 120ms
-Total Tokens: 1250
-Estimated Cost: $0.004250
 ```
 
 ### BENCHMARK HISTORY ANALYSIS
@@ -351,9 +288,6 @@ task-o-matic benchmark operations
 ```bash
 # List all available operations
 task-o-matic benchmark operations
-
-# List with categories
-task-o-matic benchmark operations --categorized
 ```
 
 ### OPERATIONS OUTPUT FORMAT
@@ -378,24 +312,14 @@ PRD Operations:
 
 Workflow Operations:
   workflow-full       - Complete workflow execution
-  workflow-init       - Project initialization step
-  workflow-prd        - PRD creation and refinement
-  workflow-generate   - Task generation from PRD
-  workflow-split      - Task splitting into subtasks
 
-Total operations: 14
+Total operations: 11
 ```
 
-#### Operation Details
-```bash
-# Get details for specific operation
-task-o-matic benchmark operations --details task-create
-
-# Search operations by keyword
-task-o-matic benchmark operations --search "enhance"
-
-# Filter by category
-task-o-matic benchmark operations --category task
+#### Example usage:
+```
+task-o-matic benchmark run task-create --models anthropic:claude-3.5-sonnet --title "Example task"
+task-o-matic benchmark run prd-parse --models openai:gpt-4 --file ./prd.md
 ```
 
 ### OPERATION CATEGORIES
@@ -414,7 +338,6 @@ task-o-matic benchmark operations --category task
 
 #### Workflow Operations
 - **End-to-End**: Complete project lifecycle benchmarking
-- **Step Analysis**: Individual workflow component performance
 - **Integration**: Cross-component performance measurement
 
 ## SHOW COMMAND
@@ -441,71 +364,37 @@ task-o-matic benchmark show 2024-01-15_14-30-22_prd-parse
 task-o-matic benchmark show 2024-01-14_16-20-45_workflow-full
 ```
 
-#### Detailed Analysis Examples
-```bash
-# Show run with full configuration
-task-o-matic benchmark show 2024-01-15_13-45-10_task-create --verbose
-
-# Show specific model results
-task-o-matic benchmark show 2024-01-15_14-30-22_prd-parse --model anthropic:claude-3.5-sonnet
-
-# Show error analysis
-task-o-matic benchmark show 2024-01-15_11-30-15_prd-parse --errors
-```
-
 ### SHOW OUTPUT FORMAT
 
 #### Standard Run Display
 ```
 Run: 2024-01-15_14-30-22_prd-parse
 Date: 2024-01-15 2:30:22 PM
-Operation: prd-parse
+Command: prd-parse
+Input: {"file":"./requirements.md","prompt":"Default PRD parsing prompt","message":"Parse PRD into structured tasks"}
 Configuration:
   Concurrency: 5
   Delay: 250ms
-  Models: anthropic:claude-3.5-sonnet, openai:gpt-4
-
-Input:
-  File: ./requirements.md
-  Prompt: Default PRD parsing prompt
-  Message: Parse PRD into structured tasks
 
 Results:
- anthropropic:claude-3.5-sonnet:
-   Duration: 2340ms
-   TTFT: 120ms
-   Tokens: 1250 (Prompt: 800, Completion: 450)
-   TPS: 0.53
-   BPS: 89
-   Size: 208 bytes
-   Cost: $0.004250
-   Status: Success
 
- openai:gpt-4:
-   Duration: 3120ms
-   TTFT: 180ms
-   Tokens: 980 (Prompt: 750, Completion: 230)
-   TPS: 0.31
-   BPS: 67
-   Size: 195 bytes
-   Cost: $0.039200
-   Status: Success
+[anthropic:claude-3.5-sonnet]
+Duration: 2340ms
+TTFT: 120ms
+Tokens: 1250 (Prompt: 800, Completion: 450)
+Throughput: 89 B/s
+Size: 208 bytes
+Estimated Cost: $0.004250
+Output: {"tasks":[...]}
 
-Summary:
- Total Duration: 5460ms
- Average TTFT: 150ms
- Total Tokens: 2230
- Total Cost: $0.083450
- Success Rate: 100%
-```
-
-#### Error Analysis Display
-```bash
-# Show run with error details
-task-o-matic benchmark show 2024-01-15_11-30-15_prd-parse --errors
-
-# Show specific model errors
-task-o-matic benchmark show 2024-01-15_14-30-22_prd-parse --model-errors
+[openai:gpt-4]
+Duration: 3120ms
+TTFT: 180ms
+Tokens: 980 (Prompt: 750, Completion: 230)
+Throughput: 67 B/s
+Size: 195 bytes
+Estimated Cost: $0.039200
+Output: {"tasks":[...]}
 ```
 
 ## COMPARE COMMAND
@@ -532,43 +421,341 @@ task-o-matic benchmark compare 2024-01-15_14-30-22_prd-parse
 task-o-matic benchmark compare 2024-01-14_16-20-45_workflow-full
 ```
 
-#### Advanced Comparison Analysis
-```bash
-# Compare with detailed metrics
-task-o-matic benchmark compare 2024-01-15_13-45-10_task-create --detailed
-
-# Compare specific models
-task-o-matic benchmark compare 2024-01-15_14-30-22_prd-parse --models anthropic:claude-3.5-sonnet,openai:gpt-4
-```
-
 ### COMPARE OUTPUT FORMAT
 
 #### Comparison Table
 ```
-Comparison for Run: 2024-01-15_14-30-22_prd-parse
-
-Model                    | Status | Duration | Tokens | Cost   | Efficiency
-------------------------|--------|----------|---------|-----------|----------
-anthropic:claude-3.5-sonnet | SUCCESS | 2340ms   | 1250    | $0.004250 | 0.53 TPS
-openai:gpt-4             | SUCCESS | 3120ms   | 980     | $0.039200 | 0.31 TPS
-
-Performance Analysis:
-- Fastest Model: anthropic:claude-3.5-sonnet (2340ms)
-- Most Cost-Effective: anthropic:claude-3.5-sonnet ($0.004250)
-- Highest Throughput: anthropic:claude-3.5-sonnet (0.53 TPS)
-- Best Value: anthropic:claude-3.5-sonnet (Speed + Cost balance)
+┌─────────────────────────────────────────────┬──────────┬──────────┬────────┬─────────┬────────┐
+│ Model                                      │ Status   │ Duration │ Tokens │ BPS     │ Size   │
+├─────────────────────────────────────────────┼──────────┼──────────┼────────┼─────────┼────────┤
+│ anthropic:claude-3.5-sonnet                │ SUCCESS  │ 2340ms   │ 1250   │ 89      │ 208    │
+│ openai:gpt-4                              │ SUCCESS  │ 3120ms   │ 980    │ 67      │ 195    │
+└─────────────────────────────────────────────┴──────────┴──────────┴────────┴─────────┴────────┘
 ```
 
-#### Statistical Analysis
+## EXECUTION COMMAND ⚡ NEW
+**Command:** `task-o-matic benchmark execution`
+
+### COMMAND SIGNATURE
 ```bash
-# Performance distribution
-Duration: Mean=2730ms, Median=2340ms, Min=2340ms, Max=3120ms
-Tokens: Mean=1115, Median=1250, Min=980, Max=1250
-Cost: Mean=$0.041725, Median=$0.004250, Min=$0.004250, Max=$0.039200
-
-Success Rate: 100% (2/2 models successful)
-Error Rate: 0% (0/2 models failed)
+task-o-matic benchmark execution --task-id <id> --models <list> [options]
 ```
+
+### ⚠️ CRITICAL SURVIVAL FEATURE
+Citizen, this is where the Git Branch Isolation system shines. Each AI model gets its own isolated git branch. No cross-contamination. No overwriting your work. Each model operates in a quarantine environment, executing the task independently. When complete, you have multiple branches—one per model—showing how each would have solved the problem. Pick the best. Discard the rest. Survive with optimal code.
+
+### REQUIRED OPTIONS
+```bash
+--task-id <id>               # Task ID to benchmark (required)
+--models <list>              # Comma-separated list of models (provider:model) (required)
+```
+
+### EXECUTION OPTIONS
+```bash
+--verify <command>           # Verification command (can be used multiple times)
+--max-retries <number>       # Maximum retries per model (default: 3)
+--no-keep-branches          # Delete benchmark branches after run (default: keep)
+```
+
+### EXECUTION COMMAND EXAMPLES
+
+#### Basic Execution Benchmark
+```bash
+# Execute task across multiple models with Git Branch Isolation
+task-o-matic benchmark execution \
+  --task-id task-123 \
+  --models "anthropic:claude-3.5-sonnet,openai:gpt-4,openrouter:google/gemini-2.0-flash-exp"
+
+# Execute with verification commands
+task-o-matic benchmark execution \
+  --task-id task-123 \
+  --models "openrouter:anthropic/claude-3.5-sonnet,openrouter:openai/gpt-4o" \
+  --verify "bun test" \
+  --verify "bun run build"
+
+# Execute with custom retry settings
+task-o-matic benchmark execution \
+  --task-id task-complex-456 \
+  --models "anthropic:claude-3.5-sonnet:reasoning=4096" \
+  --max-retries 5 \
+  --no-keep-branches
+```
+
+#### Verification Scenarios
+```bash
+# Test execution with multiple verification checks
+task-o-matic benchmark execution \
+  --task-id task-auth-789 \
+  --models "anthropic:claude-3.5-sonnet,openai:gpt-4" \
+  --verify "bun test --coverage" \
+  --verify "bun run type-check" \
+  --verify "bun run lint"
+
+# Quick execution benchmark (cleanup after)
+task-o-matic benchmark execution \
+  --task-id task-simple-001 \
+  --models "openrouter:google/gemini-2.0-flash-exp" \
+  --verify "bun test" \
+  --no-keep-branches
+```
+
+### EXECUTION OUTPUT FORMAT
+
+#### Real-time Progress Display
+```
+🚀 Starting Execution Benchmark for Task task-123
+Models: 3
+
+- anthropic:claude-3.5-sonnet: Waiting...
+- openai:gpt-4: Waiting...
+- openrouter:google/gemini-2.0-flash-exp: Waiting...
+
+anthropic:claude-3.5-sonnet: Running...
+anthropic:claude-3.5-sonnet: PASS (5432ms)
+
+openai:gpt-4: Running...
+openai:gpt-4: PASS (6789ms)
+
+openrouter:google/gemini-2.0-flash-exp: Running...
+openrouter:google/gemini-2.0-flash-exp: PASS (4521ms)
+```
+
+#### Final Results Summary
+```
+✓ Execution Benchmark Completed!
+
+Summary:
+Model                              | Status       | Branch                                          | Duration
+-----------------------------------|--------------|-------------------------------------------------|----------
+anthropic:claude-3.5-sonnet        | PASS         | benchmark-execution-task123-claude-3.5-sonnet    | 5432ms
+openai:gpt-4                       | PASS         | benchmark-execution-task123-gpt-4               | 6789ms
+openrouter:google/gemini-2.0-flash-exp | PASS   | benchmark-execution-task123-gemini-2.0-flash    | 4521ms
+
+Run ID: 2024-01-15_14-30-22_execution-task123
+To switch to a branch: git checkout <branch_name>
+```
+
+### GIT BRANCH ISOLATION EXPLAINED
+
+#### How It Works
+1. **Branch Creation**: Each model gets its own git branch named `benchmark-execution-<taskId>-<modelName>`
+2. **Isolation**: All AI execution happens on isolated branches—no impact on your working branch
+3. **Verification**: Commands run on each branch independently, validating each solution
+4. **Result Comparison**: Switch between branches to compare implementations
+5. **Cleanup**: Use `--no-keep-branches` to auto-delete after comparison
+
+#### Branch Switching and Comparison
+```bash
+# After benchmark completes, switch to any branch to review
+git checkout benchmark-execution-task123-claude-3.5-sonnet
+
+# View the changes
+git diff main
+
+# Test the solution
+bun test
+
+# Switch to another branch to compare
+git checkout benchmark-execution-task123-gpt-4
+
+# Merge the best solution to main
+git checkout main
+git merge benchmark-execution-task123-claude-3.5-sonnet
+
+# Clean up all benchmark branches (if not auto-deleted)
+git branch | grep benchmark-execution | xargs git branch -D
+```
+
+### EXECUTION PERFORMANCE METRICS
+
+#### Execution Metrics
+- **Branch Creation**: Time to create and switch to isolated environment
+- **AI Execution**: Actual AI task completion time
+- **Verification Time**: Time to run verification commands
+- **Total Duration**: End-to-end execution time including all steps
+- **Pass/Fail Status**: Whether verification passed or failed
+- **Branch Name**: The isolated branch identifier for the model
+
+#### Quality Assessment
+- **Verification Pass Rate**: Number of verification commands that passed
+- **Code Quality**: Subjective assessment from manual branch review
+- **Execution Success**: Whether the task completed without errors
+- **Solution Completeness**: How thoroughly the task was addressed
+
+### ERROR CONDITIONS
+```bash
+# Task ID not found
+Error: Task task-123 not found
+Solution: Verify task ID using 'task-o-matic tasks list'
+
+# Branch creation failure
+Error: Failed to create branch for model anthropic:claude-3.5-sonnet
+Solution: Check git repository state, ensure no uncommitted changes
+
+# Verification command failure
+Error: Verification command failed for openai:gpt-4
+Solution: Review branch output, adjust verification commands
+
+# Concurrency limitation
+Error: Execution benchmarks must be serial due to git constraints
+Solution: Models execute sequentially (automatically enforced)
+```
+
+## EXECUTE-LOOP COMMAND ⚡ NEW
+**Command:** `task-o-matic benchmark execute-loop`
+
+### COMMAND SIGNATURE
+```bash
+task-o-matic benchmark execute-loop --models <list> [options]
+```
+
+### ⚠️ CRITICAL SURVIVAL FEATURE
+The execute-loop benchmark lets you batch execute multiple tasks across multiple AI models with progressive model escalation. When a task fails on one model, it automatically retries with progressively stronger models. This is your automated escalation protocol—start cheap, escalate only when necessary. Maximum efficiency, minimum waste of resources.
+
+### REQUIRED OPTIONS
+```bash
+--models <list>              # Comma-separated list of models (provider:model) (required)
+```
+
+### TASK FILTERING OPTIONS
+```bash
+--status <status>             # Filter tasks by status (todo/in-progress/completed)
+--tag <tag>                   # Filter tasks by tag
+--ids <ids>                   # Comma-separated list of task IDs to execute
+```
+
+### EXECUTE-LOOP OPTIONS
+```bash
+--verify <command>            # Verification command to run after each task (can be used multiple times)
+--max-retries <number>        # Maximum number of retries per task (default: 3)
+--try-models <models>         # Progressive model/executor configs for each retry
+--no-keep-branches           # Delete benchmark branches after run (default: keep)
+```
+
+### EXECUTE-LOOP COMMAND EXAMPLES
+
+#### Basic Loop Benchmark
+```bash
+# Execute all todo tasks across multiple models
+task-o-matic benchmark execute-loop \
+  --models "anthropic:claude-3.5-sonnet,openai:gpt-4" \
+  --status todo
+
+# Execute specific tasks
+task-o-matic benchmark execute-loop \
+  --models "openrouter:anthropic/claude-3.5-sonnet" \
+  --ids "task-1,task-5,task-9"
+
+# Execute tasks by tag
+task-o-matic benchmark execute-loop \
+  --models "openai:gpt-4o-mini,openai:gpt-4o" \
+  --tag frontend
+```
+
+#### Advanced Loop with Escalation
+```bash
+# Execute with progressive model escalation
+task-o-matic benchmark execute-loop \
+  --models "openrouter:anthropic/claude-3.5-sonnet" \
+  --status todo \
+  --max-retries 3 \
+  --try-models "gpt-4o-mini,gpt-4o,claude-3.5-sonnet" \
+  --verify "bun test"
+
+# Execute with multiple verification checks
+task-o-matic benchmark execute-loop \
+  --models "anthropic:claude-3.5-sonnet" \
+  --status in-progress \
+  --verify "bun test" \
+  --verify "bun run build" \
+  --verify "bun run type-check"
+
+# Quick execution with auto-cleanup
+task-o-matic benchmark execute-loop \
+  --models "openrouter:google/gemini-2.0-flash-exp" \
+  --ids "task-1,task-2,task-3" \
+  --verify "bun test" \
+  --no-keep-branches
+```
+
+### EXECUTE-LOOP OUTPUT FORMAT
+
+#### Real-time Progress Display
+```
+🚀 Starting Execute Loop Benchmark
+Models: 2
+
+- anthropic:claude-3.5-sonnet: Waiting...
+- openai:gpt-4: Waiting...
+
+anthropic:claude-3.5-sonnet: Running...
+anthropic:claude-3.5-sonnet: PASS (4321ms)
+
+openai:gpt-4: Running...
+openai:gpt-4: PASS (5678ms)
+```
+
+#### Final Results Summary
+```
+✓ Execute Loop Benchmark Completed!
+
+Summary:
+Model                              | Status       | Branch                                          | Duration
+-----------------------------------|--------------|-------------------------------------------------|----------
+anthropic:claude-3.5-sonnet        | PASS         | benchmark-execute-loop-claude-3.5-sonnet-001    | 4321ms
+openai:gpt-4                       | PASS         | benchmark-execute-loop-gpt-4-002               | 5678ms
+```
+
+### PROGRESSIVE MODEL ESCALATION
+
+#### Try-Models Format
+```bash
+--try-models "model1,model2,model3"
+```
+
+#### How Escalation Works
+1. **Initial Attempt**: Try the cheapest/fastest model first
+2. **Verification**: Run verification commands to check quality
+3. **Escalate on Failure**: If verification fails, retry with next model
+4. **Max Retries**: Stop after max-retries attempts (default: 3)
+5. **Branch Isolation**: Each attempt gets its own isolated git branch
+
+#### Escalation Example
+```bash
+task-o-matic benchmark execute-loop \
+  --models "openrouter:anthropic/claude-3.5-sonnet" \
+  --status todo \
+  --max-retries 3 \
+  --try-models "gpt-4o-mini,gpt-4o,claude-3.5-sonnet" \
+  --verify "bun test"
+
+# Execution flow:
+# Attempt 1: gpt-4o-mini (fast, cheap)
+#   - If PASS: Done, cost ~$0.0001
+#   - If FAIL: Escalate to gpt-4o
+
+# Attempt 2: gpt-4o (better quality)
+#   - If PASS: Done, cost ~$0.0005
+#   - If FAIL: Escalate to claude-3.5-sonnet
+
+# Attempt 3: claude-3.5-sonnet (best quality)
+#   - If PASS: Done, cost ~$0.003
+#   - If FAIL: Mark as failed, review manually
+```
+
+### EXECUTE-LOOP PERFORMANCE METRICS
+
+#### Loop Metrics
+- **Tasks Processed**: Number of tasks executed
+- **Total Attempts**: Sum of all retry attempts across all tasks
+- **Pass Rate**: Percentage of tasks that passed verification
+- **Average Retries**: Average number of retries per task
+- **Cost Efficiency**: Actual cost vs. maximum possible cost (if all tasks used best model)
+
+#### Escalation Analytics
+- **First Attempt Success**: Percentage of tasks that passed on first (cheapest) model
+- **Escalation Rate**: Percentage of tasks that required model escalation
+- **Cost Savings**: Money saved by starting with cheaper models
 
 ## WORKFLOW COMMAND
 **Command:** `task-o-matic benchmark workflow`
@@ -580,67 +767,45 @@ task-o-matic benchmark workflow --models <list> [options]
 
 ### REQUIRED OPTIONS
 ```bash
---models <list>              # Comma-separated list of models (required)
+--models <list>              # Comma-separated list of models (provider:model[:reasoning=<tokens>]) (required)
 ```
 
 ### WORKFLOW CONFIGURATION OPTIONS
 ```bash
 --concurrency <number>        # Max concurrent requests (default: 3)
 --delay <number>             # Delay between requests in ms (default: 1000)
---stream                     # Show streaming AI output
---skip-all                   # Skip all optional steps (use defaults)
---auto-accept                # Auto-accept all AI suggestions
---config-file <path>         # Load workflow options from JSON file
 ```
 
-### WORKFLOW STEP OPTIONS
-
-#### Initialization Options
+### BENCHMARK SPECIFIC OPTIONS
 ```bash
---skip-init                 # Skip initialization step
+--temp-dir <dir>             # Base directory for temporary projects (default: /tmp)
+--execute                    # Execute generated tasks in the benchmark
+```
+
+### PROJECT INITIALIZATION OPTIONS
+```bash
 --project-name <name>        # Project name
 --init-method <method>       # Initialization method: quick, custom, ai
---project-description <desc>  # Project description for AI-assisted init
---use-existing-config       # Use existing configuration if found
---frontend <framework>        # Frontend framework
---backend <framework>         # Backend framework
---database <db>             # Database choice
+--project-description <desc> # Project description for AI-assisted init
+--frontend <framework>       # Frontend framework
+--backend <framework>        # Backend framework
 --auth                       # Include authentication
---no-auth                     # Exclude authentication
---bootstrap                   # Bootstrap with Better-T-Stack
---no-bootstrap               # Skip bootstrapping
 ```
 
-#### PRD Definition Options
+### PRD DEFINITION OPTIONS
 ```bash
---skip-prd                  # Skip PRD definition
 --prd-method <method>        # PRD method: upload, manual, ai, skip
---prd-file <path>           # Path to existing PRD file
---prd-description <desc>    # Product description for AI-assisted PRD
---prd-content <content>       # Direct PRD content
+--prd-file <path>            # Path to existing PRD file
+--prd-description <desc>     # Product description for AI-assisted PRD
 ```
 
-#### PRD Refinement Options
+### TASK GENERATION OPTIONS
 ```bash
 --skip-refine               # Skip PRD refinement
---refine-method <method>     # Refinement method: manual, ai, skip
---refine-feedback <feedback> # Feedback for AI refinement
-```
-
-#### Task Generation Options
-```bash
 --skip-generate             # Skip task generation
---generate-method <method>   # Generation method: standard, ai
---generate-instructions <instructions> # Custom task generation instructions
-```
-
-#### Task Splitting Options
-```bash
 --skip-split                # Skip task splitting
---split-tasks <ids>         # Comma-separated task IDs to split
---split-all                  # Split all tasks
---split-method <method>      # Split method: interactive, standard, custom
---split-instructions <instructions> # Custom split instructions
+--generate-instructions <instructions> # Custom task generation instructions
+--split-instructions <instructions>    # Custom split instructions
 ```
 
 ### WORKFLOW BENCHMARK EXAMPLES
@@ -655,41 +820,26 @@ task-o-matic benchmark workflow \
 task-o-matic benchmark workflow \
   --models "openrouter:anthropic/claude-3.5-sonnet,openrouter:openai/gpt-4o" \
   --concurrency 2 \
-  --delay 2000 \
-  --auto-accept
+  --delay 2000
+```
 
-# Workflow with specific steps
+#### Advanced Workflow with Execution
+```bash
+# Multi-model workflow with execution
+task-o-matic benchmark workflow \
+  --models "anthropic:claude-opus-2024:reasoning=4096,openrouter:anthropic/claude-3.5-sonnet:reasoning=2048" \
+  --concurrency 1 \
+  --delay 5000 \
+  --execute
+
+# Workflow with project specification
 task-o-matic benchmark workflow \
   --models "anthropic:claude-3.5-sonnet" \
   --project-name "Wasteland Shelter" \
   --init-method ai \
   --project-description "Emergency shelter management" \
   --skip-refine \
-  --generate-method ai \
-  --split-all
-```
-
-#### Advanced Workflow Scenarios
-```bash
-# Multi-model workflow with reasoning
-task-o-matic benchmark workflow \
-  --models "anthropic:claude-opus-2024:reasoning=4096,openrouter:anthropic/claude-3.5-sonnet:reasoning=2048,openrouter:openai/o1-preview:reasoning=8192" \
-  --concurrency 1 \
-  --delay 5000
-
-# Workflow from configuration file
-task-o-matic benchmark workflow \
-  --models "anthropic:claude-3.5-sonnet,openai:gpt-4" \
-  --config-file ./workflow-config.json
-
-# Workflow with selective steps
-task-o-matic benchmark workflow \
-  --models "openrouter:anthropic/claude-3.5-sonnet" \
-  --skip-init \
-  --prd-method upload \
-  --prd-file ./existing-prd.md \
-  --generate-method standard \
-  --split-tasks "task-123,task-456"
+  --skip-split
 ```
 
 ### WORKFLOW BENCHMARK OUTPUT
@@ -698,36 +848,20 @@ task-o-matic benchmark workflow \
 ```
 🚀 Task-O-Matic Workflow Benchmark
 
-Models: 3, Concurrency: 2, Delay: 2000ms
+Models: 2, Concurrency: 2, Delay: 2000ms
 
-- anthropic:claude-opus-2024:reasoning=4096: Starting...
-- openrouter:anthropic/claude-3.5-sonnet: Starting...
-- openrouter:openai/gpt-4o: Starting...
+- anthropic:claude-3.5-sonnet: Waiting...
+- openai:gpt-4: Waiting...
 
-Step 1: Initialize
-- anthropic:claude-opus-2024:reasoning=4096: Running... Project setup
-- openrouter:anthropic/claude-3.5-sonnet: Running... Project setup
-- openrouter:openai/gpt-4o: Running... Project setup
+⚡ Phase 2: Executing Workflows
 
-Step 2: Define PRD
-- anthropic:claude-opus-2024:reasoning=4096: Completed (5430ms)
-- openrouter:anthropic/claude-3.5-sonnet: Completed (6120ms)
-- openrouter:openai/gpt-4o: Completed (7890ms)
+Running workflow on 2 models...
 
-Step 3: Refine PRD
-- anthropic:claude-opus-2024:reasoning=4096: Skipped
-- openrouter:anthropic/claude-3.5-sonnet: Skipped
-- openrouter:openai/gpt-4o: Skipped
+- anthropic:claude-3.5-sonnet: Starting...
+- openai:gpt-4: Starting...
 
-Step 4: Generate Tasks
-- anthropic:claude-opus-2024:reasoning=4096: Running... Task generation
-- openrouter:anthropic/claude-3.5-sonnet: Running... Task generation
-- openrouter:openai/gpt-4o: Running... Task generation
-
-Step 5: Split Tasks
-- anthropic:claude-opus-2024:reasoning=4096: Running... Task splitting
-- openrouter:anthropic/claude-3.5-sonnet: Running... Task splitting
-- openrouter:openai/gpt-4o: Running... Task splitting
+anthropic:claude-3.5-sonnet: Completed (15432ms)
+openai:gpt-4: Completed (18921ms)
 ```
 
 #### Final Results Summary
@@ -736,17 +870,11 @@ Step 5: Split Tasks
 
 📊 Workflow Benchmark Results
 
-Model                               | Duration | Tasks | PRD Size | Steps | Cost
------------------------------------|----------|--------|----------|-------|--------
-anthropic:claude-opus-2024:reasoning=4096 | 15420ms  | 12     | 2.1KB  | 5/5   | $0.156
-openrouter:anthropic/claude-3.5-sonnet     | 18930ms  | 10     | 1.8KB  | 5/5   | $0.089
-openrouter:openai/gpt-4o               | 22150ms  | 8      | 1.6KB  | 5/5   | $0.124
-
-Performance Analysis:
-- Fastest Overall: openrouter:anthropic/claude-3.5-sonnet (18930ms)
-- Best Task Generation: anthropic:claude-opus-2024 (12 tasks)
-- Most Cost-Effective: openrouter:anthropic/claude-3.5-sonnet ($0.089)
-- Highest Quality: anthropic:claude-opus-2024 (5/5 steps completed)
+Model                               | Duration | Tasks  | Steps          | Execution
+-----------------------------------|----------|--------|----------------|--------------------
+anthropic:claude-opus-2024         | 15432ms  | 12     | 5/5            | 12 pass, 0 fail
+openrouter:anthropic/claude-3.5-sonnet | 18930ms  | 10     | 5/5            | 10 pass, 0 fail
+openrouter:openai/gpt-4o           | 22150ms  | 8      | 5/5            | 8 pass, 0 fail
 ```
 
 ### WORKFLOW PERFORMANCE METRICS
@@ -757,37 +885,13 @@ Performance Analysis:
 - **Task Generation Time**: Task extraction from PRD
 - **Task Splitting Time**: Task decomposition into subtasks
 - **Total Workflow Time**: End-to-end completion time
+- **Execution Results**: If --execute is enabled, shows pass/fail for task execution
 
 #### Quality Assessment
 - **Step Completion Rate**: Percentage of workflow steps completed successfully
 - **Task Quality**: Number and quality of generated tasks
 - **PRD Coherence**: Logical consistency and completeness
 - **Integration Success**: How well components work together
-
-#### Cost Analysis
-- **Per-Step Costs**: Individual cost breakdown for each workflow step
-- **Total Cost**: Aggregate cost across entire workflow
-- **Cost Efficiency**: Cost per task or per workflow step
-- **ROI Analysis**: Cost vs. output quality relationship
-
-### ERROR CONDITIONS
-```bash
-# Invalid model format in workflow
-Error: Invalid model format: invalid-model. Expected provider:model[:reasoning=<tokens>]
-Solution: Use correct format for all models in workflow
-
-# Concurrency too high for workflow
-Error: Workflow concurrency too high for system resources
-Solution: Reduce --concurrency or increase system resources
-
-# Workflow step failure
-Error: Workflow step 'initialize' failed for model anthropic:claude-3.5-sonnet
-Solution: Check model configuration and retry with different model
-
-# Partial workflow completion
-Warning: Some workflow steps failed for certain models
-Solution: Review individual step results and adjust configuration
-```
 
 ### FIELD OPERATIONS PROTOCOLS
 
@@ -805,18 +909,20 @@ The benchmark commands implement a complete performance testing lifecycle:
    - Real-time progress tracking and status updates
    - Error handling and retry logic
    - Performance metrics collection
+   - Git Branch Isolation for execution benchmarks
 
 3. **Analysis Phase**
    - Result aggregation and statistical analysis
    - Performance comparison and ranking
    - Cost analysis and optimization recommendations
    - Error pattern identification and reporting
+   - Branch comparison for execution benchmarks
 
 4. **Reporting Phase**
    - Detailed result display with multiple format options
    - Historical trend analysis and comparison
    - Export capabilities for external analysis
-   - Visual performance charts and graphs
+   - Branch switching instructions for code review
 
 #### PERFORMANCE OPTIMIZATION STRATEGIES
 All benchmark operations support performance optimization through:
@@ -826,6 +932,7 @@ All benchmark operations support performance optimization through:
 - **Cost Management**: Real-time cost tracking and budget enforcement
 - **Quality Balancing**: Trade-off analysis between speed, cost, and quality
 - **Resource Efficiency**: Optimal utilization of system resources
+- **Progressive Escalation**: Start cheap, escalate only when necessary
 
 #### INTEGRATION PATTERNS
 Benchmark operations integrate with other Task-O-Matic components:
@@ -835,97 +942,83 @@ Benchmark operations integrate with other Task-O-Matic components:
 - **Storage Integration**: Results storage in .task-o-matic/benchmark/ directory
 - **AI Provider Abstraction**: Consistent interface across all supported AI providers
 - **Error Handling**: Standardized error reporting and recovery mechanisms
+- **Git Integration**: Branch isolation for safe concurrent execution testing
 
 ### SURVIVAL SCENARIOS
 
-#### SCENARIO 1: AI Model Selection for Project Setup
+#### SCENARIO 1: AI Model Selection for Single Task
 ```bash
-# Benchmark PRD parsing models
-task-o-matic benchmark run prd-parse \
-  --models "anthropic:claude-3.5-sonnet,openai:gpt-4,openrouter:anthropic/claude-3.5-sonnet,openrouter:openai/gpt-4o,google:gemini-pro" \
-  --file ./project-requirements.md
+# Benchmark single task execution with Git Branch Isolation
+task-o-matic benchmark execution \
+  --task-id task-auth-module \
+  --models "anthropic:claude-3.5-sonnet,openai:gpt-4,openrouter:google/gemini-2.0-flash-exp" \
+  --verify "bun test" \
+  --verify "bun run type-check"
 
-# Analyze results for model selection
-task-o-matic benchmark show 2024-01-15_14-30-22_prd-parse
+# Compare results and pick best implementation
+git checkout benchmark-execution-task-auth-module-claude-3.5-sonnet
+git diff main
 
-# Compare cost-effectiveness
-task-o-matic benchmark compare 2024-01-15_14-30-22_prd-parse --metric cost-per-token
-
-# Select best performing model
-# Based on results: anthropic:claude-3.5-sonnet showed best balance of speed and cost
+# Review and merge best solution
+git checkout main
+git merge benchmark-execution-task-auth-module-claude-3.5-sonnet
 ```
 
-#### SCENARIO 2: Workflow Performance Optimization
+#### SCENARIO 2: Batch Task Execution with Escalation
 ```bash
-# Benchmark complete workflow
-task-o-matic benchmark workflow \
-  --models "anthropic:claude-3.5-sonnet,openai:gpt-4" \
-  --project-name "Performance Test" \
-  --auto-accept
-
-# Test different concurrency settings
-task-o-matic benchmark workflow \
+# Execute all frontend tasks with progressive model escalation
+task-o-matic benchmark execute-loop \
   --models "openrouter:anthropic/claude-3.5-sonnet" \
-  --concurrency 1 \
-  --project-name "Concurrency Test 1"
+  --status todo \
+  --tag frontend \
+  --max-retries 3 \
+  --try-models "gpt-4o-mini,gpt-4o,claude-3.5-sonnet" \
+  --verify "bun test --coverage" \
+  --verify "bun run build"
 
-task-o-matic benchmark workflow \
-  --models "openrouter:anthropic/claude-3.5-sonnet" \
-  --concurrency 3 \
-  --project-name "Concurrency Test 3"
-
-task-o-matic benchmark workflow \
-  --models "openrouter:anthropic/claude-3.5-sonnet" \
-  --concurrency 5 \
-  --project-name "Concurrency Test 5"
-
-# Analyze optimal concurrency
-task-o-matic benchmark compare 2024-01-15_14-30-22_workflow-full \
-  --compare-with 2024-01-15_14-30-22_workflow-full_concurrency-1 \
-  --compare-with 2024-01-15_14-30-22_workflow-full_concurrency-3 \
-  --compare-with 2024-01-15_14-30-22_workflow-full_concurrency-5
+# Analyze cost savings
+# - Simple tasks pass on gpt-4o-mini ($0.0001 each)
+# - Medium tasks escalate to gpt-4o ($0.0005 each)
+# - Complex tasks escalate to claude-3.5-sonnet ($0.003 each)
+# - Overall cost: 30-50% lower than using best model for all tasks
 ```
 
-#### SCENARIO 3: Cost Management and Budgeting
+#### SCENARIO 3: Complete Workflow Comparison
 ```bash
-# Benchmark with cost tracking
-task-o-matic benchmark run task-create \
-  --models "openrouter:anthropic/claude-3.5-sonnet,openrouter:openai/gpt-4o" \
-  --title "Cost analysis task" \
-  --budget 0.10
+# Compare end-to-end workflow across multiple models
+task-o-matic benchmark workflow \
+  --models "anthropic:claude-3.5-sonnet,openai:gpt-4,openrouter:google/gemini-2.0-flash-exp" \
+  --project-name "Emergency Shelter Manager" \
+  --init-method ai \
+  --project-description "Complete shelter management system with resource tracking" \
+  --execute
 
-# Monitor cost over time
-task-o-matic benchmark list | grep "Cost analysis"
-task-o-matic benchmark show --cost-analysis
-
-# Compare cost efficiency
-task-o-matic benchmark compare cost-analysis-run-1 cost-analysis-run-2
-
-# Set cost alerts
-task-o-matic benchmark run task-create \
-  --models "openrouter:anthropic/claude-3.5-sonnet" \
-  --cost-alert 0.05
+# Analyze results based on:
+# - Total workflow duration
+# - Number of tasks generated
+# - Task execution pass rate
+# - Estimated cost
 ```
 
-#### SCENARIO 4: Quality Assurance and Testing
+#### SCENARIO 4: Cost Optimization for Large Task Sets
 ```bash
-# Benchmark for quality metrics
-task-o-matic benchmark run prd-parse \
-  --models "anthropic:claude-3.5-sonnet,openai:gpt-4" \
-  --quality-metrics accuracy,coherence,completeness
+# Execute 50 tasks with optimal cost strategy
+task-o-matic benchmark execute-loop \
+  --models "openrouter:google/gemini-2.0-flash-exp" \
+  --max-retries 4 \
+  --try-models "gemini-2.0-flash-exp,gpt-4o-mini,gpt-4o,claude-3.5-sonnet,claude-opus" \
+  --verify "bun test" \
+  --no-keep-branches
 
-# Test with different prompts
-task-o-matic benchmark run prd-parse \
-  --models "openrouter:anthropic/claude-3.5-sonnet" \
-  --prompt "Detailed technical analysis required" \
-  --prompt "Quick overview needed" \
-  --prompt "Focus on security requirements"
+# Expected breakdown:
+# - 60% pass on gemini-2.0-flash-exp (fastest, cheapest)
+# - 25% escalate to gpt-4o-mini
+# - 10% escalate to gpt-4o
+# - 4% escalate to claude-3.5-sonnet
+# - 1% escalate to claude-opus (most expensive, best quality)
 
-# Compare prompt effectiveness
-task-o-matic benchmark compare prompt-test-run-1 prompt-test-run-2
-
-# Quality scoring analysis
-task-o-matic benchmark show prompt-test-run-1 --quality-scores
+# Cost: ~80% lower than using claude-opus for all tasks
+# Time: ~40% faster than using claude-opus for all tasks
 ```
 
 ### TECHNICAL SPECIFICATIONS
@@ -936,6 +1029,7 @@ interface BenchmarkRun {
   id: string;                    // Unique run identifier
   timestamp: Date;               // When benchmark was executed
   operation: string;              // Type of operation benchmarked
+  command: string;               // Command that was run
   config: {                     // Benchmark configuration
     models: BenchmarkModelConfig[];
     concurrency: number;
@@ -970,11 +1064,12 @@ interface BenchmarkModelConfig {
 ```
 
 #### PERFORMANCE CHARACTERISTICS
-- **Concurrent Execution**: Support for multiple simultaneous model tests
+- **Concurrent Execution**: Support for multiple simultaneous model tests (except execution benchmarks)
 - **Rate Limiting**: Configurable delays between requests
 - **Progress Tracking**: Real-time status updates during execution
 - **Error Recovery**: Automatic retry with fallback models
 - **Metrics Collection**: Comprehensive performance data gathering
+- **Git Branch Isolation**: Safe concurrent execution testing for execution benchmarks
 
 #### STORAGE REQUIREMENTS
 - **Run Storage**: 10-50KB per benchmark run
@@ -987,11 +1082,22 @@ interface BenchmarkModelConfig {
 - **Resource Management**: Memory and CPU usage optimization
 - **Error Isolation**: Failed model execution doesn't affect others
 - **Data Integrity**: Consistent result storage and retrieval
+- **Git Safety**: Execution benchmarks enforce serial execution to prevent git conflicts
 
-**Remember:** Citizen, in the resource-constrained wasteland, benchmark commands are your strategic intelligence tools. They provide the data needed to optimize AI usage, control costs, and make informed decisions about which tools will keep your projects running efficiently. Use them to measure, analyze, and optimize your AI-powered development workflow.
+**Remember:** Citizen, in the resource-constrained wasteland, benchmark commands are your strategic intelligence tools. They provide the data needed to optimize AI usage, control costs, and make informed decisions about which tools will keep your projects running efficiently. The Git Branch Isolation system means you can test fearlessly—no risk to your working code. Use them to measure, analyze, and optimize your AI-powered development workflow.
 
 ---
 
-**DOCUMENT STATUS:** `Complete`  
-**NEXT REVIEW:** `After AI provider updates`  
+**DOCUMENT STATUS:** `Updated`
+**NEXT REVIEW:** `After AI provider updates`
 **CONTACT:** `Task-O-Matic Benchmark Team`
+
+---
+
+**OPEN QUESTIONS / TODO:**
+
+- [ ] Add support for custom metric definitions in benchmark runs
+- [ ] Implement benchmark result export to CSV/JSON formats
+- [ ] Add historical trend visualization
+- [ ] Implement cost budget enforcement with alerts
+- [ ] Add quality scoring algorithm for comparing model outputs

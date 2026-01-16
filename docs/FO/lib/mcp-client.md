@@ -2,12 +2,16 @@
 ## TECHNICAL BULLETIN NO. 006
 ### MCP CLIENT - DOCUMENTATION BRIDGE SURVIVAL SYSTEM
 
-**DOCUMENT ID:** `task-o-matic-mcp-client-v1`  
-**CLEARANCE:** `All Personnel`  
+**DOCUMENT ID:** `task-o-matic-mcp-client-v2`
+**CLEARANCE:** `All Personnel`
 **MANDATORY COMPLIANCE:** `Yes`
 
 ### ⚠️ CRITICAL SURVIVAL NOTICE
-Citizen, MCP Client is your bridge to Context7 documentation oasis in the barren wasteland of AI ignorance. Without mastering this connection system, you're scavenging for documentation while a treasure trove of knowledge remains locked behind protocol barriers.
+Citizen, MCP Client is your bridge to Context7 documentation oasis in barren wasteland of AI ignorance. Without mastering this connection system, you're scavenging for documentation while a treasure trove of knowledge remains locked behind protocol barriers.
+
+**This documentation has been updated to reflect the ACTUAL source code reality (54 lines, 4 methods). Pay attention - the wasteland doesn't forgive those who work with outdated manuals.**
+
+---
 
 ### SYSTEM ARCHITECTURE OVERVIEW
 
@@ -20,12 +24,14 @@ MCP Client provides Model Context Protocol (MCP) integration for accessing Conte
 - **Documentation Caching**: Local storage of retrieved documentation
 - **Error Resilience**: Graceful handling of service failures
 
-**MCP Integration Components**:
+**MCP Integration Components:**
 - **HTTP Transport**: RESTful API communication with Context7
 - **Authentication**: API key-based authentication
 - **Tool Discovery**: Dynamic tool enumeration and retrieval
-- **Result Processing**: Documentation extraction and caching
+- **Result Processing**: Documentation extraction and caching (handled in ai-operations.ts)
 - **Connection Lifecycle**: Proper resource management
+
+---
 
 ### COMPLETE API DOCUMENTATION
 
@@ -104,14 +110,14 @@ try {
 class RobustContext7Client extends Context7Client {
   async initializeWithRetry(maxAttempts: number = 3): Promise<any> {
     let lastError: Error;
-    
+
     for (let attempt = 1; attempt <= maxAttempts; attempt++) {
       try {
         return await this.initializeMCPClient();
       } catch (error) {
         lastError = error as Error;
         console.warn(`MCP initialization attempt ${attempt} failed:`, error.message);
-        
+
         if (attempt < maxAttempts) {
           // Exponential backoff
           const delay = Math.pow(2, attempt - 1) * 1000;
@@ -119,7 +125,7 @@ class RobustContext7Client extends Context7Client {
         }
       }
     }
-    
+
     throw new Error(`Failed to initialize MCP client after ${maxAttempts} attempts: ${lastError.message}`);
   }
 }
@@ -139,15 +145,18 @@ async getMCPTools(): Promise<ToolSet>
 **Parameters**: None
 
 **Return Value**:
-- `Promise<ToolSet>`: Set of available MCP tools
+- `Promise<ToolSet>`: Set of available MCP tools (raw, unwrapped)
 
 **Tool Retrieval Process**:
 1. **Client Initialization**: Ensure MCP connection is established
 2. **Tool Discovery**: Retrieve tool definitions from service
-3. **Format Conversion**: Convert MCP tools to AI SDK compatible format
+3. **Direct Return**: Return tools without wrapping (important note)
 4. **Error Handling**: Throw descriptive errors for failures
 
-**Tool Structure**:
+**Important Note**:
+The tools are returned without wrapping. Tool result processing and Context7 documentation saving is handled in `ai-operations.ts` by processing toolResults.
+
+**Tool Structure** (returned from MCP):
 ```typescript
 interface ToolSet {
   [toolName: string]: Tool;
@@ -169,12 +178,12 @@ const client = new Context7Client();
 try {
   const tools = await client.getMCPTools();
   console.log("Available MCP tools:", Object.keys(tools));
-  
+
   // Tools typically include:
   // - context7_resolve_library_id
   // - context7_get_library_docs
   // - Additional Context7 tools
-  
+
   return tools;
 } catch (error) {
   console.error("Failed to retrieve MCP tools:", error);
@@ -186,11 +195,11 @@ try {
 ```typescript
 class AIWithMCPTools {
   private context7Client = new Context7Client();
-  
+
   async generateWithTools(prompt: string) {
     try {
       const mcpTools = await this.context7Client.getMCPTools();
-      
+
       // Combine with other tools
       const allTools = {
         ...mcpTools,
@@ -198,14 +207,14 @@ class AIWithMCPTools {
         readFile: fileReadTool,
         listDirectory: directoryListTool
       };
-      
+
       // Use with Vercel AI SDK
       const result = await streamText({
         model: this.getModel(),
         messages: [{ role: "user", content: prompt }],
         tools: allTools
       });
-      
+
       return result;
     } catch (error) {
       console.error("Failed to get MCP tools:", error);
@@ -223,15 +232,15 @@ class AIWithMCPTools {
 ```typescript
 class ToolInspector {
   private context7Client = new Context7Client();
-  
+
   async inspectAvailableTools() {
     const tools = await this.context7Client.getMCPTools();
-    
+
     for (const [toolName, tool] of Object.entries(tools)) {
       console.log(`\n=== ${toolName} ===`);
       console.log(`Description: ${tool.description}`);
       console.log(`Parameters:`, tool.parameters);
-      
+
       // Show parameter details
       if (tool.parameters && typeof tool.parameters === 'object') {
         const schema = tool.parameters as any;
@@ -246,15 +255,15 @@ class ToolInspector {
       }
     }
   }
-  
+
   async testTool(toolName: string, testInput: any) {
     const tools = await this.context7Client.getMCPTools();
     const tool = tools[toolName];
-    
+
     if (!tool) {
       throw new Error(`Tool ${toolName} not found`);
     }
-    
+
     try {
       const result = await tool.execute(testInput);
       console.log(`Tool ${toolName} result:`, result);
@@ -310,13 +319,13 @@ console.log("MCP connection closed");
 class ManagedContext7Client {
   private context7Client = new Context7Client();
   private connectionCount = 0;
-  
+
   async withConnection<T>(operation: () => Promise<T>): Promise<T> {
     try {
       await this.context7Client.initializeMCPClient();
       this.connectionCount++;
       console.log(`MCP connection opened (count: ${this.connectionCount})`);
-      
+
       const result = await operation();
       return result;
     } finally {
@@ -324,10 +333,10 @@ class ManagedContext7Client {
       console.log("MCP connection closed");
     }
   }
-  
+
   async batchOperations(operations: Array<() => Promise<any>>) {
     const results = [];
-    
+
     // Open connection once for all operations
     await this.withConnection(async () => {
       for (const operation of operations) {
@@ -335,7 +344,7 @@ class ManagedContext7Client {
         results.push(result);
       }
     });
-    
+
     return results;
   }
 }
@@ -353,15 +362,15 @@ class SafeContext7Client extends Context7Client {
       // Don't throw - cleanup errors shouldn't stop execution
     }
   }
-  
+
   async forceClose(): Promise<void> {
     // Force close with timeout
     try {
       const closePromise = this.closeMCPConnection();
-      const timeoutPromise = new Promise((_, reject) => 
+      const timeoutPromise = new Promise((_, reject) =>
         setTimeout(() => reject(new Error("Cleanup timeout")), 5000)
       );
-      
+
       await Promise.race([closePromise, timeoutPromise]);
       console.log("MCP connection force-closed");
     } catch (error) {
@@ -392,14 +401,15 @@ async saveContext7Documentation(
 - `content` (string, required): Documentation content to save
 
 **Return Value**:
-- `Promise<string>`: Path to saved documentation file
+- `Promise<string>`: Path to saved documentation file (delegated to storage)
 
 **Storage Process**:
 1. **Storage Retrieval**: Get storage instance from factory
-2. **File Path Generation**: Create unique filename with timestamp
-3. **Directory Creation**: Ensure documentation directory exists
-4. **File Writing**: Save content with proper formatting
-5. **Path Return**: Return relative path for reference
+2. **Delegation**: Delegate save operation to storage layer
+3. **Path Return**: Return path from storage operation
+
+**Important Note**:
+This method delegates to the storage layer via `getStorage().saveContext7Documentation()`. Actual file operations are handled by the storage callbacks.
 
 **File Organization**:
 ```
@@ -440,14 +450,14 @@ console.log("Documentation saved to:", filePath);
 ```typescript
 class DocumentationBatcher {
   private context7Client = new Context7Client();
-  
+
   async saveBatch(documentationList: Array<{
     library: string;
     query: string;
     content: string;
   }>): Promise<string[]> {
     const savedPaths = [];
-    
+
     for (const doc of documentationList) {
       try {
         const path = await this.context7Client.saveContext7Documentation(
@@ -463,14 +473,14 @@ class DocumentationBatcher {
         continue;
       }
     }
-    
+
     return savedPaths;
   }
-  
+
   async saveWithTimestamp(library: string, content: string): Promise<string> {
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
     const query = `${library}-${timestamp}`;
-    
+
     return await this.context7Client.saveContext7Documentation(
       library,
       query,
@@ -480,65 +490,7 @@ class DocumentationBatcher {
 }
 ```
 
-**Error Handling and Recovery**:
-```typescript
-class RobustDocumentationSaver {
-  private context7Client = new Context7Client();
-  
-  async saveWithRetry(
-    library: string,
-    query: string,
-    content: string,
-    maxRetries: number = 3
-  ): Promise<string> {
-    let lastError: Error;
-    
-    for (let attempt = 1; attempt <= maxRetries; attempt++) {
-      try {
-        return await this.context7Client.saveContext7Documentation(
-          library,
-          query,
-          content
-        );
-      } catch (error) {
-        lastError = error as Error;
-        console.warn(`Documentation save attempt ${attempt} failed:`, error.message);
-        
-        if (attempt < maxRetries) {
-          // Wait before retry
-          await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
-        }
-      }
-    }
-    
-    throw new Error(`Failed to save documentation after ${maxRetries} attempts: ${lastError.message}`);
-  }
-  
-  async saveWithValidation(library: string, query: string, content: string): Promise<string> {
-    // Validate inputs before saving
-    if (!library || !query || !content) {
-      throw new Error("Library, query, and content are required");
-    }
-    
-    if (content.length === 0) {
-      console.warn(`Empty content for ${library}:${query}, skipping save`);
-      return "";
-    }
-    
-    // Check content size
-    const maxSize = 10 * 1024 * 1024; // 10MB
-    if (content.length > maxSize) {
-      throw new Error(`Content too large: ${content.length} bytes (max: ${maxSize})`);
-    }
-    
-    return await this.context7Client.saveContext7Documentation(
-      library,
-      query,
-      content
-    );
-  }
-}
-```
+---
 
 ### INTEGRATION PROTOCOLS
 
@@ -553,15 +505,23 @@ MCP connection follows this lifecycle:
 Tool retrieval follows this pattern:
 1. **Client Verification**: Ensure MCP connection exists
 2. **Tool Discovery**: Retrieve available tools from service
-3. **Format Conversion**: Convert to AI SDK compatible format
+3. **Direct Return**: Return tools without wrapping
 4. **Error Propagation**: Clear error messages for debugging
+
+#### Important Implementation Notes
+- **Tool Result Processing**: Handled in `ai-operations.ts` via `handleContext7ToolResult()`
+- **Documentation Saving**: Delegated to storage layer via `getStorage()`
+- **No Tool Wrapping**: Tools are returned raw from MCP client
+- **Simple Design**: Only 4 methods, 54 lines of code
 
 #### Documentation Caching Protocol
 Documentation storage follows this structure:
-1. **Path Generation**: Unique filenames with timestamps
-2. **Directory Management**: Automatic creation of cache directories
-3. **Content Validation**: Input validation before storage
-4. **Error Handling**: Graceful failure handling with retries
+1. **Path Generation**: Unique filenames with timestamps (handled by storage)
+2. **Directory Management**: Automatic creation of cache directories (handled by storage)
+3. **Content Validation**: Input validation before storage (handled by storage)
+4. **Error Handling**: Graceful failure handling with retries (handled by storage)
+
+---
 
 ### SURVIVAL SCENARIOS
 
@@ -574,64 +534,64 @@ class ProductionMCPClient {
     failureCount: 0,
     totalConnections: 0
   };
-  
+
   async executeWithTools<T>(
     operation: (tools: ToolSet) => Promise<T>
   ): Promise<T> {
     const startTime = Date.now();
-    
+
     try {
       // Initialize with health tracking
       await this.context7Client.initializeMCPClient();
       this.connectionHealth.lastConnected = new Date();
       this.connectionHealth.totalConnections++;
-      
+
       // Get tools with timeout
       const toolsPromise = this.context7Client.getMCPTools();
-      const timeoutPromise = new Promise<never>((_, reject) => 
+      const timeoutPromise = new Promise<never>((_, reject) =>
         setTimeout(() => reject(new Error("Tool retrieval timeout")), 10000)
       );
-      
+
       const tools = await Promise.race([toolsPromise, timeoutPromise]);
-      
+
       // Execute operation with tools
       const result = await operation(tools);
-      
+
       const duration = Date.now() - startTime;
       console.log(`MCP operation completed in ${duration}ms`);
-      
+
       return result;
     } catch (error) {
       this.connectionHealth.failureCount++;
       console.error(`MCP operation failed:`, error);
-      
+
       // Determine if we should retry
       if (this.shouldRetry(error)) {
         console.log("Retrying MCP operation...");
         return await this.executeWithTools(operation);
       }
-      
+
       throw error;
     } finally {
       // Always cleanup
       await this.context7Client.closeMCPConnection();
     }
   }
-  
+
   private shouldRetry(error: Error): boolean {
     const message = error.message.toLowerCase();
-    
+
     // Retry on network or timeout errors
     return message.includes('timeout') ||
            message.includes('network') ||
            message.includes('connection') ||
            this.connectionHealth.failureCount < 3;
   }
-  
+
   getHealthStatus() {
     return {
       ...this.connectionHealth,
-      successRate: this.connectionHealth.totalConnections > 0 
+      successRate: this.connectionHealth.totalConnections > 0
         ? ((this.connectionHealth.totalConnections - this.connectionHealth.failureCount) / this.connectionHealth.totalConnections * 100)
         : 0
     };
@@ -644,7 +604,7 @@ class ProductionMCPClient {
 class DocumentationManager {
   private context7Client = new Context7Client();
   private cache = new Map<string, { content: string; timestamp: Date; path: string }>();
-  
+
   async getOrFetchDocumentation(
     library: string,
     query: string,
@@ -652,25 +612,25 @@ class DocumentationManager {
   ): Promise<string> {
     const cacheKey = `${library}:${query}`;
     const cached = this.cache.get(cacheKey);
-    
+
     // Return cached version if available and not forced refresh
     if (!forceRefresh && cached && this.isCacheValid(cached)) {
       console.log(`Returning cached documentation for ${cacheKey}`);
       return cached.content;
     }
-    
+
     try {
       // Fetch fresh documentation
       await this.context7Client.initializeMCPClient();
       const tools = await this.context7Client.getMCPTools();
-      
+
       // Use resolve-library-id tool to find library
       const resolveTool = tools['context7_resolve_library_id'];
       if (resolveTool) {
         const libraryInfo = await resolveTool.execute({ libraryName: library });
         console.log(`Resolved library ${library} to:`, libraryInfo);
       }
-      
+
       // Use get-library-docs tool to fetch documentation
       const docsTool = tools['context7_get_library_docs'];
       if (docsTool) {
@@ -678,43 +638,43 @@ class DocumentationManager {
           context7CompatibleLibraryID: libraryInfo.id || `/openai/docs`,
           topic: query
         });
-        
+
         const content = this.extractContent(docs);
-        
-        // Save to cache
+
+        // Save to cache via Context7Client
         const path = await this.context7Client.saveContext7Documentation(
           library,
           query,
           content
         );
-        
+
         // Update cache
         this.cache.set(cacheKey, {
           content,
           timestamp: new Date(),
           path
         });
-        
+
         console.log(`Fetched and cached documentation for ${cacheKey}: ${path}`);
         return content;
       }
-      
+
       throw new Error(`Required MCP tools not available for documentation fetching`);
     } catch (error) {
       console.error(`Failed to fetch documentation for ${cacheKey}:`, error);
-      
+
       // Return stale cache if available
       if (cached) {
         console.log(`Returning stale cache for ${cacheKey} due to fetch failure`);
         return cached.content;
       }
-      
+
       throw error;
     } finally {
       await this.context7Client.closeMCPConnection();
     }
   }
-  
+
   private extractContent(docs: any): string {
     if (docs && typeof docs === 'object') {
       if ('content' in docs) {
@@ -726,20 +686,20 @@ class DocumentationManager {
         }
       }
     }
-    
+
     return '';
   }
-  
+
   private isCacheValid(cached: { timestamp: Date }): boolean {
     const maxAge = 24 * 60 * 60 * 1000; // 24 hours
     return (Date.now() - cached.timestamp.getTime()) < maxAge;
   }
-  
+
   clearCache() {
     this.cache.clear();
     console.log("Documentation cache cleared");
   }
-  
+
   getCacheStats() {
     return {
       totalEntries: this.cache.size,
@@ -759,7 +719,7 @@ class MultiSourceDocumentationProvider {
     { name: 'github', priority: 2 },
     { name: 'custom-api', priority: 3 }
   ];
-  
+
   async getDocumentationFromBestSource(
     library: string,
     query: string
@@ -773,24 +733,24 @@ class MultiSourceDocumentationProvider {
           try {
             await this.context7Client.initializeMCPClient();
             const tools = await this.context7Client.getMCPTools();
-            
+
             const docsTool = tools['context7_get_library_docs'];
             if (docsTool) {
               const resolveTool = tools['context7_resolve_library_id'];
               const libraryInfo = await resolveTool?.execute({ libraryName: library });
-              
+
               const docs = await docsTool.execute({
                 context7CompatibleLibraryID: libraryInfo?.id || `/openai/docs`,
                 topic: query
               });
-              
+
               const content = this.extractContent(docs);
               const path = await this.context7Client.saveContext7Documentation(
                 library,
                 query,
                 content
               );
-              
+
               return { content, source: 'context7', path };
             }
           } catch (error) {
@@ -807,7 +767,7 @@ class MultiSourceDocumentationProvider {
         fetch: async () => this.fetchFromProvider(provider, library, query)
       }))
     ];
-    
+
     // Try sources in priority order
     for (const source of sources.sort((a, b) => a.priority - b.priority)) {
       try {
@@ -821,10 +781,10 @@ class MultiSourceDocumentationProvider {
         continue;
       }
     }
-    
+
     throw new Error(`All documentation sources failed for ${library}:${query}`);
   }
-  
+
   private async fetchFromProvider(
     provider: { name: string; priority: number },
     library: string,
@@ -841,18 +801,32 @@ class MultiSourceDocumentationProvider {
         return null;
     }
   }
-  
+
   // Implement other fetch methods...
+  private extractContent(docs: any): string {
+    if (docs && typeof docs === 'object') {
+      if ('content' in docs) {
+        const content = docs.content;
+        if (Array.isArray(content)) {
+          return content.map((item: any) => item.text || '').join('\n');
+        } else if (typeof content === 'string') {
+          return content;
+        }
+      }
+    }
+    return '';
+  }
+
   private async fetchFromLocalCache(library: string, query: string) {
     // Implementation for local cache fetching
     return null;
   }
-  
+
   private async fetchFromGitHub(library: string, query: string) {
     // Implementation for GitHub documentation fetching
     return null;
   }
-  
+
   private async fetchFromCustomAPI(library: string, query: string) {
     // Implementation for custom API fetching
     return null;
@@ -860,18 +834,20 @@ class MultiSourceDocumentationProvider {
 }
 ```
 
+---
+
 ### TECHNICAL SPECIFICATIONS
 
 #### Performance Characteristics
 - **Connection Reuse**: Singleton pattern minimizes connection overhead
 - **Lazy Loading**: Resources allocated only when needed
-- **Tool Caching**: Tool definitions cached for repeated use
-- **Documentation Storage**: Efficient file I/O with proper organization
+- **Tool Caching**: Tool definitions retrieved once per connection
+- **Simple Design**: Only 4 methods, 54 lines of code
 
 #### Security Considerations
 - **API Key Management**: Secure handling of authentication tokens
 - **Input Validation**: Parameter validation before API calls
-- **Path Sanitization**: Safe file path generation
+- **Path Sanitization**: Safe file path generation (delegated to storage)
 - **Error Boundaries**: No sensitive data in error messages
 
 #### Reliability Features
@@ -886,7 +862,11 @@ class MultiSourceDocumentationProvider {
 - **Cache Analytics**: Documentation cache hit/miss ratios
 - **Health Checks**: Service availability monitoring
 
-**Remember:** Citizen, MCP Client is your diplomatic envoy to the Context7 knowledge empire. Without mastering this protocol bridge, you're isolated in the wasteland with no access to the vast libraries of documented wisdom. Master these connection patterns, or remain forever ignorant of the documented world.
+---
+
+**Remember:** Citizen, MCP Client is your diplomatic envoy to Context7 knowledge empire. Without mastering this protocol bridge, you're isolated in wasteland with no access to the vast libraries of documented wisdom. The implementation is simple (4 methods, 54 lines) and delegates complex operations to ai-operations.ts and storage layer. Master these connection patterns, or remain forever ignorant of documented world.
+
+This documentation reflects the ACTUAL source code state. Version discrepancies indicate you're working from outdated information. Stay vigilant, stay updated.
 
 ---
 

@@ -2,16 +2,20 @@
 ## TECHNICAL BULLETIN NO. 008
 ### FILE SYSTEM STORAGE - DATA PERSISTENCE SURVIVAL SYSTEM
 
-**DOCUMENT ID:** `task-o-matic-file-system-storage-v1`  
-**CLEARANCE:** `All Personnel`  
+**DOCUMENT ID:** `task-o-matic-file-system-storage-v2`
+**CLEARANCE:** `All Personnel`
 **MANDATORY COMPLIANCE:** `Yes`
 
 ### ⚠️ CRITICAL SURVIVAL NOTICE
-Citizen, File System Storage is your fortress against data loss in the digital wasteland. Without mastering this persistence system, you're leaving your task data exposed to the radioactive dust of file corruption and accidental deletion.
+Citizen, File System Storage is your fortress against data loss in digital wasteland. Without mastering this persistence system, you're leaving your task data exposed to the radioactive dust of file corruption and accidental deletion.
+
+**This documentation has been updated to reflect the ACTUAL 927-line source code implementation. Pay attention - the wasteland doesn't forgive those who work with outdated manuals.**
+
+---
 
 ### SYSTEM ARCHITECTURE OVERVIEW
 
-File System Storage provides comprehensive task data persistence using JSON files with robust error handling, validation, and hierarchical task management. It implements the complete TaskRepository interface with support for tasks, metadata, documentation, and planning.
+File System Storage provides comprehensive task data persistence using JSON files with robust error handling, validation, and hierarchical task management. It implements the complete TaskRepository interface with support for tasks, metadata, documentation, planning, and PRD versioning.
 
 **Core Design Principles:**
 - **JSON-Based Storage**: Human-readable file format for transparency
@@ -20,6 +24,10 @@ File System Storage provides comprehensive task data persistence using JSON file
 - **Data Validation**: Comprehensive input validation and sanitization
 - **Integrity Checking**: Storage consistency validation and repair
 - **Migration Support**: Automatic data structure upgrades and migrations
+- **PRD Versioning**: Track PRD evolution with version history
+- **Content Management**: Large task content stored separately (>200 chars)
+- **Plan Storage**: Implementation plans saved and managed
+- **AI Metadata Tracking**: Track AI operations per task
 
 **Storage Structure**:
 ```
@@ -32,14 +40,18 @@ File System Storage provides comprehensive task data persistence using JSON file
 │   ├── _cache/            # Context7 cached docs
 │   ├── tasks/             # Task documentation
 │   └── ...
+├── prd/                    # PRD versioning
+│   └── versions/          # PRD version history
 └── logs/                   # Operation logs
 ```
+
+---
 
 ### COMPLETE API DOCUMENTATION
 
 #### Class: FileSystemStorage
 
-**Purpose**: Complete file system-based task repository with hierarchical task management, content storage, and metadata tracking.
+**Purpose**: Complete file system-based task repository with hierarchical task management, content storage, metadata tracking, documentation management, planning, and PRD versioning.
 
 **Constructor**:
 ```typescript
@@ -48,6 +60,8 @@ constructor(callbacks?: StorageCallbacks)
 
 **Parameters**:
 - `callbacks` (StorageCallbacks, optional): Custom storage operation callbacks
+
+**Default Behavior**: If no callbacks provided, uses default file system callbacks from `createFileSystemCallbacks(configManager.getTaskOMaticDir())`
 
 ---
 
@@ -69,33 +83,6 @@ public sanitizeForFilename(name: string): string
 **Sanitization Rules**:
 - Remove path separators: `/`, `\`, `?`, `%`, `*`, `|`, `<`, `>`, `"`
 - Replace with hyphens: Multiple characters replaced with single `-`
-
-**Examples**:
-
-**Basic Sanitization**:
-```typescript
-const storage = new FileSystemStorage();
-
-console.log(storage.sanitizeForFilename("my-task.txt"));        // "my-task.txt"
-console.log(storage.sanitizeForFilename("../dangerous/path"));     // "dangerous-path"
-console.log(storage.sanitizeForFilename("file:with*chars"));   // "file-with-chars"
-console.log(storage.sanitizeForFilename("normal_file.md"));       // "normal_file.md"
-```
-
-**Security Examples**:
-```typescript
-// Prevents directory traversal attacks
-const maliciousNames = [
-  "../../../etc/passwd",
-  "..\\..\\windows\\system32\\config\\sam",
-  "/etc/shadow"
-];
-
-maliciousNames.forEach(name => {
-  const safe = storage.sanitizeForFilename(name);
-  console.log(`Original: ${name} -> Safe: ${safe}`);
-});
-```
 
 ---
 
@@ -120,31 +107,6 @@ private validateTaskId(taskId: string): void
 - Throws TaskOMaticError with INVALID_INPUT code
 - Includes context and suggestions for resolution
 
-**Examples**:
-
-**Valid Task IDs**:
-```typescript
-const storage = new FileSystemStorage();
-
-// These would pass validation
-const validIds = ["task-1", "task-2", "user-auth", "api-setup"];
-
-validIds.forEach(id => {
-  storage.validateTaskId(id); // No error thrown
-});
-
-// These would throw errors
-const invalidIds = ["", null, undefined, "   ", "\t", "\n"];
-
-invalidIds.forEach(id => {
-  try {
-    storage.validateTaskId(id); // Throws error
-  } catch (error) {
-    console.log(`Validation error for "${id}": ${error.message}`);
-  }
-});
-```
-
 ---
 
 #### Method: validateTaskRequest()
@@ -164,66 +126,14 @@ private validateTaskRequest(task: CreateTaskRequest): void
 2. **Title Validation**: Title must be non-empty string
 3. **Parent ID Validation**: Parent ID must be valid string if provided
 4. **Dependencies Validation**: Dependencies must be array of strings if provided
-5. **Tags Validation**: Tags must be array of strings if provided
+5. **Tags Validation**: Tags must be array of strings if provided (NEW IN v2)
 6. **Effort Validation**: Effort must be one of allowed values if provided
-
-**Error Handling**:
-- Structured error messages with context
-- Specific suggestions for each validation failure
-- Metadata inclusion for debugging
-
-**Examples**:
-
-**Complete Task Validation**:
-```typescript
-const storage = new FileSystemStorage();
-
-const validTask = {
-  title: "Build user authentication",
-  description: "Implement OAuth2 with JWT tokens",
-  parentId: "task-1",
-  dependencies: ["task-1"],
-  tags: ["backend", "security"],
-  estimatedEffort: "large"
-};
-
-storage.validateTaskRequest(validTask); // No error thrown
-
-const invalidTask = {
-  title: "",  // Empty title
-  description: "Implement auth"
-};
-
-try {
-  storage.validateTaskRequest(invalidTask);
-} catch (error) {
-  console.error("Task validation failed:", error.message);
-  console.log("Error code:", error.code);
-  console.log("Suggestions:", error.suggestions);
-  // Output: Detailed validation error with suggestions
-}
-```
-
-**Validation Error Examples**:
-```typescript
-// Missing required fields
-const missingTitle = { description: "Task without title" };
-// Throws: "Task title is required and must be a non-empty string"
-
-// Invalid dependencies
-const invalidDeps = { dependencies: "not-an-array" };
-// Throws: "Dependencies must be an array if provided"
-
-// Invalid effort value
-const invalidEffort = { estimatedEffort: "extra-large" };
-// Throws: "Estimated effort must be 'small', 'medium', or 'large'"
-```
 
 ---
 
 #### Method: loadTasksData()
 
-**Purpose**: Load and parse the main tasks data file with comprehensive error handling.
+**Purpose**: Load and parse main tasks data file with comprehensive error handling.
 
 **Signature**:
 ```typescript
@@ -246,58 +156,11 @@ Promise<TasksData> {
 - Permission errors: Formatted with storage error codes
 - Corrupted JSON: Graceful fallback to empty state
 
-**Examples**:
-
-**Basic Data Loading**:
-```typescript
-const storage = new FileSystemStorage();
-
-try {
-  const data = await storage.loadTasksData();
-  console.log(`Loaded ${data.tasks.length} tasks`);
-  console.log(`Next task ID: ${data.nextId}`);
-  
-  data.tasks.forEach(task => {
-    console.log(`Task: ${task.id} - ${task.title}`);
-  });
-} catch (error) {
-  console.error("Failed to load tasks:", error);
-  // Continue with empty data structure
-}
-```
-
-**Error Recovery**:
-```typescript
-class ResilientStorage extends FileSystemStorage {
-  private retryCount = 0;
-  
-  async loadTasksDataWithRetry(maxRetries: number = 3): Promise<TasksData> {
-    for (let attempt = 1; attempt <= maxRetries; attempt++) {
-      try {
-        return await super.loadTasksData();
-      } catch (error) {
-        this.retryCount++;
-        console.warn(`Task load attempt ${attempt} failed:`, error.message);
-        
-        if (attempt === maxRetries) {
-          // Final attempt - create backup and continue
-          console.warn("All task load attempts failed, starting with empty data");
-          return { tasks: [], nextId: 1 };
-        }
-        
-        // Wait before retry
-        await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
-      }
-    }
-  }
-}
-```
-
 ---
 
 #### Method: saveTasksData()
 
-**Purpose**: Atomically save tasks data with backup creation and error recovery.
+**Purpose**: Atomically save tasks data with JSON pretty-printing.
 
 **Signature**:
 ```typescript
@@ -307,83 +170,13 @@ private async saveTasksData(data: TasksData): Promise<void>
 **Parameters**:
 - `data` (TasksData, required): Complete tasks data structure to save
 
-**Atomic Save Process**:
-1. **Backup Creation**: Create backup of current data before save
-2. **Atomic Write**: Write to temporary file first
-3. **Validation**: Verify written data integrity
-4. **Atomic Move**: Replace original file atomically
-5. **Cleanup**: Remove temporary and backup files
+**Save Configuration**:
+```typescript
+JSON.stringify(data, null, 2)  // Pretty-print with 2-space indentation
+```
 
 **Error Handling**:
-- Backup failures: Logged but don't prevent save
-- Write failures: Detailed error with context
-- Validation failures: Rollback to backup if available
-- Permission errors: Clear error messages with suggestions
-
-**Examples**:
-
-**Basic Save Operation**:
-```typescript
-const storage = new FileSystemStorage();
-
-const newData = {
-  tasks: [newTask1, newTask2],
-  nextId: 5
-};
-
-try {
-  await storage.saveTasksData(newData);
-  console.log("Tasks saved successfully");
-} catch (error) {
-  console.error("Failed to save tasks:", error.message);
-  // Handle save failure appropriately
-}
-```
-
-**Atomic Save with Validation**:
-```typescript
-class ValidatedStorage extends FileSystemStorage {
-  async saveTasksDataWithValidation(data: TasksData): Promise<void> {
-    try {
-      // Validate data before saving
-      this.validateTasksData(data);
-      
-      await super.saveTasksData(data);
-      console.log("Tasks saved with validation");
-    } catch (error) {
-      console.error("Save failed:", error.message);
-      
-      // Attempt data recovery
-      try {
-        const backup = await this.loadBackupData();
-        if (backup) {
-          await this.saveTasksData(backup);
-          console.log("Recovered from backup");
-        }
-      } catch (recoveryError) {
-        console.error("Backup recovery failed:", recoveryError.message);
-      }
-    }
-  }
-  
-  private validateTasksData(data: TasksData): void {
-    if (!Array.isArray(data.tasks)) {
-      throw new Error("Tasks data must be an array");
-    }
-    
-    if (typeof data.nextId !== "number" || data.nextId < 1) {
-      throw new Error("Next ID must be a positive number");
-    }
-    
-    // Validate each task
-    data.tasks.forEach((task, index) => {
-      if (!task.id || typeof task.id !== "string") {
-        throw new Error(`Task ${index} has invalid ID`);
-      }
-    });
-  }
-}
-```
+- Write failures: Detailed error with context via `formatStorageError()`
 
 ---
 
@@ -412,58 +205,6 @@ private findTaskInHierarchy(
 }
 ```
 
-**Search Algorithm**:
-1. **Linear Search**: Iterate through tasks array
-2. **ID Matching**: Exact string comparison
-3. **Subtask Search**: Recursively search in subtasks
-4. **Parent Tracking**: Return parent task when subtask found
-5. **Index Tracking**: Maintain original array position
-
-**Examples**:
-
-**Basic Task Search**:
-```typescript
-const storage = new FileSystemStorage();
-const tasks = await storage.getTasks();
-
-const result = storage.findTaskInHierarchy(tasks, "task-3");
-if (result.task) {
-  console.log(`Found task: ${result.task.title}`);
-  console.log(`Parent: ${result.parent?.title || 'None'}`);
-  console.log(`Index: ${result.index}`);
-} else {
-  console.log("Task not found");
-}
-```
-
-**Complex Hierarchy Search**:
-```typescript
-// Find task at any level in hierarchy
-const findTaskAnywhere = (tasks: Task[], id: string) => {
-  const result = storage.findTaskInHierarchy(tasks, id);
-  
-  if (result.task) {
-    return result; // Found at current level
-  }
-  
-  // Search in parent tasks recursively
-  for (const task of tasks) {
-    if (task.subtasks && task.subtasks.length > 0) {
-      const subResult = storage.findTaskInHierarchy(task.subtasks, id);
-      if (subResult.task) {
-        return {
-          task: subResult.task,
-          parent: task,
-          index: -1 // Special index for subtask
-        };
-      }
-    }
-  }
-  
-  return { task: null, parent: null, index: -1 };
-};
-```
-
 ---
 
 #### Method: flattenTasks()
@@ -481,67 +222,11 @@ private flattenTasks(tasks: Task[]): Task[]
 **Return Value**:
 - `Task[]`: Flat array with all tasks and subtasks at same level
 
-**Flattening Algorithm**:
-1. **Depth-First Traversal**: Process parent tasks before subtasks
-2. **Preserve Order**: Maintain relative ordering
-3. **Subtask Expansion**: Recursively flatten nested subtasks
-4. **Reference Preservation**: Keep original task references
-
-**Examples**:
-
-**Basic Flattening**:
-```typescript
-const storage = new FileSystemStorage();
-
-const hierarchicalTasks = [
-  {
-    id: "task-1",
-    title: "Parent Task",
-    subtasks: [
-      { id: "task-1-1", title: "Subtask 1" },
-      { id: "task-1-2", title: "Subtask 2" }
-    ]
-  },
-  {
-    id: "task-2", 
-    title: "Independent Task",
-    subtasks: []
-  }
-];
-
-const flatTasks = storage.flattenTasks(hierarchicalTasks);
-console.log(`Flattened ${flatTasks.length} tasks`);
-// Output: 5 tasks (2 parents + 3 subtasks)
-```
-
-**Deep Hierarchy Flattening**:
-```typescript
-const deepHierarchy = [
-  {
-    id: "root",
-    title: "Root Task",
-    subtasks: [
-      {
-        id: "child-1",
-        title: "Child 1",
-        subtasks: [
-          { id: "grandchild-1", title: "Grandchild 1" }
-        ]
-      }
-    ]
-  }
-];
-
-const flatDeep = storage.flattenTasks(deepHierarchy);
-console.log(`Deep flatten: ${flatDeep.length} tasks`);
-// Output: 4 tasks (all levels flattened)
-```
-
 ---
 
 #### Method: taskExists()
 
-**Purpose**: Check if a task exists anywhere in the task hierarchy.
+**Purpose**: Check if a task exists anywhere in task hierarchy.
 
 **Signature**:
 ```typescript
@@ -559,41 +244,7 @@ private taskExists(tasks: Task[], taskId: string): boolean
 - **Exact ID Match**: Case-sensitive string comparison
 - **Hierarchy Search**: Uses findTaskInHierarchy for recursive search
 - **Prefix Matching**: Supports task- prefixed IDs for subtasks
-- **Performance**: O(n) linear search through task array
-
-**Examples**:
-
-**Basic Existence Check**:
-```typescript
-const storage = new FileSystemStorage();
-const tasks = await storage.getTasks();
-
-console.log(storage.taskExists(tasks, "task-1")); // true if task 1 exists
-console.log(storage.taskExists(tasks, "task-999")); // false if Task 999 doesn't exist
-console.log(storage.taskExists(tasks, "task-1-1")); // true if subtask exists
-```
-
-**Batch Existence Checking**:
-```typescript
-const checkMultipleTasks = async (taskIds: string[]) => {
-  const tasks = await storage.getTasks();
-  
-  const results = taskIds.map(id => ({
-    id,
-    exists: storage.taskExists(tasks, id)
-  }));
-  
-  return results;
-};
-
-const results = await checkMultipleTasks([
-  "task-1", "task-2", "task-1-1", "non-existent"
-]);
-
-results.forEach(result => {
-  console.log(`${result.id}: ${result.exists ? 'EXISTS' : 'MISSING'}`);
-});
-```
+- **Multiple Matching**: Checks exact match, prefixed match, and numeric match
 
 ---
 
@@ -621,85 +272,537 @@ private wouldCreateCircularDependency(
 **Circular Detection Algorithm**:
 1. **Dependency Tracing**: Follow each dependency path recursively
 2. **Cycle Detection**: Check if any path leads back to new task
-3. **Depth Limiting**: Prevent infinite recursion with reasonable depth
+3. **Visited Tracking**: Track visited nodes to detect cycles
 4. **Path Validation**: Ensure all dependencies exist in current hierarchy
 
-**Examples**:
+---
 
-**Circular Dependency Detection**:
+### PUBLIC TASK MANAGEMENT METHODS
+
+#### Method: getTasks()
+
+**Purpose**: Get all tasks in flattened hierarchy.
+
+**Signature**:
 ```typescript
-const storage = new FileSystemStorage();
-const tasks = await storage.getTasks();
-
-// Would create circular dependency
-const circular1 = storage.wouldCreateCircularDependency(
-  tasks,
-  "task-3",
-  ["task-1"] // task-3 depends on task-1, but task-1 would depend on task-3
-);
-console.log(circular1); // true
-
-// No circular dependency
-const circular2 = storage.wouldCreateCircularDependency(
-  tasks,
-  "task-4",
-  ["task-1"] // task-4 depends on task-1, no cycle
-);
-console.log(circular2); // false
-
-// Complex chain analysis
-const complexCircular = storage.wouldCreateCircularDependency(
-  tasks,
-  "task-5",
-  ["task-2", "task-3"] // task-5 -> task-2 -> task-3 -> task-5 (cycle)
-);
-console.log(complexCircular); // true
+async getTasks(): Promise<Task[]>
 ```
 
-**Dependency Chain Visualization**:
+**Return Value**:
+- `Promise<Task[]>`: All tasks and subtasks in flat array
+
+---
+
+#### Method: getTopLevelTasks()
+
+**Purpose**: Get only top-level tasks (without subtasks expanded).
+
+**Signature**:
 ```typescript
-class DependencyAnalyzer {
-  static analyzeDependencyChain(
-    storage: FileSystemStorage,
-    rootTaskId: string
-  ): void {
-    const tasks = await storage.getTasks();
-    
-    const buildChain = (taskId: string, visited: Set<string>): string[] => {
-      const task = storage.findTaskInHierarchy(tasks, taskId);
-      if (!task) return [];
-      
-      const chain = [taskId];
-      visited.add(taskId);
-      
-      if (task.dependencies) {
-        for (const depId of task.dependencies) {
-          if (!visited.has(depId)) {
-            const depChain = buildChain(depId, visited);
-            chain.push(...depChain);
-          }
-        }
-      }
-      
-      return chain;
-    };
-    
-    const chain = buildChain(rootTaskId, new Set());
-    console.log(`Dependency chain for ${rootTaskId}:`, chain);
-    
-    // Detect cycles
-    const hasCycle = chain.some((taskId, index) => 
-      chain.indexOf(taskId, index + 1) !== -1
-    );
-    
-    if (hasCycle) {
-      console.warn("Circular dependency detected!");
-    } else {
-      console.log("No circular dependencies");
-    }
-  }
+async getTopLevelTasks(): Promise<Task[]>
+```
+
+**Return Value**:
+- `Promise<Task[]>`: Top-level tasks with subtasks as nested objects
+
+---
+
+#### Method: getTask()
+
+**Purpose**: Get a specific task by ID from anywhere in hierarchy.
+
+**Signature**:
+```typescript
+async getTask(id: string): Promise<Task | null>
+```
+
+**Parameters**:
+- `id` (string, required): Task ID to retrieve
+
+**Return Value**:
+- `Promise<Task | null>`: Task object or null if not found
+
+---
+
+#### Method: createTask()
+
+**Purpose**: Create a new task with full validation, parent-child relationships, dependency checking, and optional AI metadata.
+
+**Signature**:
+```typescript
+async createTask(
+  task: CreateTaskRequest,
+  aiMetadata?: TaskAIMetadata
+): Promise<Task>
+```
+
+**Parameters**:
+- `task` (CreateTaskRequest, required): Task data to create
+- `aiMetadata` (TaskAIMetadata, optional): AI operation metadata for the task
+
+**Return Value**:
+- `Promise<Task>`: Created task with all properties set
+
+**Task Creation Process**:
+1. **Validation**: Call validateTaskRequest() for input validation
+2. **Parent Lookup**: Find parent task if parentId provided
+3. **ID Generation**: Generate ID (parent.siblingCount + 1 or nextId)
+4. **Dependency Validation**: Check all dependencies exist and no circular dependencies
+5. **Content File Creation**: Save large content (>200 chars) to separate file
+6. **Task Assembly**: Create Task object with all properties
+7. **Data Persistence**: Save updated tasks data
+8. **AI Metadata Saving**: Save AI metadata if provided
+
+---
+
+#### Method: updateTask()
+
+**Purpose**: Update an existing task with partial updates.
+
+**Signature**:
+```typescript
+async updateTask(id: string, updates: Partial<Task>): Promise<Task | null>
+```
+
+**Parameters**:
+- `id` (string, required): Task ID to update
+- `updates` (Partial<Task>, required): Properties to update
+
+**Return Value**:
+- `Promise<Task | null>`: Updated task or null if not found
+
+---
+
+#### Method: deleteTask()
+
+**Purpose**: Delete a task and handle hierarchical relationships.
+
+**Signature**:
+```typescript
+async deleteTask(id: string): Promise<boolean>
+```
+
+**Parameters**:
+- `id` (string, required): Task ID to delete
+
+**Return Value**:
+- `Promise<boolean>`: True if task was deleted, false if not found
+
+**Delete Process**:
+1. **Task Lookup**: Find task in hierarchy
+2. **Parent Removal**: If task is a subtask, remove from parent's subtasks
+3. **Top-Level Removal**: If task is top-level, remove from tasks array
+4. **Data Persistence**: Save updated tasks data
+
+---
+
+#### Method: getSubtasks()
+
+**Purpose**: Get all subtasks for a parent task.
+
+**Signature**:
+```typescript
+async getSubtasks(parentId: string): Promise<Task[]>
+```
+
+**Parameters**:
+- `parentId` (string, required): Parent task ID
+
+**Return Value**:
+- `Promise<Task[]>`: Array of subtasks or empty array if none
+
+---
+
+### AI METADATA METHODS
+
+#### Method: getTaskAIMetadata()
+
+**Purpose**: Get AI metadata for a specific task.
+
+**Signature**:
+```typescript
+async getTaskAIMetadata(taskId: string): Promise<TaskAIMetadata | null>
+```
+
+**Return Value**:
+- `Promise<TaskAIMetadata | null>`: AI metadata or null if not found
+
+---
+
+#### Method: deleteTaskAIMetadata()
+
+**Purpose**: Delete AI metadata for a specific task.
+
+**Signature**:
+```typescript
+async deleteTaskAIMetadata(taskId: string): Promise<void>
+```
+
+---
+
+### CONTENT MANAGEMENT METHODS
+
+#### Method: saveTaskContent()
+
+**Purpose**: Save task content to file when content is large (>200 chars).
+
+**Signature**:
+```typescript
+private async saveTaskContent(taskId: string, content: string): Promise<string>
+```
+
+**Return Value**:
+- `Promise<string>`: Path to saved content file
+
+**File Path**: `tasks/{taskId}.md`
+
+---
+
+#### Method: saveEnhancedTaskContent()
+
+**Purpose**: Save enhanced task content to dedicated directory.
+
+**Signature**:
+```typescript
+private async saveEnhancedTaskContent(
+  taskId: string,
+  content: string
+): Promise<string>
+```
+
+**Return Value**:
+- `Promise<string>`: Path to saved content file
+
+**File Path**: `tasks/enhanced/{taskId}.md`
+
+---
+
+#### Method: getTaskContent()
+
+**Purpose**: Get task content from file.
+
+**Signature**:
+```typescript
+async getTaskContent(taskId: string): Promise<string | null>
+```
+
+**Return Value**:
+- `Promise<string | null>`: Task content or null if not found
+
+---
+
+#### Method: deleteTaskContent()
+
+**Purpose**: Delete task content file.
+
+**Signature**:
+```typescript
+async deleteTaskContent(taskId: string): Promise<void>
+```
+
+---
+
+### DOCUMENTATION MANAGEMENT METHODS
+
+#### Method: saveContext7Documentation()
+
+**Purpose**: Save Context7 documentation to local storage.
+
+**Signature**:
+```typescript
+async saveContext7Documentation(
+  library: string,
+  query: string,
+  content: string
+): Promise<string>
+```
+
+**Parameters**:
+- `library` (string, required): Library name for documentation
+- `query` (string, required): Search query or topic identifier
+- `content` (string, required): Documentation content to save
+
+**Return Value**:
+- `Promise<string>`: Path to saved documentation file
+
+**File Path**: `docs/{sanitizedLibrary}/{sanitizedQuery}.md`
+
+---
+
+#### Method: getDocumentationFile()
+
+**Purpose**: Get documentation file by name.
+
+**Signature**:
+```typescript
+async getDocumentationFile(fileName: string): Promise<string | null>
+```
+
+**Return Value**:
+- `Promise<string | null>`: Documentation content or null if not found
+
+**File Path**: `docs/{fileName}`
+
+---
+
+#### Method: listDocumentationFiles()
+
+**Purpose**: List all documentation files in docs directory.
+
+**Signature**:
+```typescript
+async listDocumentationFiles(): Promise<string[]>
+```
+
+**Return Value**:
+- `Promise<string[]>`: Array of file paths
+
+**Filtering**: Returns only `.md` and `.txt` files, removes "docs/" prefix for compatibility
+
+---
+
+#### Method: saveTaskDocumentation()
+
+**Purpose**: Save task-specific documentation.
+
+**Signature**:
+```typescript
+async saveTaskDocumentation(
+  taskId: string,
+  documentation: string
+): Promise<string>
+```
+
+**Parameters**:
+- `taskId` (string, required): Task ID
+- `documentation` (string, required): Documentation content to save
+
+**Return Value**:
+- `Promise<string>`: Path to saved documentation file
+
+**File Path**: `docs/tasks/{taskId}.md`
+
+---
+
+#### Method: getTaskDocumentation()
+
+**Purpose**: Get task-specific documentation.
+
+**Signature**:
+```typescript
+async getTaskDocumentation(taskId: string): Promise<string | null>
+```
+
+**Return Value**:
+- `Promise<string | null>`: Task documentation or null if not found
+
+**File Path**: `docs/tasks/{taskId}.md`
+
+---
+
+### PLAN MANAGEMENT METHODS
+
+#### Method: savePlan()
+
+**Purpose**: Save implementation plan for a task.
+
+**Signature**:
+```typescript
+async savePlan(taskId: string, plan: string): Promise<void>
+```
+
+**Parameters**:
+- `taskId` (string, required): Task ID
+- `plan` (string, required): Implementation plan content
+
+**File Path**: `plans/{taskId}.json`
+
+**Plan Data Structure**:
+```typescript
+{
+  taskId: string,
+  plan: string,
+  createdAt: number,
+  updatedAt: number
 }
 ```
+
+---
+
+#### Method: getPlan()
+
+**Purpose**: Get implementation plan for a task.
+
+**Signature**:
+```typescript
+async getPlan(
+  taskId: string
+): Promise<{ plan: string; createdAt: number; updatedAt: number } | null>
+```
+
+**Return Value**:
+- `Promise<{...} | null>`: Plan data or null if not found
+
+---
+
+#### Method: listPlans()
+
+**Purpose**: List all implementation plans, sorted by update time (newest first).
+
+**Signature**:
+```typescript
+async listPlans(): Promise<
+  Array<{
+    taskId: string;
+    plan: string;
+    createdAt: number;
+    updatedAt: number;
+  }>
+>
+```
+
+**Return Value**:
+- Plans array sorted by `updatedAt` descending (newest first)
+
+---
+
+#### Method: deletePlan()
+
+**Purpose**: Delete implementation plan for a task.
+
+**Signature**:
+```typescript
+async deletePlan(taskId: string): Promise<boolean>
+```
+
+**Return Value**:
+- `Promise<boolean>`: True if plan was deleted, false otherwise
+
+---
+
+### PRD VERSIONING METHODS
+
+#### Method: getPRDVersions()
+
+**Purpose**: Get PRD version history for a specific PRD file.
+
+**Signature**:
+```typescript
+async getPRDVersions(prdFile: string): Promise<PRDVersionData | null>
+```
+
+**Parameters**:
+- `prdFile` (string, required): PRD file identifier
+
+**Return Value**:
+```typescript
+PRDVersionData | null {
+  prdFile: string;           // Original PRD file
+  versions: PRDVersion[];   // Array of version data
+  currentVersion: number;    // Current version number
+}
+```
+
+**File Path**: `prd/versions/{sanitizedName}.json`
+
+---
+
+#### Method: savePRDVersion()
+
+**Purpose**: Save a new PRD version.
+
+**Signature**:
+```typescript
+async savePRDVersion(
+  prdFile: string,
+  versionData: PRDVersion
+): Promise<void>
+```
+
+---
+
+#### Method: getLatestPRDVersion()
+
+**Purpose**: Get the latest PRD version (or last if current not found).
+
+**Signature**:
+```typescript
+async getLatestPRDVersion(prdFile: string): Promise<PRDVersion | null>
+```
+
+---
+
+### MAINTENANCE AND DATA INTEGRITY METHODS
+
+#### Method: migrateTaskContent()
+
+**Purpose**: Migrate tasks with inline content to separate content files (>200 chars).
+
+**Signature**:
+```typescript
+async migrateTaskContent(): Promise<number>
+```
+
+**Return Value**:
+- `Promise<number>`: Number of tasks migrated
+
+**Migration Process**:
+1. Load all tasks
+2. Check for inline content property
+3. If content length > 200 and no contentFile, save to separate file
+4. Set contentFile in task
+5. If content length <= 200 and contentFile exists, load and inline
+6. Save updated tasks
+
+---
+
+#### Method: cleanupOrphanedContent()
+
+**Purpose**: Clean up content files for tasks that no longer exist or no longer need separate files.
+
+**Signature**:
+```typescript
+async cleanupOrphanedContent(): Promise<number>
+```
+
+**Return Value**:
+- `Promise<number>`: Number of orphaned files cleaned up
+
+**Cleanup Process**:
+1. List all content files
+2. Find tasks with contentFile reference
+3. Identify orphaned files
+4. Delete orphaned files
+
+---
+
+#### Method: validateStorageIntegrity()
+
+**Purpose**: Validate storage structure and identify potential issues.
+
+**Signature**:
+```typescript
+async validateStorageIntegrity(): Promise<{
+  isValid: boolean;
+  issues: string[];
+}>
+```
+
+**Return Value**:
+```typescript
+{
+  isValid: boolean;      // True if no issues found
+  issues: string[];      // List of validation issues
+}
+```
+
+**Validation Checks**:
+1. Tasks data is valid array
+2. NextId is valid positive number
+3. No duplicate task IDs
+4. All dependencies point to valid tasks
+
+---
 
 ### INTEGRATION PROTOCOLS
 
@@ -708,7 +811,7 @@ All file operations follow this pattern:
 1. **Path Resolution**: Use join() and resolve() for cross-platform compatibility
 2. **Atomic Operations**: Temporary files with atomic moves for data safety
 3. **Error Handling**: Comprehensive try-catch with specific error types
-4. **Backup Strategy**: Create backups before destructive operations
+4. **Backup Strategy**: Create backups before destructive operations (NOT YET IMPLEMENTED)
 5. **Cleanup Protocol**: Remove temporary files and maintain directory hygiene
 
 #### Data Validation Protocol
@@ -723,9 +826,11 @@ Input validation follows these principles:
 Task relationships follow this structure:
 1. **Parent-Child**: Tasks can have multiple subtasks
 2. **Single Parent**: Subtasks have exactly one parent
-3. **Hierarchical IDs**: Subtask IDs use parent prefix
+3. **Hierarchical IDs**: Subtask IDs use parent prefix (e.g., "task-1.1")
 4. **Flattening**: Convert hierarchy to flat array for operations
 5. **Integrity**: Maintain consistency across hierarchy operations
+
+---
 
 ### SURVIVAL SCENARIOS
 
@@ -733,27 +838,15 @@ Task relationships follow this structure:
 ```typescript
 class TaskManager {
   private storage = new FileSystemStorage();
-  
+
   async createTaskWithHierarchy(taskData: CreateTaskRequest): Promise<Task> {
     try {
       // Validate input
       this.storage.validateTaskRequest(taskData);
-      
-      // Create parent task if needed
-      let parentTask = null;
-      if (taskData.parentId) {
-        parentTask = await this.storage.getTask(taskData.parentId);
-        if (!parentTask) {
-          throw new Error(`Parent task ${taskData.parentId} not found`);
-        }
-      }
-      
-      // Create the task
-      const newTask = await this.storage.createTask({
-        ...taskData,
-        parentId: taskData.parentId
-      });
-      
+
+      // Create task
+      const newTask = await this.storage.createTask(taskData);
+
       console.log(`Created task: ${newTask.id} - ${newTask.title}`);
       return newTask;
     } catch (error) {
@@ -761,231 +854,158 @@ class TaskManager {
       throw error;
     }
   }
-  
+
   async reorganizeTasks(): Promise<void> {
     const tasks = await this.storage.getTasks();
-    
+
     // Rebuild hierarchy
     const reorganized = tasks.map(task => {
-      // Ensure subtasks are properly organized
       if (task.subtasks && task.subtasks.length > 0) {
-        const subtasks = task.subtasks.sort((a, b) => 
+        const subtasks = task.subtasks.sort((a, b) =>
           a.title.localeCompare(b.title)
         );
         return { ...task, subtasks };
       }
       return task;
     });
-    
+
     // Save reorganized tasks
-    await this.storage.saveTasksData({
-      tasks: reorganized,
-      nextId: Math.max(...tasks.map(t => parseInt(t.id) || 0)) + 1
-    });
-    
+    const data = await this.storage.loadTasksData();
+    data.tasks = reorganized;
+    await this.storage.saveTasksData(data);
+
     console.log("Tasks reorganized successfully");
   }
 }
 ```
 
-#### Scenario 2: Data Migration and Recovery
+#### Scenario 2: Content and Documentation Management
 ```typescript
-class DataMigrationManager {
+class ContentManager {
   private storage = new FileSystemStorage();
-  
-  async migrateFromOldFormat(): Promise<void> {
-    try {
-      // Simulate loading old format data
-      const oldData = await this.loadOldFormatData();
-      
-      // Transform to new format
-      const newData = this.transformToNewFormat(oldData);
-      
-      // Backup current data
-      const backup = await this.storage.loadTasksData();
-      await this.createBackupFile(backup);
-      
-      // Save new format
-      await this.storage.saveTasksData(newData);
-      
-      console.log("Migration completed successfully");
-    } catch (error) {
-      console.error("Migration failed:", error.message);
-      
-      // Attempt rollback
-      try {
-        const backup = await this.loadBackupFile();
-        if (backup) {
-          await this.storage.saveTasksData(backup);
-          console.log("Rolled back to backup");
-        }
-      } catch (rollbackError) {
-        console.error("Rollback failed:", rollbackError.message);
-      }
-    }
-  }
-  
-  private async loadOldFormatData(): Promise<any> {
-    // Implementation for loading old data format
-    // This would read from legacy files and convert
-    return { tasks: [], nextId: 1 };
-  }
-  
-  private transformToNewFormat(oldData: any): TasksData {
-    // Transform old format to new Task[] structure
-    const tasks = (oldData.tasks || []).map((oldTask: any) => ({
-      id: oldTask.id || this.generateTaskId(),
-      title: oldTask.title || "Untitled Task",
-      description: oldTask.description || "",
-      status: "todo",
-      createdAt: oldTask.created || Date.now(),
-      updatedAt: Date.now(),
-      // Map other properties as needed
-    }));
-    
-    return {
-      tasks,
-      nextId: Math.max(...tasks.map(t => parseInt(t.id) || 0)) + 1
-    };
-  }
-  
-  private generateTaskId(): string {
-    return `task-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-  }
-  
-  private async createBackupFile(data: TasksData): Promise<void> {
-    const backupPath = `.task-o-matic/backup-${Date.now()}.json`;
-    await this.storage.saveTasksData(data);
-    console.log(`Backup created: ${backupPath}`);
-  }
-  
-  private async loadBackupFile(): Promise<TasksData | null> {
-    // Implementation for loading most recent backup
-    return null; // Simplified for example
-  }
-}
-```
 
-#### Scenario 3: Performance Optimization
-```typescript
-class OptimizedTaskStorage {
-  private storage = new FileSystemStorage();
-  private cache = new Map<string, any>();
-  private cacheTimeout = 5 * 60 * 1000; // 5 minutes
-  
-  async getTasksWithCache(): Promise<Task[]> {
-    // Check cache first
-    const cached = this.cache.get("tasks");
-    if (cached && (Date.now() - cached.timestamp) < this.cacheTimeout) {
-      console.log("Returning cached tasks");
-      return cached.data;
-    }
-    
-    // Load from storage
-    const tasks = await this.storage.getTasks();
-    
-    // Update cache
-    this.cache.set("tasks", {
-      data: tasks,
-      timestamp: Date.now()
-    });
-    
-    return tasks;
-  }
-  
-  async createTaskWithCache(taskData: CreateTaskRequest): Promise<Task> {
+  async createTaskWithContent(taskData: CreateTaskRequest): Promise<Task> {
     const task = await this.storage.createTask(taskData);
-    
-    // Invalidate relevant cache entries
-    this.cache.delete("tasks");
-    this.cache.delete("hierarchy");
-    
+
+    // Save task-specific documentation
+    await this.storage.saveTaskDocumentation(
+      task.id,
+      `## ${task.title}\n\n${task.description || ''}`
+    );
+
+    console.log(`Task content saved: docs/tasks/${task.id}.md`);
     return task;
   }
-  
-  private buildHierarchyCache(tasks: Task[]): Map<string, Task[]> {
-    const hierarchy = new Map<string, Task[]>();
-    
-    for (const task of tasks) {
-      if (task.parentId) {
-        const parent = hierarchy.get(task.parentId);
-        if (parent) {
-          hierarchy.set(task.parentId, [...parent, task]);
-        }
-      } else {
-        hierarchy.set(task.id, [task]);
-      }
-    }
-    
-    return hierarchy;
+
+  async getTaskWithFullContext(taskId: string): Promise<any> {
+    const task = await this.storage.getTask(taskId);
+    if (!task) return null;
+
+    const [content, documentation, plan, aiMetadata] = await Promise.all([
+      this.storage.getTaskContent(taskId),
+      this.storage.getTaskDocumentation(taskId),
+      this.storage.getPlan(taskId),
+      this.storage.getTaskAIMetadata(taskId)
+    ]);
+
+    return {
+      ...task,
+      content,
+      documentation,
+      plan: plan?.plan,
+      aiMetadata
+    };
   }
 }
 ```
 
-#### Scenario 4: Concurrent Access Management
+#### Scenario 3: Plan Management
 ```typescript
-class ConcurrentTaskManager {
+class PlanManager {
   private storage = new FileSystemStorage();
-  private operationQueue = new Map<string, Promise<Task>>();
-  
-  async createTaskWithLocking(taskData: CreateTaskRequest): Promise<Task> {
-    const taskId = this.generateTaskId();
-    
-    // Check if operation is already in progress
-    if (this.operationQueue.has(taskId)) {
-      throw new Error(`Task creation already in progress: ${taskId}`);
-    }
-    
-    // Add to queue
-    const operation = this.storage.createTask(taskData);
-    this.operationQueue.set(taskId, operation);
-    
-    try {
-      const task = await operation;
-      console.log(`Task created with locking: ${task.id}`);
-      return task;
-    } finally {
-      this.operationQueue.delete(taskId);
+
+  async createAndUpdatePlan(taskId: string, planContent: string): Promise<void> {
+    // Save plan
+    await this.storage.savePlan(taskId, planContent);
+
+    // Verify it was saved
+    const savedPlan = await this.storage.getPlan(taskId);
+    if (savedPlan) {
+      console.log(`Plan saved successfully for task ${taskId}`);
+    } else {
+      throw new Error(`Failed to save plan for task ${taskId}`);
     }
   }
-  
-  async batchCreateTasks(requests: CreateTaskRequest[]): Promise<Task[]> {
-    const results = await Promise.allSettled(
-      requests.map((request, index) => 
-        this.createTaskWithLocking({
-          ...request,
-          id: `batch-${index}-${Date.now()}`
-        })
-      )
-    );
-    
-    const tasks = results
-      .filter((result): result.status === "fulfilled")
-      .map((result): Task => result.value);
-    
-    const failed = results
-      .filter((result): result.status === "rejected")
-      .map((result): Error => result.reason);
-    
-    if (failed.length > 0) {
-      console.warn(`${failed.length} tasks failed to create:`, failed);
-    }
-    
-    return tasks;
-  }
-  
-  private generateTaskId(): string {
-    return `task-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+
+  async listAllPlans(): Promise<void> {
+    const plans = await this.storage.listPlans();
+
+    console.log(`Found ${plans.length} plans:`);
+    plans.forEach(planData => {
+      console.log(`  Task: ${planData.taskId}`);
+      console.log(`  Created: ${new Date(planData.createdAt).toISOString()}`);
+      console.log(`  Updated: ${new Date(planData.updatedAt).toISOString()}`);
+    });
   }
 }
 ```
+
+#### Scenario 4: PRD Version Tracking
+```typescript
+class PRDVersionManager {
+  private storage = new FileSystemStorage();
+
+  async saveNewPRDVersion(prdFile: string, versionData: PRDVersion): Promise<void> {
+    await this.storage.savePRDVersion(prdFile, versionData);
+
+    console.log(`Saved PRD version ${versionData.version} for ${prdFile}`);
+  }
+
+  async getPRDHistory(prdFile: string): Promise<PRDVersion[]> {
+    const versionData = await this.storage.getPRDVersions(prdFile);
+
+    if (!versionData) {
+      console.log(`No PRD versions found for ${prdFile}`);
+      return [];
+    }
+
+    console.log(`PRD history for ${prdFile}:`);
+    console.log(`  Current version: ${versionData.currentVersion}`);
+    console.log(`  Total versions: ${versionData.versions.length}`);
+
+    return versionData.versions;
+  }
+
+  async comparePRDVersions(prdFile: string): Promise<void> {
+    const versionData = await this.storage.getPRDVersions(prdFile);
+    if (!versionData || versionData.versions.length < 2) {
+      console.log("Need at least 2 versions to compare");
+      return;
+    }
+
+    // Compare consecutive versions
+    for (let i = 1; i < versionData.versions.length; i++) {
+      const prev = versionData.versions[i - 1];
+      const curr = versionData.versions[i];
+
+      console.log(`\nVersion ${prev.version} → Version ${curr.version}:`);
+      console.log(`  Created: ${new Date(prev.createdAt).toISOString()}`);
+      console.log(`  Created: ${new Date(curr.createdAt).toISOString()}`);
+      console.log(`\n${curr.changes || 'No changes recorded'}`);
+    }
+  }
+}
+```
+
+---
 
 ### TECHNICAL SPECIFICATIONS
 
 #### Performance Characteristics
 - **File I/O**: Optimized JSON reading/writing with minimal memory usage
-- **Caching**: Optional in-memory caching for frequently accessed data
-- **Atomic Operations**: Safe file operations with backup/restore capability
+- **Pretty-Printing**: 2-space indentation for human-readable output
+- **Caching**: Optional in-memory caching for frequently accessed data (application-level)
+- **Atomic Operations**: Safe file operations with backup/restore capability (future)
 - **Indexing**: Efficient task lookup with hierarchical indexing
 
 #### Security Considerations
@@ -996,17 +1016,23 @@ class ConcurrentTaskManager {
 
 #### Reliability Features
 - **Atomic Saves**: Prevents data corruption during writes
-- **Backup Creation**: Automatic backups before destructive operations
+- **Backup Creation**: Automatic backups before destructive operations (future implementation)
 - **Error Recovery**: Graceful handling of file system errors
 - **Data Integrity**: Validation and consistency checking
+- **Circular Dependency Detection**: Prevents infinite loops
+- **Content Separation**: Large content stored separately
 
 #### Scalability Characteristics
 - **Large Datasets**: Efficient handling of thousands of tasks
 - **Hierarchical Data**: Optimized tree traversal and manipulation
-- **Concurrent Access**: Thread-safe operations with proper locking
+- **Concurrent Access**: Thread-safe operations with proper locking (application-level)
 - **Memory Usage**: Streaming operations for large datasets
 
-**Remember:** Citizen, File System Storage is your vault in the digital wasteland. Without mastering this persistence system, you're leaving your valuable task data exposed to the radioactive storms of data corruption, accidental deletion, and system failures. Master these storage protocols, or watch your hard work dissolve into digital dust.
+---
+
+**Remember:** Citizen, File System Storage is your vault in digital wasteland. Without mastering this persistence system (927 lines of code), you're leaving your valuable task data exposed to radioactive storms of data corruption, accidental deletion, and system failures. The implementation includes comprehensive task management, content storage, documentation handling, planning, PRD versioning, AI metadata tracking, and data integrity validation. Master these storage protocols, or watch your hard work dissolve into digital dust.
+
+This documentation reflects the ACTUAL source code with ALL 927 lines including 40+ methods. Version discrepancies indicate you're working from outdated information. Stay vigilant, stay updated.
 
 ---
 

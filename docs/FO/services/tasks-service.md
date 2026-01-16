@@ -1,8 +1,8 @@
 ## TECHNICAL BULLETIN NO. 001
 ### TASK SERVICE - TASK MANAGEMENT SURVIVAL SYSTEM
 
-**DOCUMENT ID:** `task-o-matic-tasks-v1`  
-**CLEARANCE:** `All Personnel`  
+**DOCUMENT ID:** `task-o-matic-tasks-v1`
+**CLEARANCE:** `All Personnel`
 **MANDATORY COMPLIANCE:** `Yes`
 
 ### ⚠️ CRITICAL SURVIVAL NOTICE
@@ -39,7 +39,7 @@ constructor(dependencies: TaskServiceDependencies = {})
 **Parameters:**
 - `dependencies` (TaskServiceDependencies, optional): Dependency injection object for testing
   - `storage` (Storage, optional): Storage layer instance
-  - `aiOperations` (AIOperations, optional): AI service instance  
+  - `aiOperations` (AIOperations, optional): AI service instance
   - `modelProvider` (ModelProvider, optional): AI model provider
   - `contextBuilder` (ContextBuilder, optional): Context building service
   - `hooks` (Hooks, optional): Event system instance
@@ -65,6 +65,46 @@ const taskService = new TaskService({
   storage: mockStorage,
   aiOperations: mockAI
 });
+```
+
+---
+
+#### SINGLETON EXPORTS
+
+**IMPORTANT:** The TaskService provides singleton exports for convenience and backward compatibility.
+
+##### getTaskService()
+
+```typescript
+function getTaskService(): TaskService
+```
+
+Returns a singleton TaskService instance. Creates the instance on first call, returns the same instance on subsequent calls.
+
+**Returns:** TaskService singleton instance
+
+**Example:**
+```typescript
+import { getTaskService } from "task-o-matic-core";
+
+const taskService = getTaskService();
+const tasks = await taskService.listTasks({});
+```
+
+##### taskService (const proxy)
+
+```typescript
+const taskService: TaskService
+```
+
+Exported const that proxies to the singleton TaskService instance. Provides backward compatibility for direct import usage.
+
+**Example:**
+```typescript
+import { taskService } from "task-o-matic-core";
+
+// Works exactly like new TaskService() but uses singleton
+const tasks = await taskService.listTasks({});
 ```
 
 ---
@@ -305,16 +345,16 @@ async updateTask(
 
 **Example: Update Task Status**
 ```typescript
-const updatedTask = await taskService.updateTask("1", { 
-  status: "in-progress" 
+const updatedTask = await taskService.updateTask("1", {
+  status: "in-progress"
 });
 console.log(`Task ${updatedTask.id} is now ${updatedTask.status}`);
 ```
 
 **Example: Add Tags**
 ```typescript
-const taskWithTags = await taskService.updateTask("1", { 
-  tags: "frontend,urgent,bug" 
+const taskWithTags = await taskService.updateTask("1", {
+  tags: "frontend,urgent,bug"
 });
 console.log("Tags:", taskWithTags.tags);
 ```
@@ -976,21 +1016,21 @@ for (const subtask of splitResult.subtasks) {
 **Scenario 2: Task Management Workflow**
 ```typescript
 // Get next task to work on
-const nextTask = await taskService.getNextTask({ 
-  status: "todo", 
-  priority: "effort" 
+const nextTask = await taskService.getNextTask({
+  status: "todo",
+  priority: "effort"
 });
 
 if (nextTask) {
   // Start working on task
   await taskService.setTaskStatus(nextTask.id, "in-progress");
-  
+
   // Get documentation if needed
   const docs = await taskService.documentTask(nextTask.id);
   if (docs.documentation) {
     console.log("Relevant documentation available");
   }
-  
+
   // Complete task
   await taskService.setTaskStatus(nextTask.id, "completed");
 }
@@ -1010,43 +1050,101 @@ const enhanceResult = await taskService.enhanceTask("1", {
 console.log(`Enhanced from ${enhanceResult.stats.originalLength} to ${enhanceResult.stats.enhancedLength} characters`);
 ```
 
+**Scenario 4: Using Singleton for Simplicity**
+```typescript
+import { taskService } from "task-o-matic-core";
+
+// Singleton usage - same instance everywhere
+const tasks = await taskService.listTasks({});
+const nextTask = await taskService.getNextTask({});
+await taskService.enhanceTask(nextTask.id);
+```
+
+**Scenario 5: Testing with Dependency Injection**
+```typescript
+import { TaskService } from "task-o-matic-core";
+
+// Create test instances
+const mockStorage = createMockStorage();
+const mockAI = createMockAIOperations();
+
+const testTaskService = new TaskService({
+  storage: mockStorage,
+  aiOperations: mockAI,
+  modelProvider: mockModelProvider,
+  contextBuilder: mockContextBuilder,
+  hooks: mockHooks
+});
+
+// Run tests with mocked dependencies
+const result = await testTaskService.createTask({
+  title: "Test task",
+  content: "Test content",
+  aiEnhance: false
+});
+
+assert.strictEqual(result.success, true);
+```
+
 ### TECHNICAL SPECIFICATIONS
 
 **Task Object Structure:**
 ```typescript
 interface Task {
+  // Core identity
   id: string;
   title: string;
-  description: string;
-  content?: string;
   status: "todo" | "in-progress" | "completed";
-  parentId?: string;
-  estimatedEffort?: "small" | "medium" | "large";
-  tags?: string[];
-  dependencies?: string[];
   createdAt: number;
   updatedAt: number;
+
+  // Content
+  content?: string;
+  description?: string;
+
+  // Hierarchy
+  parentId?: string;
+  subtasks?: Task[];
+
+  // Metadata
+  tags?: string[];
+  dependencies?: string[];
+
+  // Estimation
+  effort?: "small" | "medium" | "large";
+  estimatedEffort?: "small" | "medium" | "large";
+
+  // File references
   contentFile?: string;
-  documentation?: TaskDocumentation;
+  enhancedContentFile?: string;
   prdFile?: string;
+
+  // AI and documentation
+  documentation?: TaskDocumentation;
+  plan?: string;  // Implementation plan stored as text
+
+  // PRD integration
+  prdSection?: string;      // Which PRD section this task addresses
+  prdRequirement?: string;  // Original requirement text from PRD
 }
 ```
 
-**AI Metadata Structure:**
+**TaskAIMetadata Structure:**
 ```typescript
 interface TaskAIMetadata {
   taskId: string;
   aiGenerated: boolean;
-  aiPrompt: string;
-  confidence: number;
+  aiPrompt?: string;
+  confidence?: number;
   aiProvider?: string;
   aiModel?: string;
   generatedAt?: number;
   enhancedAt?: number;
+  analyzedAt?: number;
   splitAt?: number;
-  parentTaskId?: string;
-  subtaskIndex?: number;
-  subtasksCreated?: number;
+  parentTaskId?: string;      // Set for subtasks created by splitTask
+  subtaskIndex?: number;      // Set for subtasks created by splitTask
+  subtasksCreated?: number;   // Set for parent task after splitTask
 }
 ```
 
@@ -1062,5 +1160,21 @@ All operations use TaskOMaticError with structured error information:
 - Streaming for AI operations
 - Local file storage for fast access
 - Event-driven architecture for scalability
+- Singleton pattern for efficiency
 
 **Remember:** Citizen, in the wasteland of unmanaged projects, the TaskService is your survival kit. Master its API, respect its patterns, and it will keep your tasks organized and your projects alive. Ignore it at your peril.
+
+---
+
+**END OF TECHNICAL BULLETIN NO. 001**
+
+_This document is classified MANDATORY READING for all developer-citizens. Unauthorized failure to follow these protocols may result in... suboptimal project outcomes._
+
+**DOCUMENT CONTROL:**
+
+- **Version:** 2.0
+- **Clearance:** All Personnel
+- **Classification:** For Citizens' Eyes Only
+- **Last Updated:** Post-Crisis Era, Cycle 2026
+
+[Stay organized. Stay safe. Survive.]

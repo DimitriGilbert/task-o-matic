@@ -2,7 +2,7 @@
 ## TECHNICAL BULLETIN NO. 001
 ### MAIN COMMANDS - CORE FIELD OPERATIONS
 
-**DOCUMENT ID:** `task-o-matic-cli-main-commands-v1`  
+**DOCUMENT ID:** `task-o-matic-cli-main-commands-v2`  
 **CLEARANCE:** `All Personnel`  
 **MANDATORY COMPLIANCE:** `Yes`
 
@@ -22,49 +22,492 @@ The main command structure represents the central nervous system of Task-O-Matic
 ### COMPLETE COMMAND DOCUMENTATION
 
 ## TASKS COMMAND
-**Primary Command:** `task-o-matic tasks`
-
-### COMMAND SIGNATURE
-```bash
-task-o-matic tasks [subcommand] [options]
-```
+**Primary Command:** `task-o-matic tasks [subcommand] [options]`
 
 ### DESCRIPTION
-The tasks command serves as the central hub for all task-related operations. It provides access to the complete task management lifecycle including creation, modification, execution, and analysis. This is your primary interface for managing the hierarchical task structure that keeps projects organized in the wasteland.
+The tasks command serves as the central hub for all task-related operations. It provides access to the complete task management lifecycle including creation, modification, execution, planning, and analysis. This is your primary interface for managing the hierarchical task structure that keeps projects organized in the wasteland.
 
 ### SUBCOMMANDS
-The tasks command delegates to specialized subcommands:
-- `create` - Create new tasks with AI enhancement
-- `list` - Display all tasks with filtering options
-- `show` - Show detailed task information
-- `update` - Modify existing task properties
-- `delete` - Remove tasks from the system
-- `status` - Change task status
-- `add-tags` - Add tags to tasks
-- `remove-tags` - Remove tags from tasks
-- `plan` - Create and manage implementation plans
-- `enhance` - AI-enhance task descriptions
-- `split` - Break tasks into subtasks
-- `document` - Fetch and analyze documentation
-- `execute` - Execute tasks using external tools
-- `execute-loop` - Execute multiple tasks with retry logic
-- `subtasks` - List task subtasks
-- `tree` - Display hierarchical task tree
-- `next` - Get next task to work on
 
-### INTEGRATION EXAMPLES
+#### `tasks create`
+Create a new task with optional AI enhancement using Context7 documentation.
+
+**Required Arguments:**
+- `--title <title>`: Task title (required)
+
+**Options:**
 ```bash
-# Basic task listing
+--content <content>        # Task content (supports markdown)
+--effort <effort>         # Estimated effort: small, medium, large
+--parent-id <id>          # Parent task ID for subtasks
+--ai-enhance             # Enhance task with AI using Context7
+--stream                  # Show streaming AI output during enhancement
+--ai-provider <provider>    # AI provider override
+--ai-model <model>         # AI model override
+--ai-key <key>            # AI API key override
+--ai-provider-url <url>     # AI provider URL override
+--reasoning <tokens>       # Enable reasoning for OpenRouter models
+```
+
+**Examples:**
+```bash
+# Basic task
+task-o-matic tasks create --title "Fix water filtration system"
+
+# Task with content and enhancement
+task-o-matic tasks create \
+  --title "Add survivor tracking" \
+  --content "Implement tracking system for all bunker residents" \
+  --ai-enhance --stream
+
+# Subtask with parent
+task-o-matic tasks create \
+  --title "Install sensor hardware" \
+  --parent-id 1 --effort "large"
+```
+
+#### `tasks list`
+List all tasks with filtering options.
+
+**Options:**
+```bash
+--status <status>    # Filter by status: todo, in-progress, completed
+--tag <tag>          # Filter by tag
+```
+
+**Examples:**
+```bash
+# List all tasks
 task-o-matic tasks list
 
-# Create enhanced task
-task-o-matic tasks create --title "Build shelter" --ai-enhance
+# Filter by status
+task-o-matic tasks list --status todo
+task-o-matic tasks list --status in-progress
+task-o-matic tasks list --status completed
 
-# Execute task with planning
-task-o-matic tasks execute --id task-123 --plan --review
+# Filter by tag
+task-o-matic tasks list --tag security
+```
 
-# Show task tree
+#### `tasks show`
+Display detailed information about a task.
+
+**Options:**
+```bash
+--id <id>    # Task ID to show (required)
+```
+
+**Examples:**
+```bash
+task-o-matic tasks show --id 7
+```
+
+#### `tasks update`
+Update an existing task.
+
+**Options:**
+```bash
+--id <id>                 # Task ID to update (required)
+--title <title>             # New task title
+--description <description>  # New task description
+--status <status>           # New status: todo, in-progress, completed
+--effort <effort>           # New estimated effort
+--tags <tags>              # New tags (comma-separated)
+```
+
+**Examples:**
+```bash
+# Update status
+task-o-matic tasks update --id 7 --status in-progress
+
+# Update title and description
+task-o-matic tasks update --id 7 --title "New title" --description "New description"
+
+# Update effort and tags
+task-o-matic tasks update --id 7 --effort "large" --tags critical,backend
+```
+
+#### `tasks delete`
+Delete a task.
+
+**Options:**
+```bash
+--id <id>       # Task ID to delete (required)
+--force          # Skip confirmation prompt
+--cascade        # Delete all subtasks
+```
+
+**Examples:**
+```bash
+# Delete with confirmation
+task-o-matic tasks delete --id 7
+
+# Force delete without confirmation
+task-o-matic tasks delete --id 7 --force
+
+# Delete task and all subtasks
+task-o-matic tasks delete --id 7 --cascade
+```
+
+#### `tasks enhance`
+Enhance an existing task with AI using Context7 documentation.
+
+**Options:**
+```bash
+--task-id <id>              # Task ID to enhance
+--all                        # Enhance all existing tasks
+--status <status>            # Filter tasks by status
+--tag <tag>                # Filter tasks by tag
+--dry                        # Preview what would be enhanced
+--force                      # Skip confirmation prompt
+--stream                     # Show streaming AI output
+--ai-provider <provider>      # AI provider override
+--ai-model <model>           # AI model override
+--ai-key <key>              # AI API key override
+--ai-provider-url <url>       # AI provider URL override
+--reasoning <tokens>         # Enable reasoning for OpenRouter models
+```
+
+**Examples:**
+```bash
+# Enhance single task
+task-o-matic tasks enhance --task-id 7 --stream
+
+# Enhance all tasks
+task-o-matic tasks enhance --all --force --stream
+
+# Enhance specific status/tag
+task-o-matic tasks enhance --status todo --tag critical --dry
+```
+
+#### `tasks split`
+Split a task into smaller subtasks using AI.
+
+**Options:**
+```bash
+--task-id <id>                 # Task ID to split
+--all                           # Split all existing tasks
+--status <status>                 # Filter tasks by status
+--tag <tag>                      # Filter tasks by tag
+--dry                            # Preview what would be split
+--force                          # Skip confirmation prompt
+--stream                         # Show streaming AI output
+--ai-provider <provider>          # AI provider override
+--ai-key <key>                   # AI API key override
+--ai-provider-url <url>           # AI provider URL override
+--ai <models...>                # AI model(s) to use (comma-separated)
+--combine-ai <provider:model>      # AI model to combine multiple split results
+--reasoning <tokens>             # Enable reasoning for OpenRouter models
+--tools                          # Enable filesystem tools for project analysis
+```
+
+**Multi-AI Splitting Examples:**
+```bash
+# Single task split
+task-o-matic tasks split --task-id 7 --stream
+
+# Split with multiple AI models
+task-o-matic tasks split --task-id 7 \
+  --ai "anthropic:claude-3.5-sonnet,openai:gpt-4o,openrouter:qwen-2.5" \
+  --combine-ai anthropic:claude-3.5-sonnet \
+  --stream
+
+# Split all tasks with multi-AI
+task-o-matic tasks split --all \
+  --ai "openrouter:anthropic/claude-3.5-sonnet,openai:gpt-4o" \
+  --combine-ai openrouter:anthropic/claude-3.5-sonnet \
+  --stream
+```
+
+#### `tasks execute`
+Execute a task using an external coding assistant.
+
+**Required Arguments:**
+- `--id <id>`: Task ID to execute (required)
+
+**Options:**
+```bash
+--tool <tool>                      # External tool: opencode, claude, gemini, codex (default: opencode)
+--message <message>                 # Custom message to send to tool
+--model <model>                     # Model to use with executor
+--continue-session                   # Continue last session (for error feedback)
+--dry                               # Show what would be executed without running it
+--validate <command>                 # Validation command (can be used multiple times)
+--verify <command>                   # Alias for --validate (verification command)
+--max-retries <number>              # Maximum number of retries (default: 3)
+--try-models <models>              # Progressive model/executor configs (e.g., 'gpt-4o-mini,gpt-4o,claude:sonnet-4')
+--plan                              # Generate an implementation plan before execution
+--plan-model <model>                # Model/executor to use for planning (e.g., 'opencode:gpt-4o')
+--plan-tool <tool>                  # Tool/Executor to use for planning (defaults to --tool)
+--review-plan                      # Pause for human review of plan
+--review                            # Run AI review after execution
+--review-model <model>              # Model/executor to use for review (e.g., 'opencode:gpt-4o')
+--auto-commit                       # Automatically commit changes after execution
+--include-prd                      # Include PRD content in execution context
+```
+
+**Examples:**
+```bash
+# Execute with planning and review
+task-o-matic tasks execute --id 7 \
+  --tool opencode \
+  --plan --review \
+  --verify "bun test" \
+  --max-retries 3
+
+# Progressive model retry
+task-o-matic tasks execute --id 7 \
+  --try-models "gpt-4o-mini,gpt-4o,claude:sonnet-4" \
+  --verify "bun run build" \
+  --auto-commit
+
+# Multi-step execution with verification
+task-o-matic tasks execute --id 7 \
+  --plan --review-plan \
+  --verify "bun test" \
+  --verify "bun run build" \
+  --include-prd
+```
+
+#### `tasks execute-loop`
+Execute multiple tasks in a loop with retry logic.
+
+**Options:**
+```bash
+--status <status>          # Filter tasks by status
+--tag <tag>               # Filter tasks by tag
+--ids <ids>               # Comma-separated list of task IDs
+--tool <tool>              # External tool to use (default: opencode)
+--max-retries <number>     # Maximum retries per task
+--try-models <models>      # Progressive model/executor configs
+--model <model>             # Model to force
+--verify <command>          # Verification command (alias: --validate)
+--validate <command>        # Alias for --verify
+--message <message>          # Custom message
+--continue-session          # Continue last session
+--auto-commit              # Automatically commit changes
+--plan                    # Generate implementation plan
+--plan-model <model>       # Model for planning
+--plan-tool <tool>        # Tool for planning
+--review-plan              # Pause for human review of plan
+--review                   # Run AI review after execution
+--review-model <model>      # Model for review
+--include-completed        # Include completed tasks
+--include-prd             # Include PRD content
+--notify <target>          # Notify on completion
+--dry                      # Show what would be executed
+```
+
+**Examples:**
+```bash
+# Execute all TODO tasks
+task-o-matic tasks execute-loop --status todo \
+  --tool opencode \
+  --verify "bun test" \
+  --max-retries 3
+
+# Execute specific tasks
+task-o-matic tasks execute-loop --ids 7,8,9 \
+  --plan --review \
+  --auto-commit
+
+# Progressive model escalation
+task-o-matic tasks execute-loop --status todo \
+  --try-models "gpt-4o-mini,gpt-4o,claude:sonnet-4" \
+  --verify "bun test" \
+  --auto-commit
+```
+
+#### `tasks get-next`
+Get the next task to work on.
+
+**Options:**
+```bash
+--status <status>     # Filter by status
+--tag <tag>          # Filter by tag
+--effort <effort>    # Filter by effort
+--priority <priority>  # Sort priority: newest, oldest, effort
+```
+
+**Examples:**
+```bash
+# Get next TODO task
+task-o-matic tasks get-next --status todo
+
+# Get next critical priority task
+task-o-matic tasks get-next --tag critical
+
+# Get shortest task
+task-o-matic tasks get-next --priority effort
+```
+
+#### `tasks status`
+Set task status.
+
+**Options:**
+```bash
+--id <id>        # Task ID (required)
+--status <status>   # New status: todo, in-progress, completed
+```
+
+**Examples:**
+```bash
+task-o-matic tasks status --id 7 --status in-progress
+```
+
+#### `tasks tree`
+Display hierarchical task tree.
+
+**Options:**
+```bash
+--id <id>    # Root task ID (optional - shows full tree if not specified)
+```
+
+**Examples:**
+```bash
+# Show full tree
 task-o-matic tasks tree
+
+# Show subtree starting from task 7
+task-o-matic tasks tree --id 7
+```
+
+#### `tasks subtasks`
+List subtasks for a task.
+
+**Options:**
+```bash
+--id <id>    # Parent task ID (required)
+```
+
+**Examples:**
+```bash
+task-o-matic tasks subtasks --id 7
+```
+
+#### `tasks add-tags` / `tasks remove-tags`
+Add or remove tags from a task.
+
+**Options:**
+```bash
+--id <id>       # Task ID (required)
+--tags <tags>   # Tags to add/remove (comma-separated)
+```
+
+**Examples:**
+```bash
+# Add tags
+task-o-matic tasks add-tags --id 7 --tags critical,security
+
+# Remove tags
+task-o-matic tasks remove-tags --id 7 --tags deprecated
+```
+
+#### `tasks plan`
+Create detailed implementation plan for a task.
+
+**Subcommands:**
+- `tasks plan [create]` - Create implementation plan
+- `tasks plan list` - List all available plans
+- `tasks plan get` - View existing plan
+- `tasks plan set` - Set plan from text or file
+- `tasks plan delete` - Delete implementation plan
+
+**tasks plan create**
+**Options:**
+```bash
+--id <id>       # Task or subtask ID (required)
+--stream          # Show streaming AI output
+--ai-provider <provider>      # AI provider override
+--ai-model <model>           # AI model override
+--ai-key <key>              # AI API key override
+--ai-provider-url <url>       # AI provider URL override
+--reasoning <tokens>         # Enable reasoning for OpenRouter models
+```
+
+**Examples:**
+```bash
+task-o-matic tasks plan --id 7 --stream
+task-o-matic tasks plan list
+task-o-matic tasks plan get --id 7
+```
+
+**tasks plan set**
+**Options:**
+```bash
+--id <id>         # Task ID (required)
+--plan <text>      # Plan content
+--plan-file <path> # Path to file containing plan
+```
+
+**Examples:**
+```bash
+# Set from text
+task-o-matic tasks plan set --id 7 --plan "Step 1: Setup\nStep 2: Implement\nStep 3: Test"
+
+# Set from file
+task-o-matic tasks plan set --id 7 --plan-file ./plans/implementation.md
+```
+
+**tasks plan delete**
+**Options:**
+```bash
+--id <id>    # Task ID (required)
+```
+
+**Examples:**
+```bash
+task-o-matic tasks plan delete --id 7
+```
+
+#### `tasks document`
+Analyze and fetch documentation for a task using AI with Context7.
+
+**Subcommands:**
+- `tasks document [analyze]` - Analyze and fetch documentation
+- `tasks document get` - Get existing documentation
+- `tasks document add` - Add documentation from file
+
+**tasks document analyze**
+**Options:**
+```bash
+--task-id <id>      # Task ID (required)
+--force                # Force refresh documentation even if recent
+--stream               # Show streaming AI output
+--ai-provider <provider>      # AI provider override
+--ai-model <model>           # AI model override
+--ai-key <key>              # AI API key override
+--ai-provider-url <url>       # AI provider URL override
+--reasoning <tokens>         # Enable reasoning for OpenRouter models
+```
+
+**Examples:**
+```bash
+task-o-matic tasks document --task-id 7 --force --stream
+```
+
+**tasks document add**
+**Options:**
+```bash
+--id <id>               # Task ID (required)
+--doc-file <path>       # Path to documentation file (required)
+--overwrite             # Overwrite existing documentation
+```
+
+**Examples:**
+```bash
+task-o-matic tasks document add --id 7 --doc-file ./docs/api.md
+```
+
+**tasks document get**
+**Options:**
+```bash
+--id <id>    # Task ID (required)
+```
+
+**Examples:**
+```bash
+task-o-matic tasks document get --id 7
 ```
 
 ### RETURN VALUES
@@ -73,12 +516,7 @@ task-o-matic tasks tree
 - **Exit Codes**: 0 (success), 1 (error), 2 (validation error)
 
 ## WORKFLOW COMMAND
-**Primary Command:** `task-o-matic workflow`
-
-### COMMAND SIGNATURE
-```bash
-task-o-matic workflow [options]
-```
+**Primary Command:** `task-o-matic workflow [options]`
 
 ### DESCRIPTION
 The workflow command provides an interactive, step-by-step project setup and management experience. It guides citizens through the complete project lifecycle from initialization to task generation and splitting. This is your all-in-one survival kit for establishing new project bases in the wasteland.
@@ -89,7 +527,7 @@ The workflow command provides an interactive, step-by-step project setup and man
 ```bash
 --stream                    # Show streaming AI output
 --ai-provider <provider>    # AI provider override
---ai-model <model>          # AI model override  
+--ai-model <model>          # AI model override
 --ai-key <key>              # AI API key override
 --ai-provider-url <url>     # AI provider URL override
 ```
@@ -108,14 +546,7 @@ The workflow command provides an interactive, step-by-step project setup and man
 --init-method <method>      # Initialization method: quick, custom, ai
 --project-description <desc>  # Project description for AI-assisted init
 --use-existing-config       # Use existing configuration if found
---frontend <framework>      # Frontend framework
---backend <framework>       # Backend framework
---database <db>            # Database choice
---auth                     # Include authentication
---no-auth                  # Exclude authentication
---bootstrap                 # Bootstrap with Better-T-Stack
---no-bootstrap             # Skip bootstrapping
---include-docs             # Include Task-O-Matic documentation
+--include-docs             # Include Task-O-Matic documentation (default: true)
 --no-include-docs         # Skip including documentation
 ```
 
@@ -126,45 +557,78 @@ The workflow command provides an interactive, step-by-step project setup and man
 --prd-file <path>          # Path to existing PRD file
 --prd-description <desc>    # Product description for AI-assisted PRD
 --prd-content <content>     # Direct PRD content
---prd-multi-generation      # Generate multiple PRDs and compare
+--prd-multi-generation       # Generate multiple PRDs and compare
 --skip-prd-multi-generation # Skip PRD multi-generation
---prd-multi-generation-models <models>  # Comma-separated model list
+--prd-multi-generation-models <models>  # Comma-separated list of models for multi-generation
 --prd-combine              # Combine generated PRDs into master PRD
 --skip-prd-combine         # Skip PRD combination
---prd-combine-model <model> # Model to use for combining PRDs
+--prd-combine-model <model> # Model to use for combining PRDs (provider:model)
 ```
 
-#### Step 2.5: PRD Question/Refine Options
+#### Step 2.4: Stack Suggestion Options
+```bash
+--skip-stack-suggestion     # Skip stack suggestion step
+--suggest-stack-from-prd [path]  # Get stack from PRD (path or current)
+```
+
+#### Step 3: Bootstrap Options
+```bash
+--skip-bootstrap           # Skip bootstrap step
+--frontend <framework>     # Frontend framework
+--backend <framework>      # Backend framework
+--database <db>           # Database choice
+--auth                     # Include authentication
+--no-auth                  # Exclude authentication
+```
+
+#### Step 4: PRD Question/Refine Options
 ```bash
 --skip-prd-question-refine  # Skip PRD question/refine step
 --prd-question-refine       # Use question-based PRD refinement
 --prd-answer-mode <mode>    # Who answers questions: user, ai
 --prd-answer-ai-provider <provider>  # AI provider for answering
 --prd-answer-ai-model <model>       # AI model for answering
---prd-answer-ai-reasoning  # Enable reasoning for AI answering model
+--prd-answer-ai-reasoning            # Enable reasoning for AI answering model
 ```
 
-#### Step 3: PRD Refinement Options
+#### Step 5: PRD Refinement Options
 ```bash
 --skip-refine              # Skip PRD refinement
 --refine-method <method>   # Refinement method: manual, ai, skip
 --refine-feedback <feedback> # Feedback for AI refinement
 ```
 
-#### Step 4: Task Generation Options
+#### Step 6: Task Generation Options
 ```bash
 --skip-generate            # Skip task generation
 --generate-method <method>  # Generation method: standard, ai
 --generate-instructions <instructions>  # Custom task generation instructions
 ```
 
-#### Step 5: Task Splitting Options
+#### Step 7: Task Splitting Options
 ```bash
 --skip-split               # Skip task splitting
 --split-tasks <ids>       # Comma-separated task IDs to split
---split-all               # Split all tasks
+--split-all                 # Split all tasks
 --split-method <method>    # Split method: interactive, standard, custom
 --split-instructions <instructions>  # Custom split instructions
+```
+
+#### Step 8: Task Execution Options
+```bash
+--execute                           # Execute generated tasks immediately
+--execute-concurrency <number>      # Number of concurrent tasks (default: 1)
+--no-auto-commit                   # Disable auto-commit during execution
+--execute-tool <tool>             # Executor tool (opencode/claude/gemini/codex)
+--execute-model <model>            # Model override for execution
+--execute-max-retries <number>    # Max retries per task
+--execute-plan                     # Enable planning phase
+--execute-plan-model <model>        # Model for planning
+--execute-review                   # Enable review phase
+--execute-review-model <model>       # Model for review
+--verify <command>                 # Verification command (can be used multiple times)
+--validate <command>               # Alias for --verify (validation command)
+--try-models <models>             # Progressive model/executor configs
 ```
 
 ### WORKFLOW EXECUTION EXAMPLES
@@ -176,14 +640,6 @@ task-o-matic workflow
 
 # Quick workflow with defaults
 task-o-matic workflow --skip-all --auto-accept
-
-# AI-assisted project setup
-task-o-matic workflow \
-  --project-name "Wasteland Shelter" \
-  --init-method ai \
-  --project-description "A radiation-proof shelter management system" \
-  --prd-method ai \
-  --prd-description "Build a comprehensive shelter management system"
 ```
 
 #### Advanced Workflow Configuration
@@ -192,17 +648,9 @@ task-o-matic workflow \
 task-o-matic workflow \
   --ai-provider anthropic \
   --ai-model claude-3.5-sonnet \
-  --project-name "Survival Kit" \
-  --init-method custom \
-  --frontend next \
-  --backend hono \
-  --database postgres \
-  --auth \
-  --prd-method upload \
-  --prd-file ./requirements.md \
-  --prd-multi-generation \
-  --prd-multi-generation-models "anthropic:claude-3.5-sonnet,openai:gpt-4,google:gemini-pro" \
-  --prd-combine-model anthropic:claude-3.5-sonnet
+  --skip-all \
+  --auto-accept \
+  --execute
 ```
 
 #### Workflow with Configuration File
@@ -219,7 +667,9 @@ cat > workflow-config.json << EOF
   "generateMethod": "ai",
   "splitAll": true,
   "aiProvider": "anthropic",
-  "aiModel": "claude-3.5-sonnet"
+  "aiModel": "claude-3.5-sonnet",
+  "execute": true,
+  "verify": ["bun test", "bun run build"]
 }
 EOF
 
@@ -246,32 +696,53 @@ task-o-matic workflow --config-file workflow-config.json
   - `skip`: Use existing PRD
 - **Features**: Multi-model generation and comparison
 
-#### Step 2.5: PRD Question/Refine
+#### Step 2.4: Stack Suggestion
+- **Purpose**: Get AI-recommended technology stack from PRD analysis
+- **Integration**: Automatically provides stack configuration for bootstrap step
+- **Output**: Suggested frontend, backend, database, auth, runtime
+
+#### Step 3: Bootstrap
+- **Purpose**: Bootstrap project with suggested or custom stack using Better-T-Stack
+- **Input**: Stack from suggestion step or custom configuration
+- **Output**: Full project structure with selected frameworks
+
+#### Step 4: PRD Question/Refine
 - **Purpose**: Clarify PRD requirements through Q&A
 - **Answer Modes**:
   - `user`: Interactive user answers
   - `ai`: AI answers based on project context
 - **Integration**: Automatically refines PRD with answers
 
-#### Step 3: PRD Refinement
+#### Step 5: PRD Refinement
 - **Purpose**: Improve PRD quality based on feedback
 - **Methods**:
   - `manual`: Direct editing in editor
   - `ai`: AI-assisted refinement with feedback
   - `skip`: Skip refinement step
 
-#### Step 4: Task Generation
+#### Step 6: Task Generation
 - **Purpose**: Convert PRD into actionable tasks
 - **Methods**:
   - `standard`: Rule-based parsing
   - `ai`: AI-powered task generation with custom instructions
 
-#### Step 5: Task Splitting
+#### Step 7: Task Splitting
 - **Purpose**: Break complex tasks into manageable subtasks
 - **Methods**:
   - `interactive`: Ask for each task individually
   - `standard`: Apply standard AI splitting to all
   - `custom`: Use custom instructions for all tasks
+
+#### Step 8: Task Execution (NEW)
+- **Purpose**: Execute generated tasks using external AI tools
+- **Features**:
+  - Concurrent execution support
+  - Progressive model retry with `--try-models`
+  - Planning phase before execution
+  - Review phase after execution
+  - Verification commands
+  - Auto-commit support
+- **Tools Supported**: opencode, claude, gemini, codex
 
 ### ERROR CONDITIONS AND EXCEPTIONS
 
@@ -322,12 +793,7 @@ Solution: Check better-t-stack-cli installation and network connectivity
 - **File System**: Local storage in `.task-o-matic/` directory
 
 ## PRD COMMAND
-**Primary Command:** `task-o-matic prd`
-
-### COMMAND SIGNATURE
-```bash
-task-o-matic prd [subcommand] [options]
-```
+**Primary Command:** `task-o-matic prd [subcommand] [options]`
 
 ### DESCRIPTION
 The PRD command provides comprehensive Product Requirements Document management capabilities. It supports creation, parsing, refinement, and analysis of PRDs using AI assistance. This is your strategic planning tool for defining project requirements before diving into implementation.
@@ -344,26 +810,27 @@ task-o-matic prd create <description> [options]
 
 **Options:**
 ```bash
---ai <provider:model...>     # AI model(s) to use (can specify multiple)
+--ai <models...>       # AI model(s) to use (can specify multiple)
 --combine-ai <provider:model> # AI model to combine multiple PRDs
---output-dir <path>          # Directory to save PRDs (default: .task-o-matic/prd)
---stream                     # Enable streaming output (single AI only)
+--output-dir <path>      # Directory to save PRDs (default: .task-o-matic/prd)
+--ai-reasoning <tokens> # Enable reasoning for OpenRouter models
+--stream                  # Enable streaming output (single AI only)
 ```
 
 **Multi-Model Generation Examples:**
 ```bash
 # Single model PRD generation
 task-o-matic prd create "Emergency shelter system" \
-  --ai anthropic:claude-3.5-sonnet \
+  --ai "anthropic:claude-3.5-sonnet" \
   --stream
 
 # Multi-model comparison
 task-o-matic prd create "Water purification system" \
-  --ai anthropic:claude-3.5-sonnet openai:gpt-4 google:gemini-pro \
+  --ai "anthropic:claude-3.5-sonnet,openai:gpt-4,google:gemini-pro" \
   --combine-ai anthropic:claude-3.5-sonnet
 
 # Custom output directory
-task-o-matic prd create "Communication network" \
+task-o-matic prd create "Survival tracking app" \
   --ai openrouter:anthropic/claude-3.5-sonnet \
   --output-dir ./requirements
 ```
@@ -375,14 +842,15 @@ task-o-matic prd combine [options]
 
 **Required Options:**
 ```bash
---files <paths...>           # PRD files to combine
+--files <paths...>         # PRD files to combine
 --description <text>         # Original product description
---ai <provider:model>        # AI model to use for combining
+--ai <provider:model>       # AI model to use for combining
 ```
 
 **Optional Options:**
 ```bash
 --output <path>              # Output file path (default: prd-master.md)
+--ai-reasoning <tokens>     # Enable reasoning for OpenRouter models
 --stream                     # Enable streaming output
 ```
 
@@ -410,15 +878,17 @@ task-o-matic prd parse [options]
 
 **Required Options:**
 ```bash
---file <path>                # Path to PRD file
+--file <path>    # Path to PRD file
 ```
 
 **AI Configuration Options:**
 ```bash
---ai-provider <provider>     # AI provider override
+--ai <models...>              # AI model(s) to use
+--combine-ai <provider:model>   # AI model to combine multiple parse results
+--ai-provider <provider>      # AI provider override
 --ai-model <model>           # AI model override
---ai-key <key>               # AI API key override
---ai-provider-url <url>      # AI provider URL override
+--ai-key <key>              # AI API key override
+--ai-provider-url <url>       # AI provider URL override
 --ai-reasoning <tokens>      # Enable reasoning for OpenRouter models
 --stream                     # Show streaming AI output
 --tools                      # Enable filesystem tools for project analysis
@@ -426,8 +896,8 @@ task-o-matic prd parse [options]
 
 **Content Override Options:**
 ```bash
---prompt <prompt>            # Override prompt
---message <message>          # User message
+--prompt <prompt>       # Override prompt
+--message <message>     # User message
 ```
 
 **Parsing Examples:**
@@ -450,6 +920,13 @@ task-o-matic prd parse \
   --ai-model anthropic/claude-3.5-sonnet \
   --ai-reasoning 2048 \
   --prompt "Focus on technical implementation details"
+
+# Multi-AI parsing with combination
+task-o-matic prd parse \
+  --file ./requirements.md \
+  --ai "anthropic:claude-3.5-sonnet,openai:gpt-4o,openrouter:qwen-2.5" \
+  --combine-ai anthropic:claude-3.5-sonnet \
+  --stream
 ```
 
 #### REWORK SUBCOMMAND
@@ -459,8 +936,8 @@ task-o-matic prd rework [options]
 
 **Required Options:**
 ```bash
---file <path>                # Path to PRD file
---feedback <feedback>         # User feedback for improvements
+--file <path>       # Path to PRD file
+--feedback <feedback> # User feedback for improvements
 ```
 
 **Optional Options:**
@@ -468,10 +945,10 @@ task-o-matic prd rework [options]
 --output <path>              # Output file path (default: overwrite original)
 --prompt <prompt>            # Override prompt
 --message <message>          # User message
---ai-provider <provider>     # AI provider override
+--ai-provider <provider>      # AI provider override
 --ai-model <model>           # AI model override
---ai-key <key>               # AI API key override
---ai-provider-url <url>      # AI provider URL override
+--ai-key <key>              # AI API key override
+--ai-provider-url <url>       # AI provider URL override
 --ai-reasoning <tokens>      # Enable reasoning for OpenRouter models
 --stream                     # Show streaming AI output
 --tools                      # Enable filesystem tools for project analysis
@@ -502,7 +979,7 @@ task-o-matic prd question [options]
 
 **Required Options:**
 ```bash
---file <path>                # Path to PRD file
+--file <path>    # Path to PRD file
 ```
 
 **Optional Options:**
@@ -510,10 +987,10 @@ task-o-matic prd question [options]
 --output <path>              # Output JSON file path (default: prd-questions.json)
 --prompt <prompt>            # Override prompt
 --message <message>          # User message
---ai-provider <provider>     # AI provider override
+--ai-provider <provider>      # AI provider override
 --ai-model <model>           # AI model override
---ai-key <key>               # AI API key override
---ai-provider-url <url>      # AI provider URL override
+--ai-key <key>              # AI API key override
+--ai-provider-url <url>       # AI provider URL override
 --ai-reasoning <tokens>      # Enable reasoning for OpenRouter models
 --stream                     # Show streaming AI output
 --tools                      # Enable filesystem tools for project analysis
@@ -541,19 +1018,19 @@ task-o-matic prd refine [options]
 
 **Required Options:**
 ```bash
---file <path>                # Path to PRD file
+--file <path>    # Path to PRD file
 ```
 
 **Optional Options:**
 ```bash
 --questions <path>           # Path to questions JSON file
---output <path>              # Output file path (default: overwrite original)
+--output <path>             # Output file path (default: overwrite original)
 --prompt <prompt>            # Override prompt
 --message <message>          # User message
---ai-provider <provider>     # AI provider override
+--ai-provider <provider>      # AI provider override
 --ai-model <model>           # AI model override
---ai-key <key>               # AI API key override
---ai-provider-url <url>      # AI provider URL override
+--ai-key <key>              # AI API key override
+--ai-provider-url <url>       # AI provider URL override
 --ai-reasoning <tokens>      # Enable reasoning for OpenRouter models
 --stream                     # Show streaming AI output
 --tools                      # Enable filesystem tools for project analysis
@@ -571,6 +1048,82 @@ task-o-matic prd refine \
   --ai-provider anthropic \
   --ai-model claude-3.5-sonnet \
   --stream
+```
+
+#### GET-STACK SUBCOMMAND (NEW)
+```bash
+task-o-matic prd get-stack [options]
+```
+
+**Description**: Suggest optimal technology stack based on PRD analysis.
+
+**Options:**
+```bash
+--file <path>                # Path to PRD file
+--content <text>              # PRD content as string (mutually exclusive with --file)
+--project-name <name>          # Project name (inferred from PRD if not provided)
+--save                         # Save suggested stack to .task-o-matic/stack.json
+--output <path>                # Custom output path (implies --save)
+--json                         # Output result as JSON
+--prompt <prompt>             # Override prompt
+--message <message>           # User message
+--ai-provider <provider>      # AI provider override
+--ai-model <model>           # AI model override
+--ai-key <key>              # AI API key override
+--ai-provider-url <url>       # AI provider URL override
+--ai-reasoning <tokens>      # Enable reasoning for OpenRouter models
+--stream                     # Show streaming AI output
+--tools                      # Enable filesystem tools for project analysis
+```
+
+**Stack Suggestion Examples:**
+```bash
+# Analyze from file
+task-o-matic prd get-stack --file ./requirements.md --save --json
+
+# Analyze from content
+task-o-matic prd get-stack \
+  --content "Vault management system" \
+  --project-name vault-manager \
+  --save
+
+# Full analysis with streaming
+task-o-matic prd get-stack \
+  --file ./requirements.md \
+  --stream \
+  --tools
+```
+
+#### GENERATE SUBCOMMAND (NEW)
+```bash
+task-o-matic prd generate [options]
+```
+
+**Description**: Generate a PRD from an existing codebase (reverse-engineering).
+
+**Options:**
+```bash
+--output <filename>       # Output filename (default: current-state.md)
+--ai <provider:model>     # AI model to use. Format: [provider:]model[;reasoning[=budget]]
+--ai-reasoning <tokens>   # Enable reasoning for OpenRouter models (max reasoning tokens)
+--stream                     # Enable streaming output
+--tools                      # Enable filesystem tools for deeper analysis
+--json                       # Output result as JSON
+```
+
+**Reverse-Engineering Examples:**
+```bash
+# Generate PRD from codebase
+task-o-matic prd generate --output ./generated-prd.md --stream --tools
+
+# Use specific AI model
+task-o-matic prd generate \
+  --ai "anthropic:claude-3.5-sonnet" \
+  --output ./prd-from-codebase.md \
+  --stream
+
+# JSON output
+task-o-matic prd generate --output prd.md --json
 ```
 
 ### PRD COMMAND ERROR HANDLING
@@ -616,6 +1169,8 @@ Solution: Check API keys, network connectivity, and provider status
 - **PRD Parsing**: 15-60 seconds
 - **PRD Rework**: 30-90 seconds
 - **Question Generation**: 20-45 seconds
+- **Stack Suggestion**: 30-90 seconds
+- **Reverse-Engineering**: 60-180 seconds
 
 #### Storage Requirements
 - **PRD Files**: 10-100KB per document
@@ -624,12 +1179,7 @@ Solution: Check API keys, network connectivity, and provider status
 - **Cache Data**: 50-200MB for documentation cache
 
 ## BENCHMARK COMMAND
-**Primary Command:** `task-o-matic benchmark`
-
-### COMMAND SIGNATURE
-```bash
-task-o-matic benchmark [subcommand] [options]
-```
+**Primary Command:** `task-o-matic benchmark [subcommand] [options]`
 
 ### DESCRIPTION
 The benchmark command provides comprehensive AI model performance testing and comparison capabilities. It supports individual operation benchmarking, workflow benchmarking, and comparative analysis across multiple AI providers and models. This is your intelligence-gathering tool for optimizing AI operations in the wasteland.
@@ -642,50 +1192,50 @@ task-o-matic benchmark run <operation> [options]
 ```
 
 **Required Arguments:**
-- `operation`: Operation to benchmark (prd-parse, task-breakdown, task-create, prd-create, etc.)
+- `operation`: Operation to benchmark (e.g., prd-parse, task-breakdown, task-create, prd-create)
 
 **Required Options:**
 ```bash
---models <list>              # Comma-separated list of models (provider:model[:reasoning=<tokens>])
+--models <list>    # Comma-separated list of models (provider:model[:reasoning=<tokens>])
 ```
 
 **General Options:**
 ```bash
---file <path>                # Input file path (for PRD ops)
---task-id <id>               # Task ID (for Task ops)
---concurrency <number>        # Max concurrent requests (default: 5)
---delay <number>             # Delay between requests in ms (default: 250)
---prompt <prompt>             # Override prompt
---message <message>           # User message
---tools                      # Enable filesystem tools
---feedback <feedback>         # Feedback (for prd-rework)
+--file <path>        # Input file path (for PRD ops)
+--task-id <id>       # Task ID (for Task ops)
+--concurrency <number> # Max concurrent requests (default: 5)
+--delay <number>       # Delay between requests in ms (default: 250)
+--prompt <prompt>      # Override prompt
+--message <message>    # User message
+--tools               # Enable filesystem tools
+--feedback <feedback>  # Feedback (for prd-rework)
 ```
 
 **Task Creation Options:**
 ```bash
---title <title>              # Task title (for task-create)
---content <content>           # Task content (for task-create)
---parent-id <id>             # Parent task ID (for task-create)
---effort <effort>            # Effort estimate: small, medium, large (for task-create)
---force                      # Force operation (for task-document)
+--title <title>       # Task title (for task-create)
+--content <content>    # Task content (for task-create)
+--parent-id <id>      # Parent task ID (for task-create)
+--effort <effort>    # Effort estimate: small, medium, large (for task-create)
+--force               # Force operation (for task-document)
 ```
 
 **PRD Creation Options:**
 ```bash
---description <desc>          # Project/PRD description (for prd-create, prd-combine)
---output-dir <dir>           # Output directory (for prd-create, prd-combine)
---filename <name>            # Output filename (for prd-create, prd-combine)
+--description <desc>     # Project/PRD description (for prd-create, prd-combine)
+--output-dir <dir>       # Output directory (for prd-create, prd-combine)
+--filename <name>        # Output filename (for prd-create, prd-combine)
 ```
 
 **PRD Combine Options:**
 ```bash
---prds <list>                # Comma-separated list of PRD file paths (for prd-combine)
+--prds <list>      # Comma-separated list of PRD file paths (for prd-combine)
 ```
 
 **PRD Refine Options:**
 ```bash
---question-mode <mode>        # Question mode: user or ai (for prd-refine)
---answers <json>              # JSON string of answers (for prd-refine user mode)
+--question-mode <mode>    # Question mode: user or ai (for prd-refine)
+--answers <json>          # JSON string of answers (for prd-refine user mode)
 ```
 
 **Model Format Examples:**
@@ -724,7 +1274,7 @@ task-o-matic benchmark run prd-create \
 # Task breakdown with tools
 task-o-matic benchmark run task-breakdown \
   --models "openrouter:anthropic/claude-3.5-sonnet" \
-  --task-id task-123 \
+  --task-id 123 \
   --tools
 ```
 
@@ -797,6 +1347,59 @@ task-o-matic benchmark compare <id>
 
 **Description**: Provides comparative analysis of results within a benchmark run, showing performance differences across models.
 
+#### EXECUTION SUBCOMMAND
+```bash
+task-o-matic benchmark execution [options]
+```
+
+**Required Options:**
+```bash
+--task-id <id>         # Task ID to benchmark
+--models <list>         # Comma-separated list of models (provider:model)
+```
+
+**Optional Options:**
+```bash
+--verify <command>     # Verification command (can be used multiple times)
+--max-retries <number>  # Maximum retries per model
+--no-keep-branches     # Delete benchmark branches after run
+```
+
+**Execution Benchmark Examples:**
+```bash
+task-o-matic benchmark execution \
+  --task-id 7 \
+  --models "openai:gpt-4o,anthropic:claude-3.5-sonnet" \
+  --verify "bun test" \
+  --max-retries 3
+```
+
+#### EXECUTE-LOOP SUBCOMMAND
+```bash
+task-o-matic benchmark execute-loop [options]
+```
+
+**Options:**
+```bash
+--status <status>        # Filter tasks by status
+--tag <tag>            # Filter tasks by tag
+--ids <ids>            # Comma-separated list of task IDs
+--models <list>         # Comma-separated list of models (provider:model) (required)
+--verify <command>     # Verification command
+--max-retries <number>  # Maximum number of retries per task
+--try-models <models>   # Progressive model/executor configs
+--no-keep-branches     # Delete benchmark branches after run
+```
+
+**Execute-Loop Benchmark Examples:**
+```bash
+task-o-matic benchmark execute-loop \
+  --status todo \
+  --models "openai:gpt-4o,anthropic:claude-3.5-sonnet" \
+  --verify "bun test" \
+  --max-retries 3
+```
+
 #### WORKFLOW SUBCOMMAND
 ```bash
 task-o-matic benchmark workflow [options]
@@ -804,7 +1407,7 @@ task-o-matic benchmark workflow [options]
 
 **Required Options:**
 ```bash
---models <list>              # Comma-separated list of models (provider:model[:reasoning=<tokens>])
+--models <list>    # Comma-separated list of models (provider:model[:reasoning=<tokens>])
 ```
 
 **Workflow Configuration Options:**
@@ -822,7 +1425,7 @@ task-o-matic benchmark workflow [options]
 # Initialization
 --skip-init --project-name <name> --init-method <method> --project-description <desc>
 
-# PRD Definition  
+# PRD Definition
 --skip-prd --prd-method <method> --prd-file <path> --prd-description <desc>
 
 # PRD Refinement
@@ -840,9 +1443,7 @@ task-o-matic benchmark workflow [options]
 # Basic workflow benchmark
 task-o-matic benchmark workflow \
   --models "anthropic:claude-3.5-sonnet,openai:gpt-4" \
-  --project-name "Shelter System" \
-  --init-method ai \
-  --project-description "Emergency shelter management"
+  --skip-all
 
 # Advanced workflow benchmark
 task-o-matic benchmark workflow \
@@ -926,12 +1527,7 @@ Solution: Increase delay between requests or reduce concurrency
 - **Disk Space**: 100MB for benchmark history
 
 ## CONFIG COMMAND
-**Primary Command:** `task-o-matic config`
-
-### COMMAND SIGNATURE
-```bash
-task-o-matic config [subcommand] [options]
-```
+**Primary Command:** `task-o-matic config [subcommand] [options]`
 
 ### DESCRIPTION
 The config command provides comprehensive configuration management for Task-O-Matic projects. It handles AI provider settings, project information, and system configuration. This is your control panel for customizing Task-O-Matic behavior in the wasteland.
@@ -1087,12 +1683,7 @@ Solution: Validate JSON syntax and structure
 - **Network Connectivity**: Verify endpoint accessibility
 
 ## INIT COMMAND
-**Primary Command:** `task-o-matic init`
-
-### COMMAND SIGNATURE
-```bash
-task-o-matic init [subcommand] [options]
-```
+**Primary Command:** `task-o-matic init [subcommand] [options]`
 
 ### DESCRIPTION
 The init command provides comprehensive project initialization and bootstrapping capabilities. It supports both Task-O-Matic project setup and full-stack application bootstrapping using Better-T-Stack. This is your foundation-building tool for establishing new project bases in the wasteland.
@@ -1128,7 +1719,6 @@ task-o-matic init init [options]
 --runtime <runtime>           # Runtime (bun/node, default: node)
 --payment <payment>           # Payment provider (none/polar, default: none)
 --cli-deps <level>           # CLI dependency level (minimal/standard/full/task-o-matic, default: standard)
---tui-framework <framework>  # TUI framework (solid/vue/react, default: solid)
 ```
 
 **Initialization Examples:**
@@ -1171,12 +1761,14 @@ task-o-matic init bootstrap <name> [options]
 **Framework Options:**
 ```bash
 --frontend <frontends...>    # Frontend framework(s) - multiple values supported
---backend <backend>           # Backend framework (hono/express/elysia/convex)
---database <database>         # Database (sqlite/postgres/mysql/mongodb)
---orm <orm>                  # ORM (drizzle/prisma/none, default: drizzle)
+--backend <backend>           # Backend framework (hono/express/fastify/elysia/convex)
+--database <database>         # Database (sqlite/postgres/mysql/mongodb/none)
+--orm <orm>                # ORM (drizzle/prisma/mongoose/none, default: drizzle)
 --no-auth                    # Exclude authentication
---addons <addons...>          # Additional addons (pwa/tauri/starlight/biome/husky/turborepo)
+--auth <auth>                # Authentication (better-auth/clerk/none)
+--addons <addons...>          # Addons (pwa/tauri/starlight/biome/husky/turborepo)
 --examples <examples...>       # Examples to include (todo/ai)
+--template <template>          # Use predefined template (mern/pern/t3/uniwind/none)
 --no-git                     # Skip git initialization
 --package-manager <pm>       # Package manager (npm/pnpm/bun, default: npm)
 --no-install                 # Skip installing dependencies
@@ -1184,8 +1776,7 @@ task-o-matic init bootstrap <name> [options]
 --runtime <runtime>           # Runtime (bun/node, default: node)
 --api <type>                 # API type (trpc/orpc)
 --payment <payment>           # Payment provider (none/polar, default: none)
---cli-deps <level>           # CLI dependency level (minimal/standard/full/task-o-matic)
---tui-framework <framework>  # TUI framework (solid/vue/react, default: solid)
+--cli-deps <level>           # CLI dependency level (minimal/standard/full/task-o-matic, default: standard)
 ```
 
 **Frontend Framework Options:**
@@ -1199,7 +1790,8 @@ task-o-matic init bootstrap <name> [options]
 task-o-matic init bootstrap shelter-app \
   --frontend next \
   --backend hono \
-  --database sqlite
+  --database sqlite \
+  --auth
 
 # Full-stack monorepo with multiple frontends
 task-o-matic init bootstrap "wasteland-platform" \
@@ -1212,7 +1804,9 @@ task-o-matic init bootstrap "wasteland-platform" \
 
 # CLI application
 task-o-matic init bootstrap "shelter-cli" \
-  --frontend cli \
+  --backend hono \
+  --database sqlite \
+  --no-auth \
   --cli-deps full \
   --package-manager bun \
   --runtime bun
@@ -1220,8 +1814,41 @@ task-o-matic init bootstrap "shelter-cli" \
 # TUI application
 task-o-matic init bootstrap "shelter-tui" \
   --frontend tui \
-  --tui-framework solid \
   --package-manager pnpm
+```
+
+#### ATTACH SUBCOMMAND (NEW)
+```bash
+task-o-matic init attach [options]
+```
+
+**Description**: Attach the command bunker to an existing project with automatic stack detection.
+
+**Options:**
+```bash
+--analyze                   # Run full project analysis including TODOs and features
+--create-prd               # Auto-generate a PRD from codebase analysis
+--dry-run                   # Just detect, don't create files
+--redetect                 # Force re-detection of stack (overwrites cached stack.json)
+--ai-provider <provider>     # AI provider (openrouter/anthropic/openai/custom)
+--ai-model <model>           # AI model (default: z-ai/glm-4.6)
+--ai-key <key>              # AI API key
+--ai-provider-url <url>       # AI provider URL
+--max-tokens <tokens>        # Max tokens for AI (default: 32768)
+--temperature <temp>         # AI temperature (default: 0.5)
+--context7-api-key <key>     # Context7 API key
+```
+
+**Attach Examples:**
+```bash
+# Auto-detect stack
+task-o-matic init attach --analyze --create-prd
+
+# Just detect without creating files
+task-o-matic init attach --dry-run
+
+# Force re-detection
+task-o-matic init attach --redetect
 ```
 
 ### INITIALIZATION WORKFLOW
@@ -1246,25 +1873,22 @@ task-o-matic init bootstrap "shelter-tui" \
 2. Handle bootstrap results
 3. Update configuration for new project structure
 
-### BOOTSTRAP INTEGRATION
+### ATTACH WORKFLOW
 
-#### Better-T-Stack Integration
-The init command integrates with Better-T-Stack CLI for full-stack application bootstrapping:
+#### Step 1: Stack Detection
+- Analyze package.json, dependencies, and project structure
+- Detect frameworks, databases, ORM, auth, package manager, runtime
+- Calculate confidence score
 
-**Supported Features:**
-- Multi-framework frontend support
-- Multiple backend options
-- Database setup and configuration
-- Authentication integration
-- Addon system for additional features
-- Example project templates
+#### Step 2: Full Analysis (Optional)
+- Analyze project structure
+- Detect TODOs in comments
+- Identify existing features
+- Generate suggestions
 
-**Bootstrap Process:**
-1. Validate Better-T-Stack CLI installation
-2. Prepare configuration options
-3. Execute bootstrap command
-4. Handle results and errors
-5. Update Task-O-Matic configuration
+#### Step 3: PRD Generation (Optional)
+- Generate PRD from codebase analysis
+- Save to `.task-o-matic/prd/` directory
 
 ### INITIALIZATION ERROR HANDLING
 
@@ -1300,11 +1924,30 @@ Solution: Check supported combinations in Better-T-Stack documentation
 project-root/
 ├── .task-o-matic/
 │   ├── config.json          # Main configuration
+│   ├── stack.json          # Detected technology stack (cached for AI context)
+│   ├── bts-config.json     # Better-T-Stack configuration (if bootstrapped)
 │   ├── mcp.json           # MCP configuration
-│   ├── tasks/             # Task storage
-│   ├── prd/               # PRD storage
-│   ├── logs/              # Operation logs
-│   └── docs/              # Documentation cache
+│   ├── tasks.json         # Main tasks database
+│   ├── ai-metadata.json    # AI metadata for all tasks
+│   │
+│   ├── tasks/             # Task content files
+│   │   ├── {task-id}.md
+│   │   └── enhanced/
+│   │       └── {task-id}.md
+│   │
+│   ├── plans/             # Implementation plans
+│   │   └── {task-id}.json
+│   │
+│   ├── docs/              # Documentation
+│   │   ├── tasks/       # Task-specific documentation
+│   │   └── {library-name}/  # Context7 library docs
+│   │
+│   ├── prd/              # PRD versions and logs
+│   │   ├── versions/      # PRD versioning history
+│   │   ├── parsed-prd.json
+│   │   └── (user prd files)
+│   │
+│   └── logs/             # Operation logs
 ├── src/                   # Source code (from bootstrap)
 ├── package.json           # Dependencies (from bootstrap)
 └── ...                   # Other bootstrap files
@@ -1324,18 +1967,84 @@ project-root/
 - **Disk Usage**: 10-100MB (depends on selected frameworks)
 - **Memory Usage**: 50-200MB during initialization
 
-## PROMPT COMMAND
-**Primary Command:** `task-o-matic prompt`
-
-### COMMAND SIGNATURE
-```bash
-task-o-matic prompt [name] [options]
-```
+## CONTINUE COMMAND (NEW)
+**Primary Command:** `task-o-matic continue [options]`
 
 ### DESCRIPTION
-The prompt command provides advanced AI prompt building capabilities with variable replacement and context enhancement. It supports system and user prompts, automatic content detection, and integration with external AI tools. This is your communication toolkit for crafting precise AI instructions in the wasteland.
+Continue working on an existing project. Analyzes project status, allows adding features to PRD, generating tasks for unimplemented features, and creating implementation plans.
 
-### COMPREHENSIVE OPTIONS
+### OPTIONS
+
+```bash
+-s, --status                 # Show project status overview
+-a, --add-feature <feature>  # Add a new feature to PRD
+-u, --update-prd             # Update PRD with implementation progress
+-g, --generate-tasks           # Generate tasks for unimplemented features
+-p, --generate-plan            # Generate implementation plan for remaining work
+```
+
+### CONTINUE EXAMPLES
+
+```bash
+# Show project status
+task-o-matic continue --status
+
+# Add new feature to PRD
+task-o-matic continue --add-feature "Emergency notification system"
+
+# Update PRD with progress
+task-o-matic continue --update-prd
+
+# Generate tasks for unimplemented features
+task-o-matic continue --generate-tasks
+
+# Generate implementation plan for remaining work
+task-o-matic continue --generate-plan
+```
+
+## DETECT COMMAND (NEW)
+**Primary Command:** `task-o-matic detect [options]`
+
+### DESCRIPTION
+Detect technology stack of current project automatically. Analyzes package.json, dependencies, and project structure to identify frameworks, databases, ORM, auth, and more.
+
+### OPTIONS
+
+```bash
+--save    # Save detected stack to .task-o-matic/stack.json
+--json    # Output result as JSON
+```
+
+### DETECT EXAMPLES
+
+```bash
+# Auto-detect and save
+task-o-matic detect --save
+
+# Output as JSON
+task-o-matic detect --json
+
+# Just display (human-readable)
+task-o-matic detect
+```
+
+**Detected Information:**
+- Language (TypeScript/JavaScript)
+- Frameworks (Next.js, Express, Hono, etc.)
+- Database (Postgres, MongoDB, SQLite, MySQL)
+- ORM (Prisma, Drizzle, TypeORM)
+- Auth (Better-Auth, Clerk, NextAuth, Auth0)
+- Package Manager & Runtime
+- API Type
+- Confidence Score
+
+## PROMPT COMMAND
+**Primary Command:** `task-o-matic prompt <name> [options]`
+
+### DESCRIPTION
+Build AI service prompts with variable replacement for external tools. Supports system and user prompts, automatic content detection, and integration with external AI tools.
+
+### OPTIONS
 
 #### Basic Options
 ```bash
@@ -1412,7 +2121,7 @@ task-o-matic prompt task-enhancement \
 # Build PRD rework prompt with custom variables
 task-o-matic prompt prd-rework \
   --prd-content "$(cat requirements.md)" \
-  --user-feedback "Add security requirements" \
+  --user-feedback "Add more security protocols" \
   --var FOCUS="security" \
   --var COMPLEXITY="high" \
   --executor opencode
@@ -1433,14 +2142,8 @@ task-o-matic prompt task-enhancement \
 # Manual content override
 task-o-matic prompt prd-parsing \
   --prd-content "## Emergency Shelter System\n### Overview\n..." \
-  --stack-info "React, Node.js, PostgreSQL"
-
-# Multi-variable prompt
-task-o-matic prompt task-breakdown \
-  --task-title "Create user management" \
+  --stack-info "React, Node.js, PostgreSQL" \
   --var ESTIMATED_EFFORT="large" \
-  --var PRIORITY="high" \
-  --var DEPENDENCIES="authentication,database" \
   --executor gemini
 ```
 
@@ -1507,52 +2210,38 @@ task-o-matic prompt task-enhancement --executor opencode
 task-o-matic prompt task-enhancement --executor gemini
 ```
 
-### PROMPT ERROR HANDLING
+## INSTALL COMMAND (NEW)
+**Primary Command:** `task-o-matic install <target> [options]`
 
-#### Common Prompt Errors
+### DESCRIPTION
+Install task-o-matic documentation and agent guides into current project.
+
+### OPTIONS
+
 ```bash
-# Prompt not found
-Error: Prompt not found: invalid-prompt
-Solution: Use --list to see available prompts
-
-# Missing required variables
-Error: Missing required variables: PRD_CONTENT
-Solution: Provide --prd-content or --prd-file
-
-# Invalid variable format
-Error: Invalid variable format: invalid-var. Expected key=value
-Solution: Use format --var KEY=value
-
-# File not found
-Error: ENOENT: no such file or directory, open 'requirements.md'
-Solution: Verify file path and permissions
+--force    # Overwrite existing files
 ```
 
-#### Prompt Recovery Strategies
-1. **Variable Validation**: Check required variables with --metadata
-2. **File Verification**: Ensure all referenced files exist
-3. **Format Checking**: Use correct variable format
-4. **Executor Validation**: Verify executor is supported
+### TARGETS
 
-### TECHNICAL SPECIFICATIONS
+```bash
+doc      # Install project documentation
+claude    # Install Claude Desktop agent guide
+agents    # Install generic agent guides
+```
 
-#### Prompt Building Pipeline
-1. **Variable Collection**: Gather all variables from options and auto-detection
-2. **Content Detection**: Auto-detect PRD, stack, and context information
-3. **Variable Resolution**: Replace placeholders with actual values
-4. **Formatting**: Apply executor-specific formatting
-5. **Validation**: Verify all required variables are present
+### INSTALL EXAMPLES
 
-#### Performance Characteristics
-- **Prompt Building**: 50-200ms
-- **Auto-Detection**: 100-500ms
-- **File Processing**: 10-50ms per file
-- **Variable Resolution**: 5-20ms
+```bash
+# Install project documentation
+task-o-matic install doc --force
 
-#### Storage Requirements
-- **Prompt Templates**: 1-5KB per prompt
-- **Auto-Detection Cache**: 10-50MB
-- **Context Building**: 5-20MB per project
+# Install Claude agent guide
+task-o-matic install claude
+
+# Install generic agent guides
+task-o-matic install agents --force
+```
 
 ### FIELD OPERATIONS PROTOCOLS
 
@@ -1566,137 +2255,57 @@ All main commands integrate with core services through standardized protocols:
 5. **Result Formatting**: Consistent output formatting across all commands
 
 #### AI Provider Integration
-- **Provider Abstraction**: Unified interface for all AI providers
-- **Model Selection**: Flexible model configuration per operation
-- **Authentication**: Secure API key management
-- **Rate Limiting**: Built-in rate limiting and retry logic
-- **Streaming**: Real-time response streaming when supported
 
-#### Storage Integration
-- **Local Storage**: File-based storage in `.task-o-matic/` directory
-- **Data Organization**: Logical separation of tasks, PRDs, plans, and documentation
-- **Metadata Management**: Rich metadata for all stored objects
-- **Backup Support**: Easy backup and restore capabilities
+**Provider Support Matrix:**
 
-### SURVIVAL SCENARIOS
+| Provider | Configuration | Streaming | Reasoning | Reasoning Format |
+|----------|-------------|-----------|-----------|------------------|
+| openrouter | ✓ | ✓ | ✓ | --ai-reasoning <tokens> |
+| anthropic | ✓ | ✓ | ✗ | N/A |
+| openai | ✓ | ✓ | ✗ | N/A |
+| custom | ✓ | ✓ | ✗ | N/A |
 
-#### Scenario 1: New Project Setup
+**Multi-AI Parallel Execution:**
+
+Multiple commands support parallel execution with multiple AI models:
+
+- `tasks split --ai "model1,model2,model3"`
+- `prd create --ai "model1,model2" --combine-ai model3`
+- `prd parse --ai "model1,model2" --combine-ai model3`
+- `benchmark run --models "model1,model2"`
+
+This enables competitive AI model testing and combination of results for optimal outputs.
+
+**Command Grouping:**
+
+Commands are organized hierarchically:
+
 ```bash
-# Initialize new project with AI assistance
-task-o-matic init init \
-  --project-name "wasteland-shelter" \
-  --ai-provider anthropic \
-  --ai-model claude-3.5-sonnet
-
-# Run complete workflow
-task-o-matic workflow \
-  --project-name "Wasteland Shelter" \
-  --init-method ai \
-  --project-description "Emergency shelter management system" \
-  --auto-accept
+task-o-matic init          # Initialization subcommands
+task-o-matic tasks         # Task management subcommands
+task-o-matic prd           # PRD management subcommands
+task-o-matic workflow       # End-to-end workflow
+task-o-matic config        # Configuration subcommands
+task-o-matic benchmark     # Benchmarking subcommands
+task-o-matic detect        # Stack detection
+task-o-matic continue       # Project continuation
+task-o-matic prompt        # Prompt building
+task-o-matic install       # Documentation installation
 ```
-
-#### Scenario 2: Task Management Operations
-```bash
-# Create enhanced task
-task-o-matic tasks create \
-  --title "Build radiation detector" \
-  --content "Design and implement a radiation detection system" \
-  --ai-enhance \
-  --stream
-
-# Split complex task
-task-o-matic tasks split \
-  --task-id task-123 \
-  --stream \
-  --tools
-
-# Execute task with planning
-task-o-matic tasks execute \
-  --id task-123 \
-  --plan \
-  --review \
-  --auto-commit
-```
-
-#### Scenario 3: PRD Management
-```bash
-# Generate PRD with multiple models
-task-o-matic prd create "Emergency communication system" \
-  --ai "anthropic:claude-3.5-sonnet,openai:gpt-4,google:gemini-pro" \
-  --combine-ai anthropic:claude-3.5-sonnet
-
-# Parse PRD into tasks
-task-o-matic prd parse \
-  --file ./emergency-communication-prd.md \
-  --tools \
-  --stream
-
-# Refine PRD with questions
-task-o-matic prd refine \
-  --file ./draft-prd.md \
-  --stream
-```
-
-#### Scenario 4: Performance Optimization
-```bash
-# Benchmark AI models for task creation
-task-o-matic benchmark run task-create \
-  --models "openrouter:anthropic/claude-3.5-sonnet,openrouter:openai/gpt-4o" \
-  --title "Create user authentication" \
-  --content "Implement JWT-based authentication" \
-  --concurrency 3
-
-# Benchmark complete workflow
-task-o-matic benchmark workflow \
-  --models "anthropic:claude-3.5-sonnet,openai:gpt-4" \
-  --project-name "Performance Test" \
-  --init-method quick \
-  --auto-accept
-```
-
-#### Scenario 5: Advanced Prompt Engineering
-```bash
-# Build custom prompt with full context
-task-o-matic prompt task-enhancement \
-  --task-title "Optimize database queries" \
-  --full-context \
-  --var FOCUS="performance" \
-  --var DATABASE="postgresql" \
-  --executor claude
-
-# List and analyze available prompts
-task-o-matic prompt --list
-
-# Get prompt metadata for customization
-task-o-matic prompt --metadata prd-parsing --type system
-```
-
-### TECHNICAL SPECIFICATIONS
-
-#### System Architecture
-- **Command Pattern**: Each command implements the Command pattern with standardized interfaces
-- **Service Layer**: Business logic separated from CLI interface
-- **Configuration Management**: Hierarchical configuration with environment variable support
-- **Error Handling**: Comprehensive error system with error codes and recovery suggestions
-- **Plugin Architecture**: Extensible system for adding new commands and providers
-
-#### Performance Characteristics
-- **Command Execution**: 10-100ms for simple commands, 1-60s for AI operations
-- **Memory Usage**: 50-500MB depending on operation complexity
-- **Disk I/O**: Local file operations, optimized for SSD storage
-- **Network Usage**: AI API calls, typically 1-10MB per operation
-
-#### Security Considerations
-- **API Key Management**: Secure storage with environment variable support
-- **Input Validation**: Comprehensive validation of all user inputs
-- **Path Traversal Prevention**: Secure file access controls
-- **Dependency Security**: Regular security updates for all dependencies
-
-**Remember:** In the post-deadline wasteland, these main commands are your survival tools. Master them, respect their power, and they will guide you through the most complex project challenges. The wasteland is unforgiving, but with Task-O-Matic, you have the technology to thrive.
 
 ---
 
-**DOCUMENT STATUS:** `Complete`  
-**NEXT REVIEW:** `After next major version update`  
-**CONTACT:** `Task-O-Matic Technical Documentation Team`
+**END OF TECHNICAL BULLETIN**
+
+_This document is classified MANDATORY READING for all developer-citizens. Unauthorized failure to follow these protocols may result in... suboptimal project outcomes._
+
+---
+
+**DOCUMENT CONTROL:**
+
+- **Version:** 2.0
+- **Clearance:** All Personnel
+- **Classification:** For Citizens' Eyes Only
+- **Last Updated:** Current codebase revision
+
+[Stay organized. Stay safe. Survive.]

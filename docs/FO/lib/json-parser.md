@@ -2,35 +2,42 @@
 ## TECHNICAL BULLETIN NO. 005
 ### JSON PARSER - DATA EXTRACTION SURVIVAL SYSTEM
 
-**DOCUMENT ID:** `task-o-matic-json-parser-v1`  
-**CLEARANCE:** `All Personnel`  
+**DOCUMENT ID:** `task-o-matic-json-parser-v2`
+**CLEARANCE:** `All Personnel`
 **MANDATORY COMPLIANCE:** `Yes`
 
 ### ⚠️ CRITICAL SURVIVAL NOTICE
-Citizen, JSON Parser is your lifeline for extracting structured data from AI responses in the chaotic wasteland of unstructured text. Without mastering this extraction system, you're drowning in a sea of malformed JSON and parsing errors.
+Citizen, JSON Parser is your lifeline for extracting structured data from AI responses in chaotic wasteland of unstructured text. Without mastering this extraction system, you're drowning in a sea of malformed JSON and parsing errors.
+
+**This documentation has been updated to reflect the ACTUAL source code reality. Pay attention - the wasteland doesn't forgive those who work with outdated manuals.**
+
+---
 
 ### SYSTEM ARCHITECTURE OVERVIEW
 
-JSON Parser provides robust extraction and normalization of JSON data from AI text responses that may contain markdown formatting, code blocks, or other text artifacts. It implements multiple extraction strategies and intelligent key normalization.
+JSON Parser provides robust extraction and normalization of JSON data from AI text responses that may contain markdown formatting, code blocks, comments, or other text artifacts. It implements multiple extraction strategies including a sophisticated stack-based approach for nested structures.
 
 **Core Design Principles:**
 - **Multi-Strategy Extraction**: Multiple approaches to find JSON in text
-- **Format Agnostic**: Handles markdown codeblocks, direct JSON, and mixed formats
+- **Stack-Based Parsing**: Robust extraction for nested structures
+- **Comment Removal**: Handles "valid JS object" format with comments
+- **Trailing Comma Cleanup**: Removes trailing commas before parsing
 - **Key Normalization**: Case-insensitive property name handling
-- **Error Resilience**: Graceful handling of malformed or missing JSON
-- **Recursive Processing**: Deep normalization of nested objects and arrays
 
 **Extraction Strategies**:
 1. **Markdown Codeblocks**: Extract from ```json, ```JSON, or generic ``` blocks
-2. **Direct Object Matching**: Find JSON objects using regex patterns
-3. **Direct Array Matching**: Find JSON arrays using regex patterns
+2. **Stack-Based Extraction**: Finds balanced JSON objects/arrays using stack algorithm
+3. **JSON Cleaning**: Removes comments and trailing commas
 4. **Validation**: Verify extracted content starts with { or [
+5. **Fallback**: Returns null if extraction fails
+
+---
 
 ### COMPLETE API DOCUMENTATION
 
 #### Class: JSONParser
 
-**Purpose**: Extract and normalize JSON from AI text responses with multiple fallback strategies.
+**Purpose**: Extract and normalize JSON from AI text responses with multiple fallback strategies including robust stack-based extraction.
 
 **Constructor**: No explicit constructor required. Stateless utility class.
 
@@ -38,7 +45,7 @@ JSON Parser provides robust extraction and normalization of JSON data from AI te
 
 #### Method: extractJSONString()
 
-**Purpose**: Extract JSON string from text that may contain markdown codeblocks or other formatting.
+**Purpose**: Extract JSON string from text using stack-based approach with markdown codeblock fallback.
 
 **Signature**:
 ```typescript
@@ -62,17 +69,17 @@ const codeblockPatterns = [
 ];
 ```
 
-**Strategy 2: Direct JSON Matching**
-```typescript
-const directPatterns = [
-  /\{[\s\S]*\}/,    // JSON object
-  /\[[\s\S]*\]/     // JSON array
-];
-```
+**Strategy 2: Stack-Based Extraction**
+- Scans text for all potential start indices `{` or `[`
+- For each candidate, attempts to extract balanced structure using `extractBalancedString()`
+- Validates extracted JSON by attempting to parse it
+- If parse fails, attempts cleaning with `cleanJSON()` (removes comments/trailing commas)
+- Returns first valid JSON found
 
 **Validation Logic**:
 - Verify extracted content starts with `{` or `[`
-- Trim whitespace from extracted content
+- Try parsing with `JSON.parse()`
+- If parsing fails, attempt cleaning and retry
 - Return first valid match found
 
 **Examples**:
@@ -108,60 +115,219 @@ console.log(jsonStr);
 // }
 ```
 
-**Generic Codeblock Extraction**:
+**Complex Nested Structure (Stack-Based)**:
 ```typescript
 const text = `
-Response data:
-\`\`\`
+The result is:
 {
-  "summary": "PRD parsed successfully",
-  "confidence": 0.8
+  "project": {
+    "name": "MyApp",
+    "features": {
+      "auth": true,
+      "api": [
+        {"endpoint": "/users", "method": "GET"},
+        {"endpoint": "/posts", "method": "GET"}
+      ]
+    }
+  }
+}
+`;
+
+const jsonStr = parser.extractJSONString(text);
+console.log(jsonStr);
+// Output: Correctly extracts the entire nested structure
+```
+
+**JSON with Comments**:
+```typescript
+const text = `
+\`\`\`json
+{
+  // User configuration
+  "users": [
+    {
+      "name": "Alice",  // Admin user
+      "role": "admin",
+    },  // Trailing comma - valid in JS
+    {
+      "name": "Bob",
+      "role": "user",
+    }
+  ],
 }
 \`\`\`
 `;
 
 const jsonStr = parser.extractJSONString(text);
-console.log(jsonStr);
 // Output: {
-//   "summary": "PRD parsed successfully", 
-//   "confidence": 0.8
+//   "users": [
+//     {"name": "Alice", "role": "admin"},
+//     {"name": "Bob", "role": "user"}
+//   ]
+// }
+// Note: Comments and trailing commas removed automatically
+```
+
+---
+
+#### Method: extractBalancedString()
+
+**Purpose**: Extract a balanced JSON string (object or array) starting from a specific index.
+
+**Signature**:
+```typescript
+private extractBalancedString(
+  text: string,
+  startIndex: number,
+  startChar: string
+): string | null
+```
+
+**Parameters**:
+- `text` (string, required): Full text to search within
+- `startIndex` (number, required): Starting index for extraction
+- `startChar` (string, required): Opening character (`{` or `[`)
+
+**Return Value**:
+- `string | null`: Extracted balanced string or null if balance never achieved
+
+**Balancing Algorithm**:
+1. **Initialize**: Set balance counter to 0, track string/escape status
+2. **Iterate**: Process each character starting from startIndex
+3. **Escape Handling**: Track backslash-escaped characters
+4. **String Handling**: Track when inside quoted strings (ignore braces/brackets in strings)
+5. **Balance Counting**: Increment balance on startChar, decrement on matching endChar
+6. **Return**: When balance reaches 0, return substring from startIndex
+
+**Edge Cases Handled**:
+- **Nested Strings**: Braces inside string literals are ignored
+- **Escaped Quotes**: Backslash-escaped quotes in strings are handled correctly
+- **Nested Structures**: Deep nesting is fully supported
+
+**Examples**:
+
+**Basic Object Extraction**:
+```typescript
+const text = 'text before {"key": "value"} text after';
+const result = parser.extractBalancedString(text, 11, "{");
+console.log(result);
+// Output: {"key": "value"}
+```
+
+**Nested Structure Extraction**:
+```typescript
+const text = `
+{
+  "outer": {
+    "inner": [
+      {"a": 1},
+      {"b": 2}
+    ]
+  }
+}
+`;
+
+const result = parser.extractBalancedString(text, 0, "{");
+console.log(result);
+// Output: Full nested object structure with inner arrays
+```
+
+**String Handling**:
+```typescript
+const text = '{"key": "value with {braces} inside"}';
+const result = parser.extractBalancedString(text, 0, "{");
+console.log(result);
+// Output: {"key": "value with {braces} inside"}
+// Note: Braces inside string are correctly ignored
+```
+
+---
+
+#### Method: cleanJSON()
+
+**Purpose**: Clean JSON string by removing comments and trailing commas.
+
+**Signature**:
+```typescript
+private cleanJSON(text: string): string
+```
+
+**Parameters**:
+- `text` (string, required): JSON string to clean
+
+**Return Value**:
+- `string`: Cleaned JSON string
+
+**Cleaning Operations**:
+
+**Remove Comments**:
+```typescript
+// Block comments: /* ... */
+text.replace(/\/\*[\s\S]*?\*\//g, "")
+
+// Line comments: // ...
+text.replace(/\/\/.*/g, "")
+```
+
+**Remove Trailing Commas**:
+```typescript
+// Trailing comma before } or ]
+text.replace(/,(\s*[}\]])/g, "$1")
+```
+
+**Examples**:
+
+**Remove Block Comments**:
+```typescript
+const dirtyJSON = `{
+  /* This is a block comment */
+  "key": "value",
+  /* Another comment */
+  "key2": "value2"
+}`;
+
+const cleaned = parser.cleanJSON(dirtyJSON);
+console.log(cleaned);
+// Output: {
+//   "key": "value",
+//   "key2": "value2"
 // }
 ```
 
-**Direct JSON Extraction**:
+**Remove Line Comments**:
 ```typescript
-const text = `
-The result is {"status": "success", "data": [1, 2, 3]} and here's more text.
-`;
+const dirtyJSON = `{
+  "key": "value",  // This is a line comment
+  "key2": "value2"  // Another comment
+}`;
 
-const jsonStr = parser.extractJSONString(text);
-console.log(jsonStr);
-// Output: {"status": "success", "data": [1, 2, 3]}
+const cleaned = parser.cleanJSON(dirtyJSON);
+console.log(cleaned);
+// Output: {
+//   "key": "value",
+//   "key2": "value2"
+// }
 ```
 
-**Array Extraction**:
+**Remove Trailing Commas**:
 ```typescript
-const text = `
-Tasks: [
-  {"title": "Task 1", "priority": "high"},
-  {"title": "Task 2", "priority": "medium"}
-]
-`;
+const dirtyJSON = `{
+  "items": [
+    {"id": 1},
+    {"id": 2},
+    {"id": 3},  // Trailing comma
+  ],
+}`;
 
-const jsonStr = parser.extractJSONString(text);
-console.log(jsonStr);
-// Output: [
-//   {"title": "Task 1", "priority": "high"},
-//   {"title": "Task 2", "priority": "medium"}
-// ]
-```
-
-**No JSON Found**:
-```typescript
-const text = "Sorry, I couldn't generate any JSON data for this request.";
-const jsonStr = parser.extractJSONString(text);
-console.log(jsonStr);
-// Output: null
+const cleaned = parser.cleanJSON(dirtyJSON);
+console.log(cleaned);
+// Output: {
+//   "items": [
+//     {"id": 1},
+//     {"id": 2},
+//     {"id": 3}
+//   ]
+// }
 ```
 
 ---
@@ -196,8 +362,6 @@ const normalizedKey = key.charAt(0).toLowerCase() + key.slice(1);
 
 **Basic Key Normalization**:
 ```typescript
-const parser = new JSONParser();
-
 const input = {
   "Title": "Build user interface",
   "Description": "Create React components",
@@ -212,7 +376,7 @@ const normalized = parser.normalizeKeys(input);
 console.log(normalized);
 // Output: {
 //   "title": "Build user interface",
-//   "description": "Create React components", 
+//   "description": "Create React components",
 //   "status": "todo",
 //   "tasks": [
 //     {"title": "Component A"},
@@ -250,7 +414,7 @@ console.log(normalized);
 //     },
 //     "features": [
 //       {
-//         "name": "Authentication", 
+//         "name": "Authentication",
 //         "enabled": true
 //       }
 //     ]
@@ -258,52 +422,11 @@ console.log(normalized);
 // }
 ```
 
-**Array Normalization**:
-```typescript
-const input = [
-  {
-    "ID": 1,
-    "Name": "Item 1"
-  },
-  {
-    "ID": 2, 
-    "Name": "Item 2"
-  }
-];
-
-const normalized = parser.normalizeKeys(input);
-console.log(normalized);
-// Output: [
-//   {
-//     "iD": 1,
-//     "name": "Item 1"
-//   },
-//   {
-//     "iD": 2,
-//     "name": "Item 2"
-//   }
-// ]
-```
-
-**Primitive Handling**:
-```typescript
-const primitives = [
-  "string",
-  123,
-  true,
-  null
-];
-
-const normalized = parser.normalizeKeys(primitives);
-console.log(normalized);
-// Output: ["string", 123, true, null] (unchanged)
-```
-
 ---
 
 #### Method: parseJSONFromResponse()
 
-**Purpose**: Parse JSON from AI text response with improved error handling and multiple extraction strategies.
+**Purpose**: Parse JSON from AI text response with improved error handling, stack-based extraction, comment removal, and key normalization.
 
 **Signature**:
 ```typescript
@@ -324,7 +447,7 @@ JSONParseResult<T> {
 ```
 
 **Processing Pipeline**:
-1. **Extraction Attempt**: Try to extract JSON string using multiple strategies
+1. **Extraction Attempt**: Try to extract JSON string using multiple strategies (markdown first, then stack-based)
 2. **Validation**: Verify JSON string was found
 3. **Parsing**: Attempt JSON.parse() on extracted string
 4. **Normalization**: Apply key normalization to parsed object
@@ -353,7 +476,7 @@ Here's your task breakdown:
       "effort": "2 hours"
     },
     {
-      "title": "Implement core functionality", 
+      "title": "Implement core functionality",
       "description": "Build main features",
       "effort": "8 hours"
     }
@@ -370,7 +493,7 @@ console.log(result);
 //     subtasks: [
 //       {
 //         title: "Set up development environment",
-//         description: "Install dependencies and configure tools", 
+//         description: "Install dependencies and configure tools",
 //         effort: "2 hours"
 //       },
 //       {
@@ -513,15 +636,17 @@ console.log(result.data);
 // }
 ```
 
+---
+
 ### INTEGRATION PROTOCOLS
 
 #### Extraction Strategy Protocol
 JSON extraction follows this priority:
-1. **Markdown JSON Blocks**: ```json or ```JSON codeblocks
+1. **Markdown JSON Blocks**: ```json or ```JSON codeblocks (first attempt)
 2. **Markdown Generic Blocks**: ``` codeblocks (no language specified)
-3. **Direct Object**: Regex match for { ... } patterns
-4. **Direct Array**: Regex match for [ ... ] patterns
-5. **Failure**: Return null if no patterns match
+3. **Stack-Based Extraction**: Find all `{` and `[` candidates, extract balanced structures
+4. **Cleaning**: Try removing comments and trailing commas
+5. **Failure**: Return null if no valid JSON found
 
 #### Normalization Protocol
 Key normalization follows these rules:
@@ -544,41 +669,37 @@ Error processing follows this pattern:
 ```typescript
 class AIResponseProcessor {
   private jsonParser = new JSONParser();
-  
+
   processTaskBreakdown(response: string): TaskBreakdown | null {
     const result = this.jsonParser.parseJSONFromResponse<TaskBreakdown>(response);
-    
+
     if (!result.success) {
       console.error("Failed to parse AI response:", result.error);
       console.debug("Raw response:", result.rawText);
       return null;
     }
-    
+
     return result.data || null;
   }
-  
+
   processPRDParse(response: string): PRDResult | null {
     const result = this.jsonParser.parseJSONFromResponse<PRDResult>(response);
-    
+
     if (!result.success) {
       // Try alternative parsing for malformed responses
       const fallback = this.tryAlternativeParsing(response);
       return fallback;
     }
-    
+
     return result.data || null;
   }
-  
+
   private tryAlternativeParsing(response: string): PRDResult | null {
     // Handle cases where AI returns malformed but fixable JSON
     try {
-      // Try common fixes
-      const fixed = response
-        .replace(/,\s*}/g, '}')  // Remove trailing commas
-        .replace(/,\s*]/g, ']')  // Remove trailing commas in arrays
-        .replace(/'/g, '"');        // Replace single quotes
-      
-      const result = this.jsonParser.parseJSONFromResponse<PRDResult>(fixed);
+      // The new implementation already tries cleaning automatically
+      // This fallback is for other edge cases
+      const result = this.jsonParser.parseJSONFromResponse<PRDResult>(response);
       return result.success ? result.data || null : null;
     } catch {
       return null;
@@ -591,9 +712,9 @@ class AIResponseProcessor {
 ```typescript
 class UniversalResponseParser {
   private jsonParser = new JSONParser();
-  
+
   parseAnyResponse(response: string): ParsedResult {
-    // Try JSON parsing first
+    // Try JSON parsing first (now with robust stack-based extraction)
     const jsonResult = this.jsonParser.parseJSONFromResponse(response);
     if (jsonResult.success) {
       return {
@@ -602,7 +723,7 @@ class UniversalResponseParser {
         raw: response
       };
     }
-    
+
     // Try YAML parsing (if implemented)
     const yamlResult = this.tryYamlParsing(response);
     if (yamlResult.success) {
@@ -612,7 +733,7 @@ class UniversalResponseParser {
         raw: response
       };
     }
-    
+
     // Try plain text extraction
     const textResult = this.extractPlainText(response);
     return {
@@ -621,21 +742,21 @@ class UniversalResponseParser {
       raw: response
     };
   }
-  
+
   private extractPlainText(response: string): { title?: string; content?: string } {
     // Extract structured info from unstructured text
     const lines = response.split('\n').filter(line => line.trim());
-    
-    const title = lines.find(line => 
-      line.toLowerCase().includes('title:') || 
+
+    const title = lines.find(line =>
+      line.toLowerCase().includes('title:') ||
       line.toLowerCase().includes('summary:')
     );
-    
-    const content = lines.filter(line => 
-      !line.toLowerCase().includes('title:') && 
+
+    const content = lines.filter(line =>
+      !line.toLowerCase().includes('title:') &&
       !line.toLowerCase().includes('summary:')
     ).join('\n');
-    
+
     return {
       title: title?.split(':')[1]?.trim(),
       content: content.trim() || undefined
@@ -648,10 +769,10 @@ class UniversalResponseParser {
 ```typescript
 class RobustJSONParser {
   private jsonParser = new JSONParser();
-  
+
   parseWithValidation<T>(response: string, schema?: ValidationSchema<T>): ValidationResult<T> {
     const parseResult = this.jsonParser.parseJSONFromResponse<T>(response);
-    
+
     if (!parseResult.success) {
       return {
         success: false,
@@ -660,9 +781,9 @@ class RobustJSONParser {
         data: undefined
       };
     }
-    
+
     const data = parseResult.data!;
-    
+
     // Validate against schema if provided
     if (schema) {
       const validation = this.validateAgainstSchema(data, schema);
@@ -675,7 +796,7 @@ class RobustJSONParser {
         };
       }
     }
-    
+
     // Additional business logic validation
     const businessValidation = this.validateBusinessRules(data);
     if (!businessValidation.valid) {
@@ -686,54 +807,54 @@ class RobustJSONParser {
         data: undefined
       };
     }
-    
+
     return {
       success: true,
       data,
       raw: response
     };
   }
-  
+
   private validateAgainstSchema<T>(data: T, schema: ValidationSchema<T>): ValidationResult {
     // Implement schema validation logic
     const errors: string[] = [];
-    
+
     for (const [key, rules] of Object.entries(schema)) {
       const value = (data as any)[key];
-      
+
       if (rules.required && (value === undefined || value === null)) {
         errors.push(`${key} is required`);
       }
-      
+
       if (rules.type && typeof value !== rules.type) {
         errors.push(`${key} must be of type ${rules.type}`);
       }
-      
+
       if (rules.validator && !rules.validator(value)) {
         errors.push(`${key} failed custom validation`);
       }
     }
-    
+
     return {
       valid: errors.length === 0,
       errors
     };
   }
-  
+
   private validateBusinessRules<T>(data: T): ValidationResult {
     // Implement business-specific validation
     const errors: string[] = [];
-    
+
     // Example: Check if arrays have required structure
     if ((data as any).tasks && !Array.isArray((data as any).tasks)) {
       errors.push('tasks must be an array');
     }
-    
+
     // Example: Check for required fields in nested objects
     if ((data as any).project && !(data as any).project.name) {
       errors.push('project.name is required');
     }
-    
+
     return {
       valid: errors.length === 0,
       errors
@@ -752,65 +873,65 @@ class MonitoredJSONParser {
     failedParses: 0,
     extractionStrategies: {
       markdown: 0,
-      direct: 0,
+      stackBased: 0,
       failed: 0
     }
   };
-  
+
   parseWithMetrics<T>(response: string): ParseResult<T> {
     this.metrics.totalParseAttempts++;
-    
+
     const startTime = Date.now();
     const result = this.jsonParser.parseJSONFromResponse<T>(response);
     const duration = Date.now() - startTime;
-    
+
     if (result.success) {
       this.metrics.successfulParses++;
-      
+
       // Track which extraction strategy worked
       if (response.includes('```json') || response.includes('```JSON')) {
         this.metrics.extractionStrategies.markdown++;
       } else if (response.includes('{') || response.includes('[')) {
-        this.metrics.extractionStrategies.direct++;
+        this.metrics.extractionStrategies.stackBased++;
       }
     } else {
       this.metrics.failedParses++;
       this.metrics.extractionStrategies.failed++;
     }
-    
+
     // Log performance metrics
     console.log(`Parse attempt ${this.metrics.totalParseAttempts}:`, {
       success: result.success,
       duration: `${duration}ms`,
-      strategy: result.success ? 
-        (response.includes('```') ? 'markdown' : 'direct') : 'failed'
+      strategy: result.success ?
+        (response.includes('```') ? 'markdown' : 'stackBased') : 'failed'
     });
-    
+
     return {
       ...result,
       metrics: {
         attempt: this.metrics.totalParseAttempts,
         duration,
-        strategy: result.success ? 
-          (response.includes('```') ? 'markdown' : 'direct') : 'failed'
+        strategy: result.success ?
+          (response.includes('```') ? 'markdown' : 'stackBased') : 'failed'
       }
     };
   }
-  
+
   getMetrics() {
     const successRate = (this.metrics.successfulParses / this.metrics.totalParseAttempts) * 100;
-    
+
     return {
       ...this.metrics,
       successRate: `${successRate.toFixed(2)}%`,
       extractionStrategyDistribution: {
         markdown: `${(this.metrics.extractionStrategies.markdown / this.metrics.totalParseAttempts * 100).toFixed(2)}%`,
-        direct: `${(this.metrics.extractionStrategies.direct / this.metrics.totalParseAttempts * 100).toFixed(2)}%`,
+        stackBased: `${(this.metrics.extractionStrategies.stackBased / this.metrics.totalParseAttempts * 100).toFixed(2)}%`,
         failed: `${(this.metrics.extractionStrategies.failed / this.metrics.totalParseAttempts * 100).toFixed(2)}%`
       }
     };
   }
-  
+
   resetMetrics() {
     this.metrics = {
       totalParseAttempts: 0,
@@ -818,7 +939,7 @@ class MonitoredJSONParser {
       failedParses: 0,
       extractionStrategies: {
         markdown: 0,
-        direct: 0,
+        stackBased: 0,
         failed: 0
       }
     };
@@ -826,33 +947,40 @@ class MonitoredJSONParser {
 }
 ```
 
+---
+
 ### TECHNICAL SPECIFICATIONS
 
 #### Performance Characteristics
-- **Extraction Speed**: O(n) linear text scanning
+- **Extraction Speed**: O(n²) for stack-based extraction (worst case: all candidates), O(n) for markdown extraction
 - **Memory Usage**: Minimal temporary string allocations
 - **Regex Efficiency**: Optimized patterns for common cases
 - **Recursive Depth**: Handles deeply nested structures
 
 #### Reliability Features
-- **Multiple Strategies**: Fallback extraction methods
+- **Multiple Strategies**: Fallback extraction methods (markdown + stack-based)
+- **Comment Removal**: Handles "valid JS object" format with comments
+- **Trailing Comma Cleanup**: Removes trailing commas before parsing
 - **Case Insensitivity**: Robust key normalization
 - **Error Preservation**: Original error messages maintained
-- **Type Safety**: Generic TypeScript support
 
 #### Limitations and Considerations
-- **Malformed JSON**: Cannot fix fundamentally broken JSON structure
-- **Multiple JSON Objects**: Extracts first valid match only
+- **Malformed JSON**: Cannot fix fundamentally broken JSON structure (mismatched braces/brackets)
+- **Multiple JSON Objects**: Extracts first valid match only (by design)
 - **Binary Data**: Not designed for binary or non-text content
-- **Performance**: Large texts may require processing optimization
+- **Performance**: Large texts may require optimization for candidate scanning
 
 #### Security Considerations
-- **Code Injection**: JSON parsing prevents code execution
+- **Code Injection**: JSON parsing prevents code execution (standard JSON.parse)
 - **Memory Safety**: No eval() or unsafe parsing
 - **Input Validation**: All inputs validated before processing
 - **Error Sanitization**: Error messages preserved as-is
 
-**Remember:** Citizen, JSON Parser is your metal detector in the minefield of AI responses. Without it, you're stepping on explosive parsing errors that will destroy your data processing pipeline. Master these extraction techniques, or watch your system collapse under the weight of malformed responses.
+---
+
+**Remember:** Citizen, JSON Parser is your metal detector in minefield of AI responses. The new stack-based extraction provides robust parsing even for deeply nested structures, while automatic comment and trailing comma cleanup handles "valid JS object" formats. Master these extraction techniques, or watch your system collapse under weight of malformed responses.
+
+This documentation reflects the ACTUAL source code with stack-based extraction, comment removal, and trailing comma cleanup features. Version discrepancies indicate you're working from outdated information. Stay vigilant, stay updated.
 
 ---
 

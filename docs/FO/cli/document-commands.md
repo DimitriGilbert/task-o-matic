@@ -2,17 +2,20 @@
 ## TECHNICAL BULLETIN NO. 004
 ### DOCUMENT COMMANDS - KNOWLEDGE MANAGEMENT FIELD OPERATIONS
 
-**DOCUMENT ID:** `task-o-matic-cli-document-commands-v1`  
-**CLEARANCE:** `All Personnel`  
+**DOCUMENT ID:** `task-o-matic-cli-document-commands-v1`
+**CLEARANCE:** `All Personnel`
 **MANDATORY COMPLIANCE:** `Yes`
 
 ### ⚠️ CRITICAL SURVIVAL NOTICE
+
 Citizen, documentation commands are your library in the post-deadline wasteland. Without proper knowledge management, you're reinventing wheels in the dark. These commands provide AI-powered documentation research, analysis, and integration that gives you the wisdom of survivors who came before.
 
 ### COMMAND ARCHITECTURE OVERVIEW
+
 The document command group represents the knowledge management layer of Task-O-Matic. It bridges the gap between implementation tasks and relevant documentation through AI-powered research, analysis, and caching. The architecture supports automatic documentation detection, Context7 integration, and task-specific knowledge enhancement.
 
 **Knowledge Management Components:**
+
 - **AI-Powered Research**: Automatic documentation discovery and retrieval
 - **Context7 Integration**: MCP-based documentation access from multiple sources
 - **Task-Specific Enhancement**: Documentation tailored to individual task requirements
@@ -22,32 +25,39 @@ The document command group represents the knowledge management layer of Task-O-M
 ### COMPLETE DOCUMENT COMMAND DOCUMENTATION
 
 ## DOCUMENT COMMAND (ANALYZE)
+
 **Command:** `task-o-matic tasks document`
 
+Analyze and fetch documentation for a task using AI with Context7 integration.
+
 ### COMMAND SIGNATURE
+
 ```bash
 task-o-matic tasks document --task-id <id> [options]
 ```
 
 ### REQUIRED OPTIONS
+
 ```bash
 --task-id <id>              # Task ID to document (required)
 ```
 
 ### OPTIONAL OPTIONS
+
 ```bash
 --force                      # Force refresh documentation even if recent
 --stream                     # Show streaming AI output during analysis
---ai-provider <provider>       # AI provider override
+--ai-provider <provider>      # AI provider override
 --ai-model <model>           # AI model override
 --ai-key <key>               # AI API key override
---ai-provider-url <url>       # AI provider URL override
---reasoning <tokens>          # Enable reasoning for OpenRouter models (max reasoning tokens)
+--ai-provider-url <url>      # AI provider URL override
+--reasoning <tokens>         # Enable reasoning for OpenRouter models (max reasoning tokens)
 ```
 
 ### DOCUMENT ANALYZE EXAMPLES
 
 #### Basic Documentation Analysis
+
 ```bash
 # Analyze task documentation
 task-o-matic tasks document --task-id task-123
@@ -60,6 +70,7 @@ task-o-matic tasks document --task-id task-123 --stream
 ```
 
 #### AI-Enhanced Documentation Analysis
+
 ```bash
 # Analyze with custom AI provider
 task-o-matic tasks document \
@@ -83,6 +94,7 @@ task-o-matic tasks document \
 ```
 
 #### Advanced Documentation Scenarios
+
 ```bash
 # Force refresh stale documentation
 task-o-matic tasks document \
@@ -108,6 +120,7 @@ task-o-matic tasks document \
 ```
 
 ### DOCUMENTATION ANALYSIS PROCESS
+
 1. **Task Context Gathering**: Collect task details, project structure, and related tasks
 2. **Documentation Detection**: Identify relevant libraries, frameworks, and technologies
 3. **Context7 Query**: Search for documentation using MCP tools
@@ -116,6 +129,7 @@ task-o-matic tasks document \
 6. **Knowledge Integration**: Link documentation to task for future reference
 
 ### DOCUMENTATION OUTPUT FORMAT
+
 - **Task Context**: Current task details and project structure
 - **Research Summary**: AI-generated overview of findings
 - **Library Information**: Relevant libraries and frameworks with details
@@ -124,13 +138,14 @@ task-o-matic tasks document \
 - **Confidence Scores**: AI confidence in documentation relevance
 
 ### ERROR CONDITIONS
+
 ```bash
 # Task not found
 Error: Task not found: invalid-task-id
 Solution: Verify task ID with 'task-o-matic tasks list'
 
 # Documentation already fresh
-Warning: Documentation is fresh (2 days old)
+✓ Documentation is fresh (2 days old)
 Solution: Use --force to refresh or skip if current is sufficient
 
 # AI analysis failure
@@ -142,15 +157,22 @@ Error: Failed to retrieve documentation from Context7
 Solution: Check Context7 API key and network access
 ```
 
+---
+
 ## GET-DOCUMENTATION COMMAND
+
 **Command:** `task-o-matic tasks get-documentation`
 
+Get existing documentation for a task.
+
 ### COMMAND SIGNATURE
+
 ```bash
 task-o-matic tasks get-documentation --id <id>
 ```
 
 ### REQUIRED OPTIONS
+
 ```bash
 --id <id>                   # Task ID (required)
 ```
@@ -158,6 +180,7 @@ task-o-matic tasks get-documentation --id <id>
 ### GET-DOCUMENTATION EXAMPLES
 
 #### Basic Documentation Retrieval
+
 ```bash
 # Get documentation for task
 task-o-matic tasks get-documentation --id task-123
@@ -170,6 +193,7 @@ task-o-matic tasks get-documentation --id task-shelter-system
 ```
 
 #### Documentation Review Examples
+
 ```bash
 # Review documentation before execution
 task-o-matic tasks get-documentation --id task-123
@@ -185,6 +209,7 @@ task-o-matic tasks plan --id task-database-design
 ```
 
 #### Documentation Analysis Examples
+
 ```bash
 # Check documentation freshness
 task-o-matic tasks get-documentation --id task-123
@@ -197,54 +222,60 @@ task-o-matic tasks get-documentation --id task-api-integration
 ```
 
 ### DOCUMENTATION DISPLAY FORMAT
+
 - **Task Information**: Task title, ID, and current status
-- **File Location**: Path to stored documentation file
-- **Content Preview**: First 200 characters of documentation content
+- **File Location**: Path to stored documentation file (`.task-o-matic/docs/tasks/{id}.md`)
+- **Content Preview**: Full documentation content
 - **Metadata**: Creation date, last fetched, sources used
 - **Freshness Info**: Age of documentation and cache status
-- **Related Tasks**: Links to other tasks with similar documentation
 
 ### ERROR CONDITIONS
+
 ```bash
 # Task not found
 Error: Task not found: invalid-task-id
 Solution: Verify task ID exists
 
 # Documentation not found
-Warning: No documentation found for task task-123
+⚠️  No documentation found for task task-123
 Solution: Run 'task-o-matic tasks document' to create documentation
 
 # File access error
 Error: Cannot read documentation file
 Solution: Check file permissions and disk space
-
-# Invalid documentation format
-Error: Documentation file corrupted or invalid format
-Solution: Re-run documentation analysis
 ```
 
+---
+
 ## ADD-DOCUMENTATION COMMAND
+
 **Command:** `task-o-matic tasks add-documentation`
 
+Add documentation to a task from a file.
+
 ### COMMAND SIGNATURE
+
 ```bash
 task-o-matic tasks add-documentation --id <id> --doc-file <path> [options]
 ```
 
 ### REQUIRED OPTIONS
+
 ```bash
 -i, --id <id>               # Task ID (required)
 -f, --doc-file <path>        # Path to documentation file (required)
 ```
 
 ### OPTIONAL OPTIONS
+
 ```bash
--o, --overwrite               # Overwrite existing documentation
+-o, --overwrite              # Overwrite existing documentation
 ```
 
 ### ADD-DOCUMENTATION EXAMPLES
 
 #### Basic Documentation Addition
+
 ```bash
 # Add documentation from file
 task-o-matic tasks add-documentation \
@@ -264,6 +295,7 @@ task-o-matic tasks add-documentation \
 ```
 
 #### Advanced Documentation Management
+
 ```bash
 # Add comprehensive documentation
 task-o-matic tasks add-documentation \
@@ -283,9 +315,10 @@ task-o-matic tasks add-documentation \
 ```
 
 #### Documentation File Examples
+
 ```bash
 # Create documentation file
-cat > security-research.md << EOF
+cat > security-research.md << 'EOF'
 # Security Analysis for Authentication System
 
 ## Overview
@@ -336,6 +369,7 @@ task-o-matic tasks add-documentation \
 ```
 
 ### DOCUMENTATION VALIDATION
+
 - **File Existence**: Verify documentation file exists and is readable
 - **Task Existence**: Confirm target task exists
 - **Permission Check**: Ensure write access to task documentation directory
@@ -344,6 +378,7 @@ task-o-matic tasks add-documentation \
 - **Overwrite Logic**: Handle existing documentation appropriately
 
 ### ERROR CONDITIONS
+
 ```bash
 # Missing required options
 Error: Missing required arguments: id, doc-file
@@ -358,7 +393,8 @@ Error: Documentation file not found: ./docs.md
 Solution: Verify file path and permissions
 
 # Documentation already exists
-Warning: Documentation already exists for task task-123
+⚠️  Documentation already exists for task task-123
+   Use --overwrite to replace existing documentation
 Solution: Use --overwrite to replace existing documentation
 
 # Permission denied
@@ -369,6 +405,7 @@ Solution: Check file permissions and directory access
 ### DOCUMENTATION FILE FORMATS
 
 #### Markdown Documentation
+
 ```markdown
 # Documentation for Task: [Task Title]
 
@@ -392,6 +429,7 @@ Solution: Check file permissions and directory access
 ```
 
 #### Structured Documentation
+
 ```json
 {
   "task": "task-123",
@@ -427,9 +465,12 @@ Solution: Check file permissions and directory access
 }
 ```
 
+---
+
 ### FIELD OPERATIONS PROTOCOLS
 
 #### DOCUMENTATION LIFECYCLE MANAGEMENT
+
 The document commands implement a complete knowledge management system:
 
 1. **Research Phase**
@@ -457,6 +498,7 @@ The document commands implement a complete knowledge management system:
    - Backup and recovery capabilities
 
 #### AI INTEGRATION PATTERNS
+
 Documentation operations leverage AI through standardized patterns:
 
 - **Context-Aware Research**: Automatic inclusion of project structure and dependencies
@@ -466,6 +508,7 @@ Documentation operations leverage AI through standardized patterns:
 - **Cross-Reference Analysis**: Automatic linking between related documentation items
 
 #### CONTEXT7 MCP INTEGRATION
+
 Documentation commands integrate with Context7 through MCP tools:
 
 - **Library Documentation**: Access to up-to-date library documentation
@@ -475,6 +518,7 @@ Documentation commands integrate with Context7 through MCP tools:
 - **Code Examples**: Real-world implementation examples and patterns
 
 #### STORAGE INTEGRATION
+
 Documentation is stored using an organized approach:
 
 - **Task-Specific Storage**: Documentation linked directly to tasks
@@ -483,9 +527,12 @@ Documentation is stored using an organized approach:
 - **Version Control**: Change tracking and history maintenance
 - **Cross-Reference Index**: Links between related documentation items
 
+---
+
 ### SURVIVAL SCENARIOS
 
 #### SCENARIO 1: Security System Documentation
+
 ```bash
 # Analyze security requirements
 task-o-matic tasks document \
@@ -511,6 +558,7 @@ task-o-matic tasks execute \
 ```
 
 #### SCENARIO 2: API Integration Documentation
+
 ```bash
 # Document API requirements
 task-o-matic tasks document \
@@ -529,6 +577,7 @@ task-o-matic tasks get-documentation --id task-api-integration
 ```
 
 #### SCENARIO 3: Research and Development Tasks
+
 ```bash
 # Document research task
 task-o-matic tasks document \
@@ -552,6 +601,7 @@ task-o-matic tasks document \
 ```
 
 #### SCENARIO 4: Infrastructure and Setup Tasks
+
 ```bash
 # Document infrastructure requirements
 task-o-matic tasks document \
@@ -569,6 +619,7 @@ task-o-matic tasks get-documentation --id task-shelter-infrastructure
 ```
 
 #### SCENARIO 5: Emergency Response Planning
+
 ```bash
 # Document emergency procedures
 task-o-matic tasks document \
@@ -590,9 +641,12 @@ task-o-matic tasks add-documentation \
   --overwrite
 ```
 
+---
+
 ### TECHNICAL SPECIFICATIONS
 
 #### DOCUMENTATION DATA MODEL
+
 ```typescript
 interface TaskDocumentation {
   taskId: string;                    // Associated task ID
@@ -614,6 +668,7 @@ interface TaskDocumentation {
 ```
 
 #### PERFORMANCE CHARACTERISTICS
+
 - **Documentation Analysis**: 10-60s depending on task complexity
 - **Context7 Queries**: 2-10s per documentation request
 - **AI Processing**: 5-30s for documentation synthesis
@@ -621,13 +676,15 @@ interface TaskDocumentation {
 - **Cache Operations**: 5-50ms for cache checks and updates
 
 #### STORAGE REQUIREMENTS
-- **Documentation Files**: 10-200KB per task
+
+- **Documentation Files**: 10-200KB per task (stored in `.task-o-matic/docs/tasks/{id}.md`)
 - **Metadata Storage**: 1-5KB per documentation entry
 - **Cache Storage**: 50-200MB for project documentation cache
 - **Context7 Cache**: 100-500MB for external documentation cache
 - **Index Overhead**: 20-100KB for documentation indices
 
 #### CONTEXT7 INTEGRATION SPECIFICATIONS
+
 - **MCP Protocol**: Model Context Protocol for tool access
 - **Documentation Sources**: Multiple library and framework documentation providers
 - **Caching Strategy**: TTL-based caching with freshness tracking
@@ -635,16 +692,19 @@ interface TaskDocumentation {
 - **Error Handling**: Graceful fallback when Context7 unavailable
 
 #### CONCURRENCY AND SAFETY
+
 - **Atomic Operations**: Safe concurrent documentation access
 - **File Locking**: Prevents corruption during updates
 - **Cache Coherency**: Consistent state across operations
 - **Version Control**: Track changes and enable rollback
 - **Permission Validation**: Ensure proper file access rights
 
+---
+
 **Remember:** Citizen, in the information-scarce wasteland, knowledge is your greatest weapon. These documentation commands provide the intelligence and research capabilities needed to make informed decisions and avoid repeating mistakes of the past. Use them to build a comprehensive knowledge base that will guide your projects to success.
 
 ---
 
-**DOCUMENT STATUS:** `Complete`  
-**NEXT REVIEW:** `After Context7 API updates`  
+**DOCUMENT STATUS:** `Complete`
+**NEXT REVIEW:** `After Context7 API updates`
 **CONTACT:** `Task-O-Matic Documentation Team`

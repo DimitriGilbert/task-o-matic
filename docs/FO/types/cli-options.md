@@ -1,28 +1,30 @@
 ---
 ## TECHNICAL BULLETIN NO. 002
-### CLI OPTIONS - COMMAND INTERFACE COORDINATION SYSTEM
+### CLI OPTIONS - COMMAND OPTION DEFINITION SYSTEM
 
-**DOCUMENT ID:** `task-o-matic-cli-options-v1`  
-**CLEARANCE:** `All Personnel`  
+**DOCUMENT ID:** `task-o-matic-cli-options-v1`
+**CLEARANCE:** `All Personnel`
 **MANDATORY COMPLIANCE:** `Yes`
 
 ### ⚠️ CRITICAL SURVIVAL NOTICE
-Citizen, ignore these CLI option interfaces and your commands will crumble like dust in the wasteland. Type safety becomes a myth, validation fails silently, and your users wander lost in a desert of undefined behavior. This is your command structure foundation.
+Citizen, ignore these CLI option types and your commands become lost in translation. Parameters misinterpret, validation fails, and your CLI becomes a tower of babel where no one understands each other. This is your command language foundation.
 
 ### TYPE SYSTEM ARCHITECTURE
 
-The CLI options system uses **interface composition patterns** to create reusable, type-safe command configurations. Each interface extends base interfaces to inherit common functionality while maintaining specific validation rules. The architecture supports:
+The CLI options system provides **specialized interfaces** for each command operation in the CLI layer. It uses **interface composition** and **inheritance patterns** to create reusable, type-safe command configurations. The architecture supports:
 
-- **Base Option Interfaces**: Common patterns like streaming, AI providers, and filtering
-- **Command-Specific Interfaces**: Tailored options for each command's unique requirements
-- **Composition Pattern**: Multiple inheritance through interface extension
-- **Type Validation**: Compile-time checking prevents invalid option combinations
+- **Command-Specific Options**: Tailored interfaces for each CLI command
+- **Common Option Patterns**: Reusable interfaces for shared options
+- **AI Integration**: Streaming and provider configuration
+- **Validation Patterns**: Type-safe parameter handling
+- **Extensibility**: Easy to add new command options
+- **Consistency**: Standardized patterns across commands
 
-This design enables **consistent CLI behavior** across all commands while allowing for command-specific customization.
+This design enables **clear command contracts** while maintaining flexibility for different command requirements.
 
 ### COMPLETE TYPE DOCUMENTATION
 
-#### Base Option Interfaces
+#### Common Option Interfaces
 
 ##### TaskIdOrAllOptions Interface
 
@@ -33,13 +35,11 @@ export interface TaskIdOrAllOptions {
 }
 ```
 
-**Purpose**: Provides mutually exclusive task selection options
+**Purpose**: Common pattern for commands that operate on a specific task or all tasks
 
 **Properties**:
-- **taskId** (Optional, string): Specific task ID to operate on
-- **all** (Optional, boolean): Apply operation to all tasks
-
-**Validation Rules**: Exactly one of `taskId` or `all` should be provided
+- **taskId** (Optional, string): ID of specific task to operate on
+- **all** (Optional, boolean): Whether to operate on all tasks
 
 **Usage Examples**:
 ```typescript
@@ -48,14 +48,8 @@ const singleTask: TaskIdOrAllOptions = {
   taskId: "task-123"
 };
 
-// Bulk operation
-const bulkTask: TaskIdOrAllOptions = {
-  all: true
-};
-
-// Invalid - both provided (should be caught by validation)
-const invalid: TaskIdOrAllOptions = {
-  taskId: "task-123",
+// All tasks operation
+const allTasks: TaskIdOrAllOptions = {
   all: true
 };
 ```
@@ -69,31 +63,28 @@ export interface FilterOptions {
 }
 ```
 
-**Purpose**: Provides filtering capabilities for task listings and operations
+**Purpose**: Common filtering options for task listing
 
 **Properties**:
 - **status** (Optional, union): Filter by task status
-  - `"todo"`: Tasks not yet started
-  - `"in-progress"`: Currently active tasks
-  - `"completed"`: Finished tasks
 - **tag** (Optional, string): Filter by tag name
 
 **Usage Examples**:
 ```typescript
 // Filter by status
-const statusFilter: FilterOptions = {
+const todoTasks: FilterOptions = {
   status: "todo"
 };
 
 // Filter by tag
-const tagFilter: FilterOptions = {
-  tag: "bug"
+const criticalTasks: FilterOptions = {
+  tag: "critical"
 };
 
 // Combined filters
-const combinedFilter: FilterOptions = {
-  status: "in-progress",
-  tag: "feature"
+const criticalTodo: FilterOptions = {
+  status: "todo",
+  tag: "critical"
 };
 ```
 
@@ -105,20 +96,20 @@ export interface DryRunOptions {
 }
 ```
 
-**Purpose**: Enables preview mode for operations without making changes
+**Purpose**: Enable dry-run mode for previewing operations
 
 **Properties**:
-- **dry** (Optional, boolean): If true, simulate operation without executing
+- **dry** (Optional, boolean): If true, show what would happen without executing
 
 **Usage Examples**:
 ```typescript
-// Preview execution
+// Dry run
 const dryRun: DryRunOptions = {
   dry: true
 };
 
-// Actual execution
-const realRun: DryRunOptions = {
+// Normal execution
+const normalRun: DryRunOptions = {
   dry: false
 };
 ```
@@ -131,16 +122,21 @@ export interface ForceOptions {
 }
 ```
 
-**Purpose**: Overrides safety checks and confirmations
+**Purpose**: Force operations without confirmation prompts
 
 **Properties**:
-- **force** (Optional, boolean): Skip confirmations and warnings
+- **force** (Optional, boolean): Skip confirmation prompts
 
 **Usage Examples**:
 ```typescript
-// Force operation without confirmation
-const forceOp: ForceOptions = {
+// Force deletion
+const forceDelete: ForceOptions = {
   force: true
+};
+
+// Ask for confirmation
+const askDelete: ForceOptions = {
+  force: false
 };
 ```
 
@@ -152,16 +148,21 @@ export interface StreamingOptions {
 }
 ```
 
-**Purpose**: Enables real-time AI output streaming
+**Purpose**: Enable streaming AI responses
 
 **Properties**:
-- **stream** (Optional, boolean): Enable streaming AI responses
+- **stream** (Optional, boolean): Enable real-time output streaming
 
 **Usage Examples**:
 ```typescript
 // Enable streaming
-const streaming: StreamingOptions = {
+const withStreaming: StreamingOptions = {
   stream: true
+};
+
+// No streaming
+const withoutStreaming: StreamingOptions = {
+  stream: false
 };
 ```
 
@@ -177,13 +178,13 @@ export interface AIProviderOptions {
 }
 ```
 
-**Purpose**: Configures AI provider settings for operations
+**Purpose**: AI provider and model configuration options
 
 **Properties**:
-- **aiProvider** (Optional, string): AI provider name ("openai", "anthropic", "openrouter", "custom")
-- **aiModel** (Optional, string): Model name to use
-- **aiKey** (Optional, string): API key for the provider
-- **aiProviderUrl** (Optional, string): Custom endpoint URL for custom providers
+- **aiProvider** (Optional, string): AI provider name (openai, anthropic, openrouter, custom, gemini, zai)
+- **aiModel** (Optional, string): AI model name
+- **aiKey** (Optional, string): API authentication key
+- **aiProviderUrl** (Optional, string): Custom endpoint URL
 - **reasoning** (Optional, string): Reasoning token limit for OpenRouter
 
 **Usage Examples**:
@@ -192,21 +193,14 @@ export interface AIProviderOptions {
 const openaiConfig: AIProviderOptions = {
   aiProvider: "openai",
   aiModel: "gpt-4",
-  aiKey: "sk-..."
+  aiKey: "sk-openai-..."
 };
 
-// Anthropic configuration
+// Anthropic with reasoning
 const anthropicConfig: AIProviderOptions = {
   aiProvider: "anthropic",
-  aiModel: "claude-3-sonnet-20240229",
-  aiKey: "sk-ant-..."
-};
-
-// OpenRouter with reasoning
-const openrouterConfig: AIProviderOptions = {
-  aiProvider: "openrouter",
-  aiModel: "anthropic/claude-3.5-sonnet",
-  aiKey: "sk-or-...",
+  aiModel: "claude-3.5-sonnet",
+  aiKey: "sk-ant-...",
   reasoning: "5000"
 };
 
@@ -219,12 +213,14 @@ const customConfig: AIProviderOptions = {
 };
 ```
 
-#### Command-Specific Option Interfaces
+#### Command-Specific Options
 
 ##### CreateCommandOptions Interface
 
 ```typescript
-export interface CreateCommandOptions extends StreamingOptions, AIProviderOptions {
+export interface CreateCommandOptions
+  extends StreamingOptions,
+    AIProviderOptions {
   title: string;
   content?: string;
   effort?: "small" | "medium" | "large";
@@ -233,18 +229,15 @@ export interface CreateCommandOptions extends StreamingOptions, AIProviderOption
 }
 ```
 
-**Purpose**: Options for creating new tasks
+**Purpose**: Options for creating new tasks via CLI
 
 **Inherited Properties**: From `StreamingOptions` and `AIProviderOptions`
 
 **Specific Properties**:
 - **title** (Required, string): Task title
-- **content** (Optional, string): Task description/content
-- **effort** (Optional, union): Estimated effort level
-  - `"small"`: Quick task (< 1 hour)
-  - `"medium"`: Moderate task (1-4 hours)
-  - `"large"`: Significant task (> 4 hours)
-- **parentId** (Optional, string): Parent task ID for subtasks
+- **content** (Optional, string): Task description
+- **effort** (Optional, union): Effort estimate
+- **parentId** (Optional, string): Parent task ID
 - **aiEnhance** (Optional, boolean): Use AI to enhance task description
 
 **Usage Examples**:
@@ -262,18 +255,15 @@ const aiSubtask: CreateCommandOptions = {
   aiEnhance: true,
   parentId: "task-parent-123",
   aiProvider: "anthropic",
-  aiModel: "claude-3-sonnet",
+  aiModel: "claude-3-sonnet-20240229",
   stream: true
 };
 
-// Large task with custom AI
+// Large task
 const largeTask: CreateCommandOptions = {
   title: "Build authentication system",
   effort: "large",
-  aiEnhance: true,
-  aiProvider: "openrouter",
-  aiModel: "anthropic/claude-3.5-sonnet",
-  reasoning: "8000"
+  aiEnhance: true
 };
 ```
 
@@ -289,9 +279,9 @@ export interface EnhanceCommandOptions
     AIProviderOptions {}
 ```
 
-**Purpose**: Options for enhancing existing tasks with AI
+**Purpose**: Options for enhancing tasks with AI
 
-**Inherited Properties**: From multiple base interfaces
+**Inherited Properties**: From `TaskIdOrAllOptions`, `FilterOptions`, `DryRunOptions`, `ForceOptions`, `StreamingOptions`, `AIProviderOptions`
 
 **Usage Examples**:
 ```typescript
@@ -299,25 +289,23 @@ export interface EnhanceCommandOptions
 const enhanceSingle: EnhanceCommandOptions = {
   taskId: "task-123",
   aiProvider: "anthropic",
+  aiModel: "claude-3.5-sonnet",
   stream: true
 };
 
-// Enhance all todo tasks
-const enhanceAll: EnhanceCommandOptions = {
-  all: true,
+// Enhance all tasks with filter
+const enhanceAllFiltered: EnhanceCommandOptions = {
+  all: false,
   status: "todo",
+  tag: "critical",
   aiProvider: "openrouter",
-  reasoning: "5000",
-  dry: true
+  aiModel: "anthropic/claude-3.5-sonnet",
+  reasoning: "5000"
 };
 
-// Force enhance filtered tasks
-const enhanceFiltered: EnhanceCommandOptions = {
-  all: true,
-  tag: "bug",
-  force: true,
-  aiProvider: "openai",
-  aiModel: "gpt-4"
+// Enhance all tasks
+const enhanceAll: EnhanceCommandOptions = {
+  all: true
 };
 ```
 
@@ -331,41 +319,56 @@ export interface SplitCommandOptions
     ForceOptions,
     StreamingOptions,
     AIProviderOptions {
+  ai?: string[];
+  combineAi?: string;
   tools?: boolean;
 }
 ```
 
 **Purpose**: Options for splitting tasks into subtasks
 
-**Inherited Properties**: From multiple base interfaces
+**Inherited Properties**: From `TaskIdOrAllOptions`, `FilterOptions`, `DryRunOptions`, `ForceOptions`, `StreamingOptions`, `AIProviderOptions`
 
 **Specific Properties**:
-- **tools** (Optional, boolean): Enable AI tool usage during splitting
+- **ai** (Optional, string[]): AI models for multi-AI splitting
+- **combineAi** (Optional, string): AI model for combining results
+- **tools** (Optional, boolean): Enable filesystem tools
 
 **Usage Examples**:
 ```typescript
-// Split single task with tools
-const splitSingle: SplitCommandOptions = {
+// Basic task splitting
+const basicSplit: SplitCommandOptions = {
   taskId: "task-123",
-  tools: true,
   aiProvider: "anthropic",
+  aiModel: "claude-3.5-sonnet",
   stream: true
 };
 
-// Split all large tasks
-const splitLarge: SplitCommandOptions = {
+// Multi-AI splitting
+const multiAISplit: SplitCommandOptions = {
+  taskId: "task-456",
+  ai: [
+    "anthropic:claude-3.5-sonnet",
+    "openai:gpt-4o"
+  ],
+  combineAi: "anthropic:claude-3.5-sonnet",
+  tools: true
+};
+
+// Split all tasks
+const splitAll: SplitCommandOptions = {
   all: true,
-  effort: "large",
-  tools: true,
   aiProvider: "openrouter",
-  reasoning: "8000"
+  aiModel: "anthropic/claude-3.5-sonnet"
 };
 ```
 
 ##### PlanCommandOptions Interface
 
 ```typescript
-export interface PlanCommandOptions extends StreamingOptions, AIProviderOptions {
+export interface PlanCommandOptions
+  extends StreamingOptions,
+    AIProviderOptions {
   id: string;
 }
 ```
@@ -379,19 +382,113 @@ export interface PlanCommandOptions extends StreamingOptions, AIProviderOptions 
 
 **Usage Examples**:
 ```typescript
-// Plan task with streaming
-const planTask: PlanCommandOptions = {
+const generatePlan: PlanCommandOptions = {
   id: "task-123",
-  stream: true,
   aiProvider: "anthropic",
-  aiModel: "claude-3-sonnet"
+  aiModel: "claude-3.5-sonnet",
+  stream: true
+};
+```
+
+##### GetPlanCommandOptions Interface
+
+```typescript
+export interface GetPlanCommandOptions {
+  id: string;
+}
+```
+
+**Purpose**: Options for retrieving existing implementation plan
+
+**Properties**:
+- **id** (Required, string): Task ID whose plan to retrieve
+
+**Usage Examples**:
+```typescript
+const getPlan: GetPlanCommandOptions = {
+  id: "task-123"
+};
+```
+
+##### ListPlanCommandOptions Interface
+
+```typescript
+export interface ListPlanCommandOptions {
+  status?: string;
+  tag?: string;
+}
+```
+
+**Purpose**: Options for listing plans with filters
+
+**Properties**:
+- **status** (Optional, string): Filter by status
+- **tag** (Optional, string): Filter by tag
+
+**Usage Examples**:
+```typescript
+const listPlans: ListPlanCommandOptions = {
+  status: "todo",
+  tag: "critical"
+};
+```
+
+##### DeletePlanCommandOptions Interface
+
+```typescript
+export interface DeletePlanCommandOptions {
+  id: string;
+}
+```
+
+**Purpose**: Options for deleting a task plan
+
+**Properties**:
+- **id** (Required, string): Task ID whose plan to delete
+
+**Usage Examples**:
+```typescript
+const deletePlan: DeletePlanCommandOptions = {
+  id: "task-123"
+};
+```
+
+##### SetPlanCommandOptions Interface
+
+```typescript
+export interface SetPlanCommandOptions {
+  id: string;
+  plan?: string;
+  planFile?: string;
+}
+```
+
+**Purpose**: Options for setting/updating a task plan
+
+**Properties**:
+- **id** (Required, string): Task ID
+- **plan** (Optional, string): Plan content string
+- **planFile** (Optional, string): Path to plan file
+
+**Usage Examples**:
+```typescript
+const setPlanFromString: SetPlanCommandOptions = {
+  id: "task-123",
+  plan: "1. Setup project structure\n2. Implement features"
+};
+
+const setPlanFromFile: SetPlanCommandOptions = {
+  id: "task-123",
+  planFile: "./plans/task-123.md"
 };
 ```
 
 ##### DocumentCommandOptions Interface
 
 ```typescript
-export interface DocumentCommandOptions extends StreamingOptions, AIProviderOptions {
+export interface DocumentCommandOptions
+  extends StreamingOptions,
+    AIProviderOptions {
   taskId: string;
   force?: boolean;
 }
@@ -403,16 +500,72 @@ export interface DocumentCommandOptions extends StreamingOptions, AIProviderOpti
 
 **Specific Properties**:
 - **taskId** (Required, string): Task ID to document
-- **force** (Optional, boolean): Regenerate documentation even if exists
+- **force** (Optional, boolean): Force regeneration even if docs exist
 
 **Usage Examples**:
 ```typescript
-// Document task with AI
-const documentTask: DocumentCommandOptions = {
+const basicDoc: DocumentCommandOptions = {
   taskId: "task-123",
-  stream: true,
   aiProvider: "anthropic",
-  force: true
+  stream: true
+};
+
+const forceDoc: DocumentCommandOptions = {
+  taskId: "task-456",
+  force: true,
+  aiProvider: "openrouter",
+  aiModel: "claude-3.5-sonnet"
+};
+```
+
+##### GetDocumentationCommandOptions Interface
+
+```typescript
+export interface GetDocumentationCommandOptions {
+  id: string;
+}
+```
+
+**Purpose**: Options for retrieving task documentation
+
+**Properties**:
+- **id** (Required, string): Task ID
+
+**Usage Examples**:
+```typescript
+const getDocumentation: GetDocumentationCommandOptions = {
+  id: "task-123"
+};
+```
+
+##### AddDocumentationCommandOptions Interface
+
+```typescript
+export interface AddDocumentationCommandOptions {
+  id: string;
+  docFile: string;
+  overwrite?: boolean;
+}
+```
+
+**Purpose**: Options for adding documentation to a task from file
+
+**Properties**:
+- **id** (Required, string): Task ID
+- **docFile** (Required, string): Path to documentation file
+- **overwrite** (Optional, boolean): Overwrite existing documentation
+
+**Usage Examples**:
+```typescript
+const addDoc: AddDocumentationCommandOptions = {
+  id: "task-123",
+  docFile: "./docs/task-123-doc.md"
+};
+
+const addDocOverwrite: AddDocumentationCommandOptions = {
+  id: "task-123",
+  docFile: "./docs/task-123-doc.md",
+  overwrite: true
 };
 ```
 
@@ -431,66 +584,72 @@ export interface ExecuteCommandOptions extends DryRunOptions {
   tryModels?: string;
   plan?: boolean;
   planModel?: string;
+  planTool?: string;
   reviewPlan?: boolean;
   review?: boolean;
   reviewModel?: string;
   autoCommit?: boolean;
+  includePrd?: boolean;
 }
 ```
 
-**Purpose**: Comprehensive options for task execution with external tools
+**Purpose**: Options for executing tasks with external executor
 
-**Inherited Properties**: From `DryRunOptions`
-
-**Specific Properties**:
+**Properties**:
 - **id** (Required, string): Task ID to execute
-- **tool** (Required, string): Executor tool ("opencode", "claude", "gemini", "codex")
+- **tool** (Required, string): Executor tool name (opencode, claude, gemini, codex, kilo)
 - **message** (Optional, string): Custom execution message
-- **model** (Optional, string): AI model to use with executor
-- **continueSession** (Optional, boolean): Continue previous session
-- **validate** (Optional, string[]): Validation commands to run
-- **verify** (Optional, string[]): Alias for validate commands
-- **maxRetries** (Optional, number): Maximum retry attempts
+- **model** (Optional, string): Model override
+- **continueSession** (Optional, boolean): Continue last session
+- **validate** (Optional, string[]): Verification commands
+- **verify** (Optional, string[]): Alias for validation
+- **maxRetries** (Optional, number): Maximum retries per task
 - **tryModels** (Optional, string): Comma-separated model escalation list
-- **plan** (Optional, boolean): Generate implementation plan first
+- **plan** (Optional, boolean): Generate implementation plan
 - **planModel** (Optional, string): Model for planning
-- **reviewPlan** (Optional, boolean): Review plan before execution
-- **review** (Optional, boolean): Review code after execution
-- **reviewModel** (Optional, string): Model for code review
-- **autoCommit** (Optional, boolean): Auto-commit successful changes
+- **planTool** (Optional, string): Tool for planning
+- **reviewPlan** (Optional, boolean): Enable human plan review
+- **review** (Optional, boolean): Run AI code review
+- **reviewModel** (Optional, string): Model for review
+- **autoCommit** (Optional, boolean): Auto-commit changes
+- **includePrd** (Optional, boolean): Include PRD content in execution context
 
 **Usage Examples**:
 ```typescript
 // Basic execution
 const basicExec: ExecuteCommandOptions = {
   id: "task-123",
-  tool: "opencode",
-  model: "gpt-4o"
+  tool: "claude"
 };
 
-// Advanced execution with planning and review
-const advancedExec: ExecuteCommandOptions = {
-  id: "task-123",
+// With verification
+const withVerify: ExecuteCommandOptions = {
+  id: "task-456",
+  tool: "opencode",
+  validate: ["bun test", "bun run build"],
+  verify: ["bun test", "bun run build"],
+  maxRetries: 3
+};
+
+// With full pipeline
+const fullPipeline: ExecuteCommandOptions = {
+  id: "task-789",
   tool: "claude",
-  model: "sonnet-4",
   plan: true,
-  planModel: "gpt-4o",
+  planModel: "claude-3.5-sonnet",
+  planTool: "claude",
   reviewPlan: true,
   review: true,
   reviewModel: "claude-3.5-sonnet",
-  validate: ["npm test", "npm run lint"],
   autoCommit: true,
-  maxRetries: 3,
-  tryModels: "gpt-4o-mini,gpt-4o,claude-sonnet-4"
+  verify: ["bun test", "bun run build"]
 };
 
-// Continue session with verification
-const continueExec: ExecuteCommandOptions = {
-  id: "task-123",
+// Model escalation
+const withEscalation: ExecuteCommandOptions = {
+  id: "task-999",
   tool: "opencode",
-  continueSession: true,
-  verify: ["npm run build", "npm run test"],
-  dry: true
+  tryModels: "gpt-4o-mini,gpt-4o,claude-3.5-sonnet"
 };
 ```
 
@@ -504,6 +663,7 @@ export interface ExecuteLoopCommandOptions extends DryRunOptions {
   tool: string;
   maxRetries?: number;
   tryModels?: string;
+  model?: string;
   verify?: string[];
   validate?: string[];
   message?: string;
@@ -511,67 +671,66 @@ export interface ExecuteLoopCommandOptions extends DryRunOptions {
   autoCommit?: boolean;
   plan?: boolean;
   planModel?: string;
+  planTool?: string;
   reviewPlan?: boolean;
   review?: boolean;
   reviewModel?: string;
+  includeCompleted?: boolean;
+  includePrd?: boolean;
+  notify?: string[];
 }
 ```
 
-**Purpose**: Options for bulk task execution with loops
+**Purpose**: Options for executing multiple tasks in a loop
 
-**Inherited Properties**: From `DryRunOptions`
-
-**Specific Properties**:
+**Properties**:
 - **status** (Optional, string): Filter by status
 - **tag** (Optional, string): Filter by tag
 - **ids** (Optional, string[]): Specific task IDs to execute
-- **tool** (Required, string): Executor tool
+- **tool** (Required, string): Executor tool name
 - **maxRetries** (Optional, number): Maximum retries per task
-- **tryModels** (Optional, string): Model escalation list
+- **tryModels** (Optional, string): Comma-separated model escalation list
+- **model** (Optional, string): Model override
 - **verify** (Optional, string[]): Verification commands
-- **validate** (Optional, string[]): Alias for verify
-- **message** (Optional, string): Custom execution message
-- **continueSession** (Optional, boolean): Continue sessions
+- **validate** (Optional, string[]): Alias for verification
+- **message** (Optional, string): Custom message
+- **continueSession** (Optional, boolean): Continue last session
 - **autoCommit** (Optional, boolean): Auto-commit changes
-- **plan** (Optional, boolean): Generate plans
-- **planModel** (Optional, string): Planning model
-- **reviewPlan** (Optional, boolean): Review plans
-- **review** (Optional, boolean): Review results
-- **reviewModel** (Optional, string): Review model
+- **plan** (Optional, boolean): Generate implementation plan
+- **planModel** (Optional, string): Model for planning
+- **planTool** (Optional, string): Tool for planning
+- **reviewPlan** (Optional, boolean): Enable human plan review
+- **review** (Optional, boolean): Run AI code review
+- **reviewModel** (Optional, string): Model for review
+- **includeCompleted** (Optional, boolean): Include already-completed tasks
+- **includePrd** (Optional, boolean): Include PRD content in context
+- **notify** (Optional, string[]): Notification targets
 
 **Usage Examples**:
 ```typescript
 // Execute all todo tasks
-const execAllTodo: ExecuteLoopCommandOptions = {
+const executeTodo: ExecuteLoopCommandOptions = {
   status: "todo",
-  tool: "opencode",
-  model: "gpt-4o",
-  autoCommit: true
+  tool: "opencode"
 };
 
-// Execute specific tasks with retry
-const execSpecific: ExecuteLoopCommandOptions = {
+// Execute specific tasks
+const executeSpecific: ExecuteLoopCommandOptions = {
   ids: ["task-1", "task-2", "task-3"],
   tool: "claude",
   maxRetries: 3,
-  tryModels: "sonnet-4,sonnet-3.5",
-  verify: ["npm test"],
-  plan: true,
-  review: true
+  verify: ["bun test"]
 };
 
-// Execute tagged tasks with full pipeline
-const execTagged: ExecuteLoopCommandOptions = {
-  tag: "feature",
+// Execute with full pipeline
+const executeFull: ExecuteLoopCommandOptions = {
+  tag: "critical",
   tool: "opencode",
   plan: true,
-  planModel: "gpt-4o",
-  reviewPlan: true,
   review: true,
-  reviewModel: "claude-3.5-sonnet",
-  validate: ["npm run lint", "npm run test", "npm run build"],
   autoCommit: true,
-  maxRetries: 2
+  includePrd: true,
+  tryModels: "gpt-4o-mini,gpt-4o,claude-3.5-sonnet"
 };
 ```
 
@@ -590,23 +749,40 @@ export interface ListCommandOptions {
 **Properties**:
 - **status** (Optional, string): Filter by status
 - **tag** (Optional, string): Filter by tag
-- **all** (Optional, boolean): Show all tasks regardless of status
+- **all** (Optional, boolean): Show all tasks
 
 **Usage Examples**:
 ```typescript
-// List all tasks
-const listAll: ListCommandOptions = {
-  all: true
-};
-
-// List todo tasks
 const listTodo: ListCommandOptions = {
   status: "todo"
 };
 
-// List bug tasks
-const listBugs: ListCommandOptions = {
+const listTagged: ListCommandOptions = {
   tag: "bug"
+};
+
+const listAll: ListCommandOptions = {
+  all: true
+};
+```
+
+##### NextCommandOptions Interface
+
+```typescript
+export interface NextCommandOptions {
+  tag?: string;
+}
+```
+
+**Purpose**: Options for getting next task
+
+**Properties**:
+- **tag** (Optional, string): Filter by tag
+
+**Usage Examples**:
+```typescript
+const nextCritical: NextCommandOptions = {
+  tag: "critical"
 };
 ```
 
@@ -621,7 +797,7 @@ export interface UpdateCommandOptions {
 }
 ```
 
-**Purpose**: Options for updating task properties
+**Purpose**: Options for updating tasks
 
 **Properties**:
 - **id** (Required, string): Task ID to update
@@ -631,18 +807,16 @@ export interface UpdateCommandOptions {
 
 **Usage Examples**:
 ```typescript
-// Update task status
 const updateStatus: UpdateCommandOptions = {
   id: "task-123",
   status: "in-progress"
 };
 
-// Update multiple properties
-const updateMultiple: UpdateCommandOptions = {
+const updateAll: UpdateCommandOptions = {
   id: "task-123",
-  title: "Fix critical login bug",
-  status: "in-progress",
-  effort: "medium"
+  title: "Updated title",
+  effort: "large",
+  status: "completed"
 };
 ```
 
@@ -659,16 +833,14 @@ export interface DeleteCommandOptions {
 
 **Properties**:
 - **id** (Required, string): Task ID to delete
-- **force** (Optional, boolean): Skip confirmation
+- **force** (Optional, boolean): Skip confirmation prompts
 
 **Usage Examples**:
 ```typescript
-// Delete with confirmation
 const deleteTask: DeleteCommandOptions = {
   id: "task-123"
 };
 
-// Force delete
 const forceDelete: DeleteCommandOptions = {
   id: "task-123",
   force: true
@@ -687,18 +859,11 @@ export interface TagCommandOptions {
 **Purpose**: Options for adding tags to tasks
 
 **Properties**:
-- **id** (Required, string): Task ID to tag
-- **tags** (Required, string): Comma-separated tag list
+- **id** (Required, string): Task ID
+- **tags** (Required, string): Comma-separated tags
 
 **Usage Examples**:
 ```typescript
-// Add single tag
-const addTag: TagCommandOptions = {
-  id: "task-123",
-  tags: "bug"
-};
-
-// Add multiple tags
 const addTags: TagCommandOptions = {
   id: "task-123",
   tags: "bug,critical,frontend"
@@ -717,18 +882,11 @@ export interface UntagCommandOptions {
 **Purpose**: Options for removing tags from tasks
 
 **Properties**:
-- **id** (Required, string): Task ID to untag
-- **tags** (Required, string): Comma-separated tag list to remove
+- **id** (Required, string): Task ID
+- **tags** (Required, string): Comma-separated tags to remove
 
 **Usage Examples**:
 ```typescript
-// Remove single tag
-const removeTag: UntagCommandOptions = {
-  id: "task-123",
-  tags: "bug"
-};
-
-// Remove multiple tags
 const removeTags: UntagCommandOptions = {
   id: "task-123",
   tags: "bug,critical"
@@ -741,61 +899,25 @@ No standalone functions in this module - this is a type definition file.
 
 ### INTEGRATION PROTOCOLS
 
-#### Commander.js Integration
+#### CLI Command Handler Pattern
 
 ```typescript
-import { Command } from 'commander';
-import { CreateCommandOptions } from '../types/cli-options';
+// commands/tasks/index.ts
+import {
+  CreateCommandOptions,
+  EnhanceCommandOptions,
+  SplitCommandOptions,
+  PlanCommandOptions,
+  DocumentCommandOptions,
+  ExecuteCommandOptions,
+  ListCommandOptions,
+  UpdateCommandOptions,
+  DeleteCommandOptions,
+  TagCommandOptions,
+  UntagCommandOptions
+} from '../../types/cli-options';
 
-// Define create command
-const createCmd = new Command('create')
-  .description('Create a new task')
-  .requiredOption('-t, --title <title>', 'Task title')
-  .option('-c, --content <content>', 'Task description')
-  .option('-e, --effort <effort>', 'Effort estimate (small|medium|large)')
-  .option('-p, --parent <parentId>', 'Parent task ID')
-  .option('--ai-enhance', 'Enhance with AI')
-  .option('--stream', 'Stream AI output')
-  .option('--ai-provider <provider>', 'AI provider')
-  .option('--ai-model <model>', 'AI model')
-  .option('--ai-key <key>', 'AI API key')
-  .action(async (options: CreateCommandOptions) => {
-    await handleCreateCommand(options);
-  });
-```
-
-#### Validation Integration
-
-```typescript
-import { validateMutuallyExclusive } from '../utils/cli-validators';
-import { TaskIdOrAllOptions } from '../types/cli-options';
-
-function validateTaskSelection(options: TaskIdOrAllOptions): void {
-  validateMutuallyExclusive(options, 'taskId', 'all', 'task-id', 'all');
-  
-  if (!options.taskId && !options.all) {
-    throw new Error('Either --task-id or --all must be specified');
-  }
-}
-
-// Usage in command handler
-export async function handleEnhanceCommand(options: EnhanceCommandOptions): Promise<void> {
-  validateTaskSelection(options);
-  
-  // Proceed with validated options
-  await taskService.enhanceTasks(options);
-}
-```
-
-#### Service Layer Integration
-
-```typescript
-import { TaskService } from '../services/tasks';
-import { CreateCommandOptions, ExecuteCommandOptions } from '../types/cli-options';
-
-export class CommandHandler {
-  constructor(private taskService: TaskService) {}
-
+export class TaskCommandHandlers {
   async handleCreate(options: CreateCommandOptions): Promise<void> {
     const task = await this.taskService.createTask({
       title: options.title,
@@ -803,329 +925,195 @@ export class CommandHandler {
       effort: options.effort,
       parentId: options.parentId,
       aiEnhance: options.aiEnhance
-    }, {
-      aiProvider: options.aiProvider,
-      aiModel: options.aiModel,
-      apiKey: options.aiKey,
-      baseURL: options.aiProviderUrl,
-      stream: options.stream
     });
-    
+
     console.log(`Created task: ${task.id}`);
   }
 
+  async handleEnhance(options: EnhanceCommandOptions): Promise<void> {
+    if (options.all) {
+      const tasks = await this.taskService.listTasks(options);
+      for (const task of tasks) {
+        await this.enhanceSingleTask(task.id, options);
+      }
+    } else {
+      await this.enhanceSingleTask(options.taskId, options);
+    }
+  }
+
+  async handleUpdate(options: UpdateCommandOptions): Promise<void> {
+    await this.taskService.updateTask(options.id, {
+      title: options.title,
+      status: options.status,
+      effort: options.effort
+    });
+  }
+
   async handleExecute(options: ExecuteCommandOptions): Promise<void> {
-    const result = await this.taskService.executeTask(options.id, {
-      tool: options.tool as ExecutorTool,
-      message: options.message,
+    const executeConfig = {
+      tool: options.tool,
       model: options.model,
       continueSession: options.continueSession,
-      verificationCommands: options.validate || options.verify,
+      validate: options.validate || options.verify,
       maxRetries: options.maxRetries,
-      tryModels: options.tryModels ? parseTryModels(options.tryModels) : undefined,
+      tryModels: options.tryModels,
       plan: options.plan,
       planModel: options.planModel,
+      planTool: options.planTool,
       reviewPlan: options.reviewPlan,
       review: options.review,
       reviewModel: options.reviewModel,
       autoCommit: options.autoCommit,
-      dry: options.dry
-    });
-    
-    console.log(`Execution completed: ${result.success}`);
+      includePrd: options.includePrd
+    };
+
+    await this.executorService.execute(options.id, executeConfig);
   }
+}
+```
+
+#### Commander.js Integration
+
+```typescript
+// cli/task-commands.ts
+import { Command } from 'commander';
+import {
+  CreateCommandOptions,
+  UpdateCommandOptions,
+  DeleteCommandOptions,
+  ListCommandOptions,
+  EnhanceCommandOptions,
+  SplitCommandOptions,
+  DocumentCommandOptions,
+  ExecuteCommandOptions,
+  TagCommandOptions,
+  UntagCommandOptions
+} from '../../types/cli-options';
+
+export function createTaskCommands(): Command[] {
+  return [
+    new Command('create')
+      .description('Create a new task')
+      .requiredOption('-t, --title <title>', 'Task title')
+      .option('-c, --content <content>', 'Task description')
+      .option('-e, --effort <effort>', 'Effort estimate (small|medium|large)')
+      .option('-p, --parent <parentId>', 'Parent task ID')
+      .option('--ai-enhance', 'Enhance with AI')
+      .option('--stream', 'Stream AI output')
+      .option('--ai-provider <provider>', 'AI provider')
+      .option('--ai-model <model>', 'AI model')
+      .option('--ai-key <key>', 'AI API key')
+      .option('--ai-provider-url <url>', 'Custom AI provider URL')
+      .option('--reasoning <tokens>', 'Reasoning tokens')
+      .action(async (options: CreateCommandOptions) => {
+        await taskCommandHandlers.handleCreate(options);
+      }),
+
+    new Command('update')
+      .description('Update a task')
+      .requiredOption('-i, --id <taskId>', 'Task ID')
+      .option('-t, --title <title>', 'New task title')
+      .option('-s, --status <status>', 'New status (todo|in-progress|completed)')
+      .option('-e, --effort <effort>', 'New effort (small|medium|large)')
+      .action(async (options: UpdateCommandOptions) => {
+        await taskCommandHandlers.handleUpdate(options);
+      }),
+
+    new Command('delete')
+      .description('Delete a task')
+      .requiredOption('-i, --id <taskId>', 'Task ID')
+      .option('-f, --force', 'Skip confirmation')
+      .action(async (options: DeleteCommandOptions) => {
+        await taskCommandHandlers.handleDelete(options);
+      })
+  ];
 }
 ```
 
 ### SURVIVAL SCENARIOS
 
-#### Scenario 1: Complete CLI Command Implementation
+#### Scenario 1: Complete Task Management Workflow
 
 ```typescript
-// commands/tasks/enhance.ts
-import { Command } from 'commander';
-import { EnhanceCommandOptions } from '../../types/cli-options';
-import { validateMutuallyExclusive, parseCsvOption } from '../../utils/cli-validators';
-import { taskService } from '../../services/tasks';
-import { createStreamingOptions } from '../../utils/streaming-options';
-import { handleCommandError } from '../../utils/command-error-handler';
+class TaskManagementWorkflow {
+  private taskService: TaskService;
 
-export function createEnhanceCommand(): Command {
-  return new Command('enhance')
-    .description('Enhance tasks with AI')
-    .addOption(
-      new Option('--task-id <id>', 'Enhance specific task')
-        .conflicts(['all'])
-    )
-    .addOption(
-      new Option('--all', 'Enhance all tasks')
-        .conflicts(['task-id'])
-    )
-    .option('--status <status>', 'Filter by status (todo|in-progress|completed)')
-    .option('--tag <tag>', 'Filter by tag')
-    .option('--dry', 'Preview changes without applying')
-    .option('--force', 'Skip confirmations')
-    .option('--stream', 'Stream AI output')
-    .option('--ai-provider <provider>', 'AI provider')
-    .option('--ai-model <model>', 'AI model')
-    .option('--ai-key <key>', 'AI API key')
-    .option('--ai-provider-url <url>', 'Custom AI provider URL')
-    .option('--reasoning <tokens>', 'Reasoning tokens (OpenRouter)')
-    .action(async (options: EnhanceCommandOptions) => {
-      await handleEnhanceCommand(options);
-    });
-}
+  async executeFullWorkflow(): Promise<void> {
+    console.log("🚀 Starting task management workflow...");
 
-async function handleEnhanceCommand(options: EnhanceCommandOptions): Promise<void> {
-  try {
-    // Validate mutually exclusive options
-    validateMutuallyExclusive(options, 'taskId', 'all', 'task-id', 'all');
-    
-    // Validate status if provided
-    if (options.status && !['todo', 'in-progress', 'completed'].includes(options.status)) {
-      throw new Error('Invalid status. Must be: todo, in-progress, or completed');
-    }
-    
-    // Create streaming options
-    const streamingOptions = createStreamingOptions(options.stream, 'Task enhancement');
-    
-    // Build AI config
-    const aiConfig = buildAIConfig(options);
-    
-    // Determine tasks to enhance
-    const filters = {
-      status: options.status,
-      tag: options.tag
+    // Step 1: Create tasks
+    const createOptions: CreateCommandOptions = {
+      title: "Build user authentication system",
+      content: "Implement login, registration, and profile management",
+      effort: "large",
+      aiEnhance: true,
+      aiProvider: "anthropic",
+      stream: true
     };
-    
-    if (options.all) {
-      // Bulk enhancement
-      const tasks = await taskService.listTasks(filters);
-      
-      if (tasks.length === 0) {
-        console.log('No tasks found matching filters');
-        return;
-      }
-      
-      console.log(`Enhancing ${tasks.length} tasks...`);
-      
-      for (const task of tasks) {
-        console.log(`\nEnhancing: ${task.title}`);
-        
-        if (!options.dry) {
-          await taskService.enhanceTask(task.id, {
-            ...aiConfig,
-            streamingOptions
-          });
-        }
-      }
-      
-      console.log(`\n${options.dry ? 'Would enhance' : 'Enhanced'} ${tasks.length} tasks`);
-    } else {
-      // Single task enhancement
-      await taskService.enhanceTask(options.taskId!, {
-        ...aiConfig,
-        streamingOptions
-      });
+
+    const authTask = await this.taskService.createTask(createOptions);
+    console.log(`✅ Created task: ${authTask.id}`);
+
+    // Step 2: Create subtasks
+    const loginTask = await this.taskService.createTask({
+      title: "Implement login form",
+      content: "Create login interface with validation",
+      effort: "medium",
+      parentId: authTask.id
+    });
+
+    const registerTask = await this.taskService.createTask({
+      title: "Implement registration form",
+      content: "Create user registration with email verification",
+      effort: "medium",
+      parentId: authTask.id
+    });
+
+    const profileTask = await this.taskService.createTask({
+      title: "Build profile management",
+      content: "User profile viewing and editing",
+      effort: "small",
+      parentId: authTask.id
+    });
+
+    console.log(`✅ Created 3 subtasks`);
+
+    // Step 3: Update main task status
+    const updateOptions: UpdateCommandOptions = {
+      id: authTask.id,
+      status: "in-progress"
+    };
+
+    await this.taskService.updateTask(updateOptions.id, updateOptions);
+    console.log(`✅ Updated main task status`);
+
+    console.log("🎉 Task management workflow complete!");
+  }
+
+  async handleTaskSplitting(): Promise<void> {
+    const largeTasks = await this.taskService.listTasks({
+      status: "todo"
+    });
+
+    const largeTasksFiltered = largeTasks.filter(task =>
+      task.effort === "large" && !task.parentId
+    );
+
+    for (const task of largeTasksFiltered) {
+      console.log(`🔧 Splitting task: ${task.title}`);
+
+      const splitOptions: SplitCommandOptions = {
+        taskId: task.id,
+        aiProvider: "anthropic",
+        aiModel: "claude-3.5-sonnet",
+        stream: true
+      };
+
+      await this.taskService.splitTask(task.id, splitOptions);
+      console.log(`✅ Split task: ${task.id}`);
     }
-    
-  } catch (error) {
-    handleCommandError('Task enhancement', error);
   }
 }
 ```
 
-#### Scenario 2: Advanced Execution Command
-
-```typescript
-// commands/tasks/execute.ts
-import { Command, Option } from 'commander';
-import { ExecuteCommandOptions } from '../../types/cli-options';
-import { validateExecutor, parseTryModels } from '../../utils/model-executor-parser';
-import { taskService } from '../../services/tasks';
-
-export function createExecuteCommand(): Command {
-  return new Command('execute')
-    .description('Execute task with external tools')
-    .requiredOption('-i, --id <taskId>', 'Task ID to execute')
-    .requiredOption('-t, --tool <tool>', 'Executor tool (opencode|claude|gemini|codex)')
-    .option('-m, --message <message>', 'Custom execution message')
-    .option('--model <model>', 'AI model to use')
-    .option('--continue-session', 'Continue previous session')
-    .option('--validate <commands>', 'Validation commands (comma-separated)')
-    .option('--verify <commands>', 'Alias for validation commands')
-    .option('--max-retries <count>', 'Maximum retry attempts')
-    .option('--try-models <models>', 'Model escalation list (comma-separated)')
-    .option('--plan', 'Generate implementation plan first')
-    .option('--plan-model <model>', 'Model for planning')
-    .option('--review-plan', 'Review plan before execution')
-    .option('--review', 'Review code after execution')
-    .option('--review-model <model>', 'Model for code review')
-    .option('--auto-commit', 'Auto-commit successful changes')
-    .option('--dry', 'Preview execution without running')
-    .action(async (options: ExecuteCommandOptions) => {
-      await handleExecuteCommand(options);
-    });
-}
-
-async function handleExecuteCommand(options: ExecuteCommandOptions): Promise<void> {
-  try {
-    // Validate executor
-    if (!validateExecutor(options.tool)) {
-      throw new Error(`Invalid executor: ${options.tool}. Must be one of: opencode, claude, gemini, codex`);
-    }
-    
-    // Parse validation commands
-    const validationCommands = [
-      ...(options.validate ? parseCsvOption(options.validate) : []),
-      ...(options.verify ? parseCsvOption(options.verify) : [])
-    ];
-    
-    // Parse try models
-    const tryModels = options.tryModels ? parseTryModels(options.tryModels) : undefined;
-    
-    // Parse retry count
-    const maxRetries = options.maxRetries ? parseInt(options.maxRetries, 10) : undefined;
-    
-    // Execute task
-    const result = await taskService.executeTask(options.id, {
-      tool: options.tool as ExecutorTool,
-      message: options.message,
-      model: options.model,
-      continueSession: options.continueSession,
-      verificationCommands: validationCommands,
-      maxRetries,
-      tryModels,
-      plan: options.plan,
-      planModel: options.planModel,
-      reviewPlan: options.reviewPlan,
-      review: options.review,
-      reviewModel: options.reviewModel,
-      autoCommit: options.autoCommit,
-      dry: options.dry
-    });
-    
-    // Display results
-    console.log(`\nExecution ${result.success ? 'succeeded' : 'failed'}`);
-    
-    if (result.attempts.length > 1) {
-      console.log(`Attempts: ${result.attempts.length}`);
-      result.attempts.forEach((attempt, index) => {
-        console.log(`  ${index + 1}. ${attempt.success ? 'Success' : 'Failed'}${attempt.model ? ` (${attempt.model})` : ''}`);
-      });
-    }
-    
-    if (result.commitInfo) {
-      console.log(`\nCommitted: ${result.commitInfo.message}`);
-      console.log(`Files: ${result.commitInfo.files.join(', ')}`);
-    }
-    
-  } catch (error) {
-    handleCommandError('Task execution', error);
-  }
-}
-```
-
-#### Scenario 3: Type-Safe Option Builder
-
-```typescript
-// utils/option-builders.ts
-import { 
-  CreateCommandOptions, 
-  ExecuteCommandOptions,
-  AIProviderOptions,
-  StreamingOptions 
-} from '../types/cli-options';
-
-export class OptionBuilder {
-  static createTask(overrides: Partial<CreateCommandOptions> = {}): CreateCommandOptions {
-    const defaults: CreateCommandOptions = {
-      title: '',
-      stream: false,
-      aiEnhance: false
-    };
-    
-    return { ...defaults, ...overrides };
-  }
-  
-  static executeTask(overrides: Partial<ExecuteCommandOptions> = {}): ExecuteCommandOptions {
-    const defaults: ExecuteCommandOptions = {
-      id: '',
-      tool: 'opencode',
-      dry: false,
-      maxRetries: 3,
-      plan: false,
-      review: false,
-      autoCommit: false
-    };
-    
-    return { ...defaults, ...overrides };
-  }
-  
-  static aiProvider(overrides: Partial<AIProviderOptions> = {}): AIProviderOptions {
-    const defaults: AIProviderOptions = {
-      aiProvider: 'anthropic',
-      aiModel: 'claude-3-sonnet-20240229'
-    };
-    
-    return { ...defaults, ...overrides };
-  }
-  
-  static streaming(enabled: boolean = false): StreamingOptions {
-    return { stream: enabled };
-  }
-}
-
-// Usage examples
-const basicTask = OptionBuilder.createTask({
-  title: 'New task',
-  content: 'Task description',
-  effort: 'medium'
-});
-
-const advancedExecution = OptionBuilder.executeTask({
-  id: 'task-123',
-  tool: 'claude',
-  plan: true,
-  review: true,
-  maxRetries: 5,
-  ...OptionBuilder.aiProvider({
-    aiProvider: 'openrouter',
-    aiModel: 'anthropic/claude-3.5-sonnet',
-    reasoning: '8000'
-  }),
-  ...OptionBuilder.streaming(true)
-});
-```
-
-### TECHNICAL SPECIFICATIONS
-
-#### Interface Composition Rules
-
-1. **Single Inheritance**: Each interface extends from base interfaces
-2. **Multiple Extension**: Commands can extend multiple base interfaces
-3. **Property Shadowing**: Specific properties override inherited ones
-4. **Type Compatibility**: All extensions maintain type safety
-
-#### Validation Patterns
-
-1. **Mutual Exclusion**: `taskId` vs `all` patterns
-2. **Required Fields**: Marked as required in TypeScript
-3. **Union Types**: Limited sets of valid values
-4. **Optional Fields**: Clearly marked optional properties
-
-#### Runtime Behavior
-
-1. **Commander.js Integration**: Automatic type coercion
-2. **Default Values**: Applied in service layer
-3. **Validation**: Handled before service calls
-4. **Error Handling**: Consistent across commands
-
-#### Performance Considerations
-
-1. **Interface Overhead**: Minimal at compile time
-2. **Type Checking**: Full compile-time validation
-3. **Runtime Cost**: No performance impact
-4. **Memory Usage**: Efficient object creation
-
-**Remember:** Citizen, in the wasteland of command-line interfaces, proper option typing is your compass. Every interface is a map through the desert of user input, and every type check is a wellspring of reliability. Without them, your commands wander aimlessly until they perish.
+**Remember:** Citizen, in wasteland of command-line interfaces, well-defined option types are your compass. Every interface is a map through the desert of user input, and every type constraint is a wellspring of predictability. Without them, your commands become lost in sands of ambiguity.

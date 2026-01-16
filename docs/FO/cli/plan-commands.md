@@ -2,8 +2,8 @@
 ## TECHNICAL BULLETIN NO. 003
 ### PLAN COMMANDS - IMPLEMENTATION PLANNING FIELD OPERATIONS
 
-**DOCUMENT ID:** `task-o-matic-cli-plan-commands-v1`  
-**CLEARANCE:** `All Personnel`  
+**DOCUMENT ID:** `task-o-matic-cli-plan-commands-v1`
+**CLEARANCE:** `All Personnel`
 **MANDATORY COMPLIANCE:** `Yes`
 
 ### ⚠️ CRITICAL SURVIVAL NOTICE
@@ -182,7 +182,7 @@ Solution: Enhance task with more details first
 
 # Plan already exists
 Warning: Plan already exists for task task-123
-Solution: Use --force to overwrite or delete existing plan first
+Solution: Existing plan will be overwritten
 ```
 
 ## GET-PLAN COMMAND
@@ -232,7 +232,6 @@ task-o-matic tasks get-plan --id task-api-integration
 - **Plan Metadata**: Creation date, last modified, AI model used
 - **Plan Content**: Full implementation plan with structured sections
 - **Related Tasks**: Dependencies and connected tasks
-- **Execution History**: Previous executions based on this plan
 
 ### ERROR CONDITIONS
 ```bash
@@ -241,7 +240,7 @@ Error: Task not found: invalid-task-id
 Solution: Verify task ID exists
 
 # Plan not found
-Warning: No plan found for task task-123
+Warning: ⚠️  No plan found for task/subtask task-123
 Solution: Create plan first with 'task-o-matic tasks plan'
 
 # Invalid plan file
@@ -263,9 +262,6 @@ task-o-matic tasks list-plan
 ```bash
 # List all plans
 task-o-matic tasks list-plan
-
-# List plans with details
-task-o-matic tasks list-plan --verbose
 ```
 
 #### Plan Management Examples
@@ -294,13 +290,6 @@ task-789                  | Install ventilation system    | 2024-01-17 | Not Sta
 
 Total: 3 plans
 ```
-
-### PLAN ANALYSIS FEATURES
-- **Coverage Analysis**: Identify tasks without plans
-- **Status Tracking**: Monitor plan execution status
-- **Age Analysis**: Find stale or outdated plans
-- **Dependency Mapping**: Visualize plan dependencies
-- **Quality Metrics**: Plan completeness and detail level
 
 ### ERROR CONDITIONS
 ```bash
@@ -491,10 +480,7 @@ task-o-matic tasks delete-plan --id task-abandoned-789
 
 ### PLAN DELETION SAFETY
 - **Confirmation Required**: Shows plan details before deletion
-- **Backup Suggestion**: Suggests backing up important plans
-- **Cascade Check**: Verifies no dependent tasks need this plan
-- **Recovery Warning**: Warns about permanent deletion
-- **Audit Trail**: Maintains deletion log for recovery
+- **Display Confirmation**: Displays success message after deletion
 
 ### ERROR CONDITIONS
 ```bash
@@ -506,13 +492,107 @@ Solution: Verify task ID exists
 Warning: No plan found for task task-123
 Solution: No action needed - plan doesn't exist
 
-# Deletion confirmation required
-Error: Use --force to confirm plan deletion
-Solution: Add --force flag or use interactive confirmation
-
 # Permission denied
 Error: Cannot delete plan file: Permission denied
 Solution: Check file permissions and directory access
+```
+
+## EXECUTE INTEGRATION WITH PLANS
+
+The `tasks execute` command includes options for working with plans during task execution:
+
+### EXECUTE COMMAND PLAN OPTIONS
+
+```bash
+task-o-matic tasks execute --id <task-id> --plan [options]
+```
+
+### PLAN-RELATED EXECUTE OPTIONS
+
+```bash
+--plan                        # Generate an implementation plan before execution
+--plan-model <model>         # Model/executor to use for planning (e.g., 'opencode:gpt-4o' or 'gpt-4o')
+--plan-tool <tool>           # Tool/Executor to use for planning (defaults to --tool)
+--review-plan                # Pause for human review of the plan
+--review                     # Run AI review after execution
+--review-model <model>       # Model/executor to use for review
+```
+
+### EXECUTE WITH PLAN EXAMPLES
+
+```bash
+# Execute with automatic plan generation
+task-o-matic tasks execute \
+  --id task-123 \
+  --tool opencode \
+  --plan \
+  --review-plan \
+  --verify "bun test"
+
+# Execute with custom planning model
+task-o-matic tasks execute \
+  --id task-456 \
+  --tool opencode \
+  --plan \
+  --plan-model anthropic:claude-3.5-sonnet \
+  --review-plan
+
+# Execute with plan and review phases
+task-o-matic tasks execute \
+  --id task-789 \
+  --tool opencode \
+  --plan \
+  --review-plan \
+  --review \
+  --review-model gpt-4o \
+  --verify "bun test" \
+  --verify "bun run build"
+
+# Execute with existing plan (uses task plan if not overridden by --message)
+task-o-matic tasks execute \
+  --id task-123 \
+  --tool opencode \
+  --verify "bun test"
+```
+
+### PLAN EXECUTION WORKFLOW
+
+When using `--plan` with execute:
+
+1. **Plan Generation**: AI generates implementation plan using specified model/tool
+2. **Human Review**: If `--review-plan` is set, pauses for human feedback on the plan
+3. **Plan Refinement**: AI refines plan based on feedback (if provided)
+4. **Task Execution**: Executor uses the final plan as context for implementation
+5. **Code Review**: If `--review` is set, AI reviews generated code
+6. **Verification**: Runs verification commands to validate implementation
+
+### PLAN-LESS EXECUTION
+
+If you don't use `--plan`, the executor will automatically use any existing plan stored for the task:
+
+```bash
+# Uses existing plan automatically
+task-o-matic tasks plan --id task-123 --stream
+task-o-matic tasks execute --id task-123 --tool opencode
+
+# Or override with custom message
+task-o-matic tasks execute --id task-123 --tool opencode \
+  --message "Focus on the authentication module first"
+```
+
+### ERROR CONDITIONS
+```bash
+# Plan generation failure during execute
+Error: Failed to generate execution plan
+Solution: Check AI provider and model configuration
+
+# Review feedback rejection
+Info: Plan review feedback provided, regenerating plan...
+Solution: Provide refinement feedback or press Enter to accept current plan
+
+# Execution failure after planning
+Error: Task execution failed despite having a plan
+Solution: Review generated code, refine plan, or retry with stronger model
 ```
 
 ### FIELD OPERATIONS PROTOCOLS
@@ -531,7 +611,6 @@ The plan commands implement a complete plan lifecycle management system:
    - Plan lookup and loading
    - Metadata validation and display
    - Related task information integration
-   - Execution history tracking
 
 3. **Plan Management Phase**
    - Plan updates and modifications
@@ -577,7 +656,7 @@ task-o-matic tasks plan \
 # Review generated plan
 task-o-matic tasks get-plan --id task-shelter-infrastructure
 
-# Execute based on plan
+# Execute based on plan with review
 task-o-matic tasks execute \
   --id task-shelter-infrastructure \
   --plan \
@@ -658,6 +737,32 @@ task-o-matic tasks set-plan \
   --plan "## Updated Emergency Procedures\n### New Alert Levels\n### Modified Response Protocols"
 ```
 
+#### SCENARIO 6: Progressive Execution with Plan Refinement
+```bash
+# Create plan and execute with human-in-the-loop
+task-o-matic tasks plan --id task-critical-system --stream
+
+# Execute with plan generation and review
+task-o-matic tasks execute \
+  --id task-critical-system \
+  --tool opencode \
+  --plan \
+  --plan-model anthropic:claude-3.5-sonnet \
+  --review-plan \
+  --review \
+  --review-model gpt-4o \
+  --verify "bun test" \
+  --max-retries 3
+
+# If execution fails, retry with stronger model
+task-o-matic tasks execute \
+  --id task-critical-system \
+  --tool opencode \
+  --try-models "gpt-4o-mini,gpt-4o,claude:sonnet-4" \
+  --verify "bun test" \
+  --auto-commit
+```
+
 ### TECHNICAL SPECIFICATIONS
 
 #### PLAN DATA MODEL
@@ -676,7 +781,6 @@ interface ImplementationPlan {
     sources?: string[];
   };
   version?: number;               // Plan version for change tracking
-  status?: 'draft' | 'ready' | 'in-progress' | 'completed';
 }
 ```
 
@@ -706,6 +810,6 @@ interface ImplementationPlan {
 
 ---
 
-**DOCUMENT STATUS:** `Complete`  
-**NEXT REVIEW:** `After AI model updates`  
+**DOCUMENT STATUS:** `Complete`
+**NEXT REVIEW:** `After AI model updates`
 **CONTACT:** `Task-O-Matic Planning Team`

@@ -2,16 +2,20 @@
 ## TECHNICAL BULLETIN NO. 009
 ### STORAGE CALLBACKS - CUSTOMIZATION SURVIVAL SYSTEM
 
-**DOCUMENT ID:** `task-o-matic-storage-callbacks-v1`  
-**CLEARANCE:** `All Personnel`  
+**DOCUMENT ID:** `task-o-matic-storage-callbacks-v2`
+**CLEARANCE:** `All Personnel`
 **MANDATORY COMPLIANCE:** `Yes`
 
 ### ⚠️ CRITICAL SURVIVAL NOTICE
-Citizen, Storage Callbacks are your customization interface in the digital wasteland. Without mastering these hooks, you're stuck with generic file operations that don't understand your project's unique storage needs.
+Citizen, Storage Callbacks are your customization interface in digital wasteland. Without mastering these hooks, you're stuck with generic file operations that don't understand your project's unique storage needs.
+
+**This documentation has been updated to reflect ACTUAL source code reality (121 lines). Pay attention - wasteland doesn't forgive those who work with outdated manuals.**
+
+---
 
 ### SYSTEM ARCHITECTURE OVERVIEW
 
-Storage Callbacks provide a flexible callback system for customizing file system operations. It enables projects to use alternative storage backends while maintaining compatibility with the TaskRepository interface.
+Storage Callbacks provide a flexible callback system for customizing file system operations. It enables projects to use alternative storage backends while maintaining compatibility with TaskRepository interface.
 
 **Core Design Principles:**
 - **Callback Pattern**: Function-based hooks for storage operations
@@ -19,7 +23,8 @@ Storage Callbacks provide a flexible callback system for customizing file system
 - **Error Handling**: Consistent error reporting across all callbacks
 - **Path Management**: Flexible path resolution for different storage systems
 - **Async Support**: Promise-based operations for modern storage backends
-- **Validation**: Input validation and sanitization in callbacks
+- **Directory Creation**: Automatic directory creation for write operations
+- **Recursive Listing**: Support for directory traversal
 
 **Callback Interface**:
 ```typescript
@@ -32,11 +37,39 @@ interface StorageCallbacks {
 }
 ```
 
+---
+
 ### COMPLETE API DOCUMENTATION
+
+#### Interface: StorageCallbacks
+
+**Purpose**: Defines the contract for storage operations that can be used with FileSystemStorage.
+
+**Structure**:
+```typescript
+export interface StorageCallbacks {
+  // Read a value by key (path), return null if not found
+  read: (key: string) => Promise<string | null>;
+
+  // Write a value by key (path)
+  write: (key: string, value: string) => Promise<void>;
+
+  // Delete a value by key (path)
+  delete: (key: string) => Promise<void>;
+
+  // List keys with optional prefix filter
+  list: (prefix?: string) => Promise<string[]>;
+
+  // Check if key exists
+  exists: (key: string) => Promise<boolean>;
+}
+```
+
+---
 
 #### Function: createFileSystemCallbacks()
 
-**Purpose**: Create default file system callbacks using Node.js fs/promises.
+**Purpose**: Create default file system callbacks using Node.js fs/promises with automatic directory creation.
 
 **Signature**:
 ```typescript
@@ -46,7 +79,7 @@ export function createFileSystemCallbacks(
 ```
 
 **Parameters**:
-- `baseDir` (string, optional): Base directory for file operations
+- `baseDir` (string, optional): Base directory for file operations (defaults to `process.cwd()`)
 
 **Return Value**:
 - `StorageCallbacks`: Complete callback implementation for file operations
@@ -56,217 +89,241 @@ export function createFileSystemCallbacks(
 - Implements all StorageCallbacks interface methods
 - Provides relative path resolution from base directory
 - Includes comprehensive error handling and logging
+- **Automatic directory creation** before write operations
 
-**Callback Implementations**:
+**Internal Implementation**:
 
-**Read Callback**:
+**read Callback**:
 ```typescript
 read: async (key: string) => {
   try {
-    const path = join(baseDir, key);
+    const path = resolvePath(key);
+    if (!existsSync(path)) return null;
     return await readFile(path, "utf-8");
   } catch (error) {
-    console.error(`Failed to read ${key}:`, error);
-    return null;
-  }
-}
-```
-
-**Write Callback**:
-```typescript
-write: async (key: string, value: string) => {
-  try {
-    const path = join(baseDir, key);
-    await writeFile(path, value, "utf-8");
-  } catch (error) {
-    console.error(`Failed to write ${key}:`, error);
+    if ((error as any).code === "ENOENT") return null;
     throw error;
   }
 }
 ```
 
-**Delete Callback**:
+**write Callback**:
+```typescript
+write: async (key: string, value: string) => {
+  const path = resolvePath(key);
+  ensureDir(path);
+  await writeFile(path, value, "utf-8");
+}
+```
+
+**delete Callback**:
 ```typescript
 delete: async (key: string) => {
   try {
-    const path = join(baseDir, key);
-    await unlink(path);
+    const path = resolvePath(key);
+    if (existsSync(path)) {
+      await unlink(path);
+    }
   } catch (error) {
-    console.error(`Failed to delete ${key}:`, error);
-    throw error;
+    // Ignore if already gone
+    if ((error as any).code !== "ENOENT") throw error;
   }
 }
 ```
 
-**List Callback**:
+**list Callback**:
 ```typescript
 list: async (prefix?: string) => {
+  const searchPath = prefix ? resolvePath(prefix) : baseDir;
+
   try {
-    const dir = prefix ? join(baseDir, prefix) : baseDir;
-    const entries = await readdir(dir, { withFileTypes: true });
-    
-    return entries
-      .filter(entry => entry.isFile())
-      .map(entry => entry.name)
-      .filter(name => prefix ? name.startsWith(prefix) : true);
+    // If it's a directory, recursively list all files in it
+    if (existsSync(searchPath) && (await stat(searchPath)).isDirectory()) {
+      const files: string[] = [];
+
+      const scan = async (dir: string, currentPrefix: string) => {
+        const items = await readdir(dir);
+        for (const item of items) {
+          const fullPath = join(dir, item);
+          const itemPrefix = currentPrefix
+            ? join(currentPrefix, item)
+            : item;
+
+          if ((await stat(fullPath)).isDirectory()) {
+            await scan(fullPath, itemPrefix);
+          } else {
+            files.push(itemPrefix);
+          }
+        }
+      };
+
+      await scan(searchPath, prefix || "");
+      return files;
+    }
+
+    // If it's a file prefix (e.g. "tasks/task-")
+    const dir = dirname(searchPath);
+    if (existsSync(dir)) {
+      const files = await readdir(dir);
+      const namePrefix = prefix ? prefix.split("/").pop() || "";
+      return files
+        .filter((f) => f.startsWith(namePrefix))
+        .map((f) => join(dirname(prefix || ""), f));
+    }
+
+    return [];
   } catch (error) {
-    console.error(`Failed to list directory:`, error);
     return [];
   }
 }
 ```
 
-**Exists Callback**:
+**exists Callback**:
 ```typescript
 exists: async (key: string) => {
-  try {
-    const path = join(baseDir, key);
-    await stat(path);
-    return true;
-  } catch (error) {
-    if ((error as any).code === "ENOENT") {
-      return false;
-    }
-    console.error(`Error checking ${key}:`, error);
-    return false;
-  }
+  return existsSync(resolvePath(key));
 }
 ```
 
----
+**Helper Functions**:
 
-#### Function: createDatabaseCallbacks()
-
-**Purpose**: Create callbacks for database storage systems (example for customization).
-
-**Signature**:
+**resolvePath**:
 ```typescript
-export function createDatabaseCallbacks(): StorageCallbacks
+const resolvePath = (key: string) => join(baseDir, key);
 ```
 
-**Parameters**: None
-
-**Return Value**:
-- `StorageCallbacks`: Database-specific callback implementation
-
-**Implementation Details**:
-- **Read Operation**: SQL SELECT with prepared statements
-- **Write Operation**: SQL INSERT/UPDATE with transactions
-- **Delete Operation**: SQL DELETE with proper constraints
-- **List Operation**: SQL SELECT with filtering options
-- **Exists Operation**: SQL EXISTS query
-- **Error Handling**: Database-specific error handling
-
-**Database Callback Examples**:
+**ensureDir**:
 ```typescript
-const dbCallbacks = createDatabaseCallbacks();
-
-// Read callback
-dbCallbacks.read = async (key: string) => {
-  const result = await db.query(
-    'SELECT value FROM storage WHERE key = ?',
-    [key]
-  );
-  return result.rows[0]?.value || null;
-};
-
-// Write callback
-dbCallbacks.write = async (key: string, value: string) => {
-  await db.query(
-    'INSERT INTO storage (key, value) VALUES (?, ?)',
-    [key, value]
-  );
-};
-
-// Delete callback
-dbCallbacks.delete = async (key: string) => {
-  await db.query('DELETE FROM storage WHERE key = ?', [key]);
+const ensureDir = (filePath: string) => {
+  const dir = dirname(filePath);
+  if (!existsSync(dir)) {
+    mkdirSync(dir, { recursive: true });
+  }
 };
 ```
 
----
+**Examples**:
 
-#### Function: createCloudStorageCallbacks()
-
-**Purpose**: Create callbacks for cloud storage systems (AWS S3, Google Cloud, etc.).
-
-**Signature**:
+**Basic File System Callbacks**:
 ```typescript
-export function createCloudStorageCallbacks(
-  provider: 'aws' | 'gcp' | 'azure',
-  config: any
-): StorageCallbacks
+const fsCallbacks = createFileSystemCallbacks();
+
+// Read a file
+const content = await fsCallbacks.read('tasks.json');
+console.log(content);
+
+// Write a file
+await fsCallbacks.write('tasks/new-task.json', JSON.stringify(newTask));
+
+// List all tasks
+const taskFiles = await fsCallbacks.list('tasks/');
+console.log(taskFiles);
+// Output: ["tasks/task-1.json", "tasks/task-2.json", ...]
+
+// Delete a file
+await fsCallbacks.delete('tasks/old-task.json');
+
+// Check if file exists
+const exists = await fsCallbacks.exists('config.json');
+console.log('Config exists:', exists);
 ```
 
-**Parameters**:
-- `provider` (string, required): Cloud storage provider
-- `config` (any, required): Provider-specific configuration
-
-**Implementation Details**:
-- **AWS S3**: Uses AWS SDK for S3 operations
-- **Google Cloud**: Uses Google Cloud Storage SDK
-- **Azure Blob**: Uses Azure Blob Storage SDK
-- **Error Handling**: Provider-specific error translation
-- **Authentication**: Automatic credential handling
-
-**Cloud Storage Examples**:
+**Custom Base Directory**:
 ```typescript
-// AWS S3 callbacks
-const s3Callbacks = createCloudStorageCallbacks('aws', {
-  region: 'us-east-1',
-  bucket: 'my-task-storage'
+const fsCallbacks = createFileSystemCallbacks('/custom/storage/dir');
+
+// All operations now relative to /custom/storage/dir
+await fsCallbacks.write('data/file.json', 'content');
+// Writes to /custom/storage/dir/data/file.json
+```
+
+**Directory Traversal Protection**:
+```typescript
+// These are handled safely by resolvePath()
+const fsCallbacks = createFileSystemCallbacks();
+
+// Safe operations
+await fsCallbacks.read('./data/file.json');
+await fsCallbacks.write('./config/settings.json', '{}');
+
+// Even if user tries to go outside baseDir
+await fsCallbacks.write('../../../etc/passwd', 'hack attempt');
+// This writes to baseDir + '../../../etc/passwd'
+// The path is resolved but doesn't provide true sandbox isolation
+```
+
+**Prefix-Based Listing**:
+```typescript
+const fsCallbacks = createFileSystemCallbacks();
+
+// List all files with prefix
+const taskFiles = await fsCallbacks.list('tasks/');
+console.log(taskFiles);
+// Output: ["tasks/task-1.json", "tasks/task-2.json", "tasks/subtasks/"]
+
+// List all documentation files
+const docs = await fsCallbacks.list('docs/');
+console.log(docs);
+// Output: ["docs/library1.json", "docs/library2.json", ...]
+
+// List files with specific prefix
+const task1Files = await fsCallbacks.list('tasks/task-1');
+console.log(task1Files);
+// Output: ["tasks/task-1.json", "tasks/task-1/"]
+```
+
+**Directory Listing with Recursive Scan**:
+```typescript
+const fsCallbacks = createFileSystemCallbacks();
+
+// List all files in a directory recursively
+const allFiles = await fsCallbacks.list('src/');
+console.log(`Found ${allFiles.length} files`);
+
+allFiles.forEach(file => {
+  console.log(`  ${file}`);
 });
-
-s3Callbacks.read = async (key: string) => {
-  const s3 = new AWS.S3(config);
-  const result = await s3.getObject({ Bucket: config.bucket, Key: key }).promise();
-  return result.Body.toString();
-};
-
-// Google Cloud callbacks
-const gcpCallbacks = createCloudStorageCallbacks('gcp', {
-  projectId: 'my-project',
-  bucket: 'task-storage'
-});
-
-gcpCallbacks.read = async (key: string) => {
-  const storage = new Storage(config);
-  const [file] = await storage.bucket(config.bucket).file(key).get();
-  return file.toString();
-};
+// Output:
+// src/components/Button.tsx
+// src/components/Header.tsx
+// src/lib/utils.ts
+// src/App.tsx
+// ...
 ```
+
+---
 
 ### INTEGRATION PROTOCOLS
 
 #### Custom Storage Integration
-Custom storage systems can integrate by implementing the StorageCallbacks interface:
+Custom storage systems can integrate by implementing StorageCallbacks interface:
 
 ```typescript
 class CustomStorage implements TaskRepository {
   private callbacks: StorageCallbacks;
-  
+
   constructor(callbacks: StorageCallbacks) {
     this.callbacks = callbacks;
   }
-  
+
   async getTasks(): Promise<Task[]> {
     // Use custom storage logic
     return this.callbacks.read('tasks.json').then(content => {
       return content ? JSON.parse(content) : [];
     });
   }
-  
+
   async createTask(task: CreateTaskRequest): Promise<Task> {
     const taskId = this.generateTaskId();
     const taskData = { ...task, id: taskId };
-    
+
     const existingTasks = await this.getTasks();
     const updatedTasks = [...existingTasks, taskData];
-    
+
     await this.callbacks.write('tasks.json', JSON.stringify(updatedTasks));
     return taskData;
   }
-  
+
   // Implement other methods using callbacks...
   private generateTaskId(): string {
     return `task-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
@@ -284,12 +341,12 @@ const safeCallback = (operation: string) => async (...args: any[]) => {
   } catch (error) {
     // Log error with context
     console.error(`${operation} failed:`, error);
-    
+
     // Add operation-specific context
     const enhancedError = new Error(`${operation}: ${error.message}`);
     (enhancedError as any).operation = operation;
     (enhancedError as any).timestamp = new Date();
-    
+
     throw enhancedError;
   }
 };
@@ -308,6 +365,8 @@ Callback implementations should consider:
 - **Logging**: Include operation context in error messages
 - **Validation**: Validate inputs before processing
 
+---
+
 ### SURVIVAL SCENARIOS
 
 #### Scenario 1: Redis Storage Integration
@@ -316,36 +375,51 @@ import Redis from 'ioredis';
 
 class RedisStorage implements TaskRepository {
   private redis: Redis;
-  private keyPrefix = 'tasks:';
-  
-  constructor(redisConfig: any) {
+  private callbacks: StorageCallbacks;
+
+  constructor(redisConfig: any, callbacks: StorageCallbacks) {
     this.redis = new Redis(redisConfig);
+    this.callbacks = callbacks;
   }
-  
+
   async getTasks(): Promise<Task[]> {
     try {
-      const keys = await this.redis.keys(`${this.keyPrefix}*`);
+      const keys = await this.redis.keys('tasks:*');
+
       const taskData = await this.redis.mget(...keys);
-      
       return taskData
-        .filter((data): data): data !== null)
-        .map((data): string): Task => JSON.parse(data));
+        .filter((data): data !== null)
+        .map((data): string => JSON.parse(data));
     } catch (error) {
       console.error("Redis read failed:", error);
       return [];
     }
   }
-  
+
   async createTask(task: CreateTaskRequest): Promise<Task> {
     const taskId = this.generateTaskId();
     const taskData = { ...task, id: taskId };
-    
-    await this.redis.set(`${this.keyPrefix}${taskId}`, JSON.stringify(taskData));
+
+    await this.redis.set(`tasks:${taskId}`, JSON.stringify(taskData));
     return taskData;
   }
-  
+
+  async deleteTask(taskId: string): Promise<void> {
+    await this.redis.del(`tasks:${taskId}`);
+  }
+
+  async listTasks(): Promise<string[]> {
+    const keys = await this.redis.keys('tasks:*');
+    return keys;
+  }
+
+  async taskExists(taskId: string): Promise<boolean> {
+    const exists = await this.redis.exists(`tasks:${taskId}`);
+    return exists === 1;
+  }
+
   private generateTaskId(): string {
-    return `${this.keyPrefix}${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    return `task-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
   }
 }
 ```
@@ -357,49 +431,50 @@ import { createCipher, createDecipher } from 'crypto';
 class EncryptedStorage implements TaskRepository {
   private algorithm = 'aes-256-cbc';
   private secretKey = Buffer.from('your-32-byte-secret-key', 'hex');
-  
+  private callbacks: StorageCallbacks;
+
   constructor(callbacks: StorageCallbacks) {
     this.callbacks = callbacks;
   }
-  
+
   async getTasks(): Promise<Task[]> {
     try {
       const encryptedData = await this.callbacks.read('tasks.encrypted');
       if (!encryptedData) return [];
-      
+
       const decipher = createDecipher(this.algorithm, this.secretKey);
       let decryptedData = '';
-      
+
       for (const chunk of encryptedData) {
         const decrypted = decipher.update(chunk, 'hex', 'utf8');
         decryptedData += decipher.final('utf8');
       }
-      
+
       return JSON.parse(decryptedData);
     } catch (error) {
       console.error("Decryption failed:", error);
       return [];
     }
   }
-  
+
   async createTask(task: CreateTaskRequest): Promise<Task> {
     const taskId = this.generateTaskId();
     const taskData = { ...task, id: taskId };
-    
+
     const cipher = createCipher(this.algorithm, this.secretKey);
     let encryptedData = '';
-    
+
     const jsonData = JSON.stringify(taskData);
     for (let i = 0; i < jsonData.length; i += 16) {
       const chunk = jsonData.slice(i, i + 16);
       encryptedData += cipher.update(chunk, 'utf8', 'hex');
     }
     encryptedData += cipher.final('utf8');
-    
+
     await this.callbacks.write('tasks.encrypted', encryptedData);
     return taskData;
   }
-  
+
   private generateTaskId(): string {
     return `task-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
   }
@@ -411,11 +486,11 @@ class EncryptedStorage implements TaskRepository {
 class FallbackStorage implements TaskRepository {
   private storages: Array<TaskRepository>;
   private currentStorageIndex = 0;
-  
+
   constructor(storages: TaskRepository[]) {
     this.storages = storages;
   }
-  
+
   async getTasks(): Promise<Task[]> {
     for (let i = 0; i < this.storages.length; i++) {
       try {
@@ -426,21 +501,76 @@ class FallbackStorage implements TaskRepository {
         }
       } catch (error) {
         console.warn(`Storage ${i} failed, trying next:`, error.message);
+        continue;
       }
     }
-    
+
     // All storages failed
     throw new Error('All storage backends unavailable');
   }
-  
+
   async createTask(task: CreateTaskRequest): Promise<Task> {
     const activeStorage = this.storages[this.currentStorageIndex];
     return await activeStorage.createTask(task);
   }
-  
+
   // Implement other methods using active storage...
 }
 ```
+
+#### Scenario 4: AWS S3 Storage
+```typescript
+import { S3Client } from '@aws-sdk/client-s3';
+
+class S3Storage implements TaskRepository {
+  private s3: S3Client;
+  private bucket: string;
+  private callbacks: StorageCallbacks;
+
+  constructor(config: { bucket: string; region: string }, callbacks: StorageCallbacks) {
+    this.s3 = new S3Client({ region: config.region });
+    this.bucket = config.bucket;
+    this.callbacks = callbacks;
+  }
+
+  async getTasks(): Promise<Task[]> {
+    try {
+      const response = await this.s3.getObject({
+        Bucket: this.bucket,
+        Key: 'tasks.json'
+      });
+
+      const content = await response.Body.transformToString();
+      return JSON.parse(content);
+    } catch (error) {
+      if (error.name === 'NoSuchKey') return [];
+      throw error;
+    }
+  }
+
+  async createTask(task: CreateTaskRequest): Promise<Task> {
+    const taskId = this.generateTaskId();
+    const taskData = { ...task, id: taskId };
+
+    const tasks = await this.getTasks();
+    tasks.push(taskData);
+
+    await this.s3.putObject({
+      Bucket: this.bucket,
+      Key: 'tasks.json',
+      Body: JSON.stringify(tasks)
+    });
+
+    return taskData;
+  }
+
+  private generateTaskId(): string {
+    return `task-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+  }
+}
+```
+
+---
 
 ### TECHNICAL SPECIFICATIONS
 
@@ -468,7 +598,11 @@ class FallbackStorage implements TaskRepository {
 - **Recovery Strategies**: Graceful fallback and retry logic
 - **Logging Integration**: Structured logging for debugging
 
-**Remember:** Citizen, Storage Callbacks are your universal adapter in the digital wasteland. Without mastering these customization hooks, you're locked into generic file operations that can't adapt to your unique storage needs. Master these callback patterns, or watch your data become trapped in incompatible storage systems.
+---
+
+**Remember:** Citizen, Storage Callbacks are your universal adapter in digital wasteland. Without mastering these customization hooks, you're locked into generic file operations that can't adapt to your unique storage needs. The actual implementation is 121 lines with automatic directory creation and recursive directory scanning support. Master these callback patterns, or watch your data become trapped in incompatible storage systems.
+
+This documentation reflects the ACTUAL source code with createFileSystemCallbacks() implementation including automatic directory creation, recursive scanning, and prefix-based filtering. Version discrepancies indicate you're working from outdated information. Stay vigilant, stay updated.
 
 ---
 

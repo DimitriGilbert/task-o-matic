@@ -1,28 +1,34 @@
 ## TECHNICAL BULLETIN NO. 008
 ### AI CONFIG BUILDER - AI CONFIGURATION CONSTRUCTION SYSTEM
 
-**DOCUMENT ID:** `task-o-matic-ai-config-builder-v1`  
-**CLEARANCE:** `All Personnel`  
+**DOCUMENT ID:** `task-o-matic-ai-config-builder-v2`
+**CLEARANCE:** `All Personnel`
 **MANDATORY COMPLIANCE:** `Yes`
 
 ### ⚠️ CRITICAL SURVIVAL NOTICE
-Citizen, ignore this AI configuration builder and your AI operations become a chaotic mess in the wasteland. Provider configurations clash, model selections become random, and your AI service turns to radioactive static. This is your AI configuration foundation.
 
-### TYPE SYSTEM ARCHITECTURE
+Citizen, the AI config builder is your translation module between the wasteland of CLI arguments and the internal bunker systems. Without it, your `aiProvider`, `aiModel`, and `aiKey` flags are just meaningless strings floating in the radioactive void. This utility converts them into proper configuration objects that the AI systems can actually use.
 
-The AI configuration builder provides **standardized AI configuration creation** from CLI options and environment variables. It uses **interface composition** and **validation patterns** to create type-safe AI configurations. The architecture supports:
+Think of it as the universal translator for Pre-Crisis Era technology to Survival System interfaces.
 
-- **Option Composition**: Build complex AI configs from simple options
-- **Environment Integration**: Load from environment variables with fallbacks
-- **Provider Defaults**: Built-in defaults for each AI provider
-- **Validation**: Comprehensive validation of AI configurations
-- **Type Safety**: Compile-time validation and runtime guarantees
+---
 
-This design enables **predictable AI configuration** while maintaining flexibility for different use cases.
+### ⚙️ CORE ARCHITECTURE
 
-### COMPLETE TYPE DOCUMENTATION
+The AI configuration builder is a **simple transformation utility** with zero complexity:
 
-#### AIOptions Interface
+- **Purpose**: Convert CLI-style AI options (`aiProvider`, `aiModel`, etc.) into internal AI configuration format
+- **No Validation**: Pure transformation only. Input validation happens elsewhere
+- **No Error Throwing**: Returns empty object for missing options, never crashes
+- **Type Safe**: TypeScript ensures correct property mapping at compile time
+
+**Why This Exists**: Prior to this utility, 10+ files duplicated the same transformation logic. Now we have one source of truth.
+
+---
+
+## 📋 TYPE DEFINITIONS
+
+### AIOptions Interface
 
 ```typescript
 export interface AIOptions {
@@ -34,323 +40,420 @@ export interface AIOptions {
 }
 ```
 
-**Purpose**: Options for AI provider configuration
+**Purpose**: CLI-friendly options format used by command-line arguments
 
 **Properties**:
-- **aiProvider** (Optional, string): AI provider name ("openai", "anthropic", "openrouter", "custom")
-- **aiModel** (Optional, string): Model name to use
-- **aiKey** (Optional, string): API authentication key
-- **aiProviderUrl** (Optional, string): Custom endpoint URL for custom providers
-- **aiReasoning** (Optional, string): Reasoning token limit for OpenRouter
 
-**Usage Examples**:
+| Property | Type | Optional? | Description |
+|----------|------|-----------|-------------|
+| `aiProvider` | string | Yes | AI provider identifier |
+| `aiModel` | string | Yes | Model name/identifier |
+| `aiKey` | string | Yes | API authentication key |
+| `aiProviderUrl` | string | Yes | Custom endpoint URL |
+| `aiReasoning` | string | Yes | Reasoning token limit (string that gets parsed to number) |
+
+---
+
+## 🛠️ FUNCTIONS
+
+### buildAIConfig
+
+**Signature:**
 ```typescript
-// From CLI options
+function buildAIConfig(options?: AIOptions): Partial<AIConfig>
+```
+
+**Purpose**: Transform CLI-style options into internal AI configuration format
+
+**Parameters:**
+
+| Parameter | Type | Optional? | Description |
+|-----------|------|-----------|-------------|
+| `options` | `AIOptions` | Yes | CLI options to transform |
+
+**Returns:** `Partial<AIConfig>` - Partial configuration object with transformed properties
+
+**Behavior:**
+- Returns empty object `{}` if `options` is `undefined` or `null`
+- Only includes properties that have truthy values in the input
+- Performs direct property name transformation:
+  - `aiProvider` → `provider`
+  - `aiModel` → `model`
+  - `aiKey` → `apiKey`
+  - `aiProviderUrl` → `baseURL`
+  - `aiReasoning` → `reasoning.maxTokens` (via `parseInt`)
+- **No runtime validation** - trusts input values
+- **No error throwing** - never fails
+
+---
+
+## 📝 TRANSFORMATION MAPPING
+
+### Property Transformations
+
+| Input (`AIOptions`) | Output (`AIConfig`) | Transformation Logic |
+|-------------------|-------------------|---------------------|
+| `aiProvider` | `provider` | Direct assignment with type assertion |
+| `aiModel` | `model` | Direct assignment |
+| `aiKey` | `apiKey` | Direct assignment |
+| `aiProviderUrl` | `baseURL` | Direct assignment |
+| `aiReasoning` | `reasoning.maxTokens` | `parseInt(input, 10)` |
+
+### Type Assertions
+
+The function asserts `aiProvider` as one of these literal types:
+```typescript
+"openrouter" | "openai" | "anthropic" | "custom"
+```
+
+**Note:** The `AIConfig` type definition in `types/index.ts` supports additional providers (`"gemini"`, `"zai"`), but the builder only transforms the four primary providers.
+
+---
+
+## 📚 USAGE EXAMPLES
+
+### Example 1: Complete Configuration
+
+```typescript
+import { buildAIConfig } from "task-o-matic-core";
+
+// From CLI arguments
 const cliOptions = {
   aiProvider: "anthropic",
   aiModel: "claude-3.5-sonnet",
-  aiKey: "sk-ant-..."
+  aiKey: process.env.ANTHROPIC_API_KEY,
+  aiProviderUrl: undefined,
+  aiReasoning: "5000"
 };
 
-// From environment variables
-const envConfig = {
-  AI_PROVIDER: "anthropic",
-  AI_MODEL: "claude-3.5-sonnet",
-  ANTHROPIC_API_KEY: "sk-ant-..."
-};
+const config = buildAIConfig(cliOptions);
+// Result:
+// {
+//   provider: "anthropic",
+//   model: "claude-3.5-sonnet",
+//   apiKey: "sk-ant-...",
+//   reasoning: { maxTokens: 5000 }
+// }
+```
 
-// Custom provider with reasoning
-const customConfig: AIOptions = {
+### Example 2: Minimal Configuration
+
+```typescript
+// Only essential options
+const minimalConfig = buildAIConfig({
+  aiProvider: "openai",
+  aiModel: "gpt-4",
+  aiKey: process.env.OPENAI_API_KEY
+});
+
+// Result:
+// {
+//   provider: "openai",
+//   model: "gpt-4",
+//   apiKey: "sk-..."
+// }
+```
+
+### Example 3: Custom Provider
+
+```typescript
+const customProviderConfig = buildAIConfig({
   aiProvider: "custom",
   aiModel: "llama-3-70b",
-  aiProviderUrl: "https://api.custom-ai.com/v1",
-  aiReasoning: "8000"
-};
+  aiKey: process.env.CUSTOM_API_KEY,
+  aiProviderUrl: "https://api.my-custom-ai.com/v1"
+});
+
+// Result:
+// {
+//   provider: "custom",
+//   model: "llama-3-70b",
+//   apiKey: "custom-key...",
+//   baseURL: "https://api.my-custom-ai.com/v1"
+// }
 ```
 
-#### buildAIConfig Function
+### Example 4: Empty Input
 
 ```typescript
-export function buildAIConfig(options?: AIOptions): Partial<AIConfig> {
-  if (!options) return {};
+const emptyConfig = buildAIConfig(undefined);
+// Result: {}
 
-  return {
-    ...(options.aiProvider && {
-      provider: options.aiProvider as
-        | "openai"
-        | "anthropic"
-        | "openrouter"
-        | "custom",
-    }),
-    ...(options.aiModel && {
-      model: options.aiModel
-    }),
-    ...(options.aiKey && {
-      apiKey: options.aiKey
-    }),
-    ...(options.aiProviderUrl && {
-      baseURL: options.aiProviderUrl
-    }),
-    ...(options.aiReasoning && {
-      reasoning: { maxTokens: parseInt(options.aiReasoning, 10) }
-    })
-  };
-  }
-}
+const nullConfig = buildAIConfig(null);
+// Result: {}
 ```
 
-**Usage Examples**:
+### Example 5: Partial Configuration with Falsy Values
+
 ```typescript
-// Build from CLI options
-const config1 = buildAIConfig({
+const partialConfig = buildAIConfig({
   aiProvider: "anthropic",
-  aiModel: "claude-3.5-sonnet",
-  aiKey: process.env.ANTHROPIC_API_KEY
+  aiModel: "",           // Empty string - falsy, excluded
+  aiKey: undefined,      // Undefined - excluded
+  aiReasoning: "8000"    // Truthy string - included
 });
 
-// Build from environment with fallback
-const config2 = buildAIConfig({
-  aiProvider: process.env.AI_PROVIDER || "anthropic",
-  aiModel: process.env.AI_MODEL || "claude-3.5-sonnet"
-});
-
-// Build with custom provider
-const config3 = buildAIConfig({
-  aiProvider: "custom",
-  aiModel: "llama-3-70b",
-  aiProviderUrl: "https://api.custom-ai.com/v1",
-  aiReasoning: "8000"
-});
-
-// Merge with defaults
-const mergedConfig = buildAIConfig({
-  aiProvider: "openrouter",
-  aiModel: "gpt-4o",
-  aiKey: "sk-or-..."
-});
-
-// Override specific settings
-const overrideConfig = buildAIConfig({
-  aiProvider: "anthropic",
-  aiModel: "claude-3.5-sonnet",
-  aiReasoning: "10000"
-});
+// Result:
+// {
+//   provider: "anthropic",
+//   reasoning: { maxTokens: 8000 }
+// }
 ```
 
-### FUNCTION DOCUMENTATION
+---
 
-#### buildAIConfig Function
+## 🔧 INTEGRATION PATTERNS
 
-```typescript
-export function buildAIConfig(options?: AIOptions): Partial<AIConfig> {
-  if (!options) return {};
-
-  return {
-    ...(options.aiProvider && {
-      provider: options.aiProvider as
-        | "openai"
-        | "anthropic"
-        | "openrouter"
-        | "custom",
-    }),
-    ...(options.aiModel && {
-      model: options.aiModel
-    }),
-    ...(options.aiKey && {
-      apiKey: options.aiKey
-    }),
-    ...(options.aiProviderUrl && {
-      baseURL: options.aiProviderUrl
-    }),
-    ...(options.aiReasoning && {
-      reasoning: { 
-        maxTokens: parseInt(options.aiReasoning, 10) 
-      }
-    })
-  };
-  }
-}
-```
-
-**Parameters**:
-- **options** (Optional, AIOptions): Partial AI options to merge
-- **Returns**: Complete AI configuration object
-
-**Returns**: Partial AIConfig object with merged configuration
-
-**Error Handling**: Throws `TaskOMaticError` if validation fails
-
-**Integration Examples**:
-```typescript
-// Service layer usage
-class AIService {
-  private config: AIConfig;
-  
-  constructor() {
-    this.config = buildAIConfig();
-  }
-  
-  updateConfig(newConfig: Partial<AIConfig>): void {
-    this.config = { ...this.config, ...newConfig };
-  }
-  
-  getConfig(): AIConfig {
-    return this.config;
-  }
-}
-
-// CLI command usage
-const aiConfig = buildAIConfig(commandLineOptions);
-await aiService.updateConfig(aiConfig);
-
-// Environment-based configuration
-const envConfig = buildAIConfig();
-await aiService.updateConfig(envConfig);
-```
-
-### INTEGRATION PROTOCOLS
-
-#### Service Layer Integration
+### Pattern 1: CLI Command Integration
 
 ```typescript
-// services/ai-service.ts
-import { buildAIConfig } from '../utils/ai-config-builder';
+// In CLI command file
+import { buildAIConfig } from "task-o-matic-core";
 
-export class AIService {
-  private config: AIConfig;
-  
-  constructor() {
-    this.config = buildAIConfig();
-  }
-  
-  updateConfig(newConfig: Partial<AIConfig>): void {
-    this.config = { ...this.config, ...newConfig };
-  }
-  
-  getConfig(): AIConfig {
-    return this.config;
-  }
-}
-```
-
-#### CLI Command Integration
-
-```typescript
-// commands/tasks/enhance.ts
-import { buildAIConfig } from '../utils/ai-config-builder';
-
-export async function enhanceTask(taskId: string, options: any): Promise<void> {
+export async function createTask(options: {
+  aiProvider?: string;
+  aiModel?: string;
+  aiKey?: string;
+  aiReasoning?: string;
+}) {
   const aiConfig = buildAIConfig(options);
-  await aiService.updateConfig(aiConfig);
-  
-  await taskService.enhanceTask(taskId, {
-    aiProvider: aiConfig.aiProvider,
-    aiModel: aiConfig.aiModel,
-    stream: aiConfig.stream
+
+  // Use with AI service
+  const result = await aiService.enhanceTask(taskId, {
+    ...aiConfig,
+    streamingOptions: { enabled: true }
   });
-  }
 }
 ```
 
-#### Environment Variable Loading
+### Pattern 2: Environment Variable Mapping
 
 ```typescript
-// lib/config.ts
-import { buildAIConfig } from '../utils/ai-config-builder';
-
-export function loadAIConfig(): AIConfig {
-  const envConfig = buildAIConfig();
-  await configManager.load();
-  return envConfig;
+function loadEnvAIConfig() {
+  return buildAIConfig({
+    aiProvider: process.env.AI_PROVIDER,
+    aiModel: process.env.AI_MODEL,
+    aiKey: process.env.OPENAI_API_KEY,
+    aiProviderUrl: process.env.CUSTOM_API_URL,
+    aiReasoning: process.env.AI_REASONING_TOKENS
+  });
 }
 ```
 
-### SURVIVAL SCENARIOS
-
-#### Scenario 1: Multi-Provider Configuration
+### Pattern 3: Configuration Merging
 
 ```typescript
-// Configuration for different AI providers
-const providerConfigs = {
-  openai: {
-    provider: "openai",
-    model: "gpt-4",
-    maxTokens: 4000,
-    temperature: 0.7
-  },
-  anthropic: {
+// Merge CLI options with default config
+const defaultConfig = {
+  provider: "anthropic",
+  model: "claude-3.5-sonnet"
+};
+
+const cliOverride = buildAIConfig({
+  aiProvider: "openrouter",
+  aiModel: "anthropic/claude-3.5-sonnet"
+});
+
+const finalConfig = {
+  ...defaultConfig,
+  ...cliOverride
+};
+```
+
+---
+
+## ⚠️ IMPORTANT LIMITATIONS
+
+### What This Utility Does NOT Do
+
+1. **No Runtime Validation**: The function does not validate that:
+   - `aiProvider` is one of the supported values
+   - `aiModel` is a valid model name for the provider
+   - `aiKey` is a properly formatted API key
+   - `aiProviderUrl` is a valid URL format
+   - `aiReasoning` can be parsed as a number
+
+2. **No Error Handling**: The function never throws errors:
+   - Invalid inputs are silently excluded
+   - `parseInt` failures on `aiReasoning` result in `NaN`
+
+3. **No Provider Default Values**: The function does not supply defaults:
+   - If you omit `aiProvider`, `provider` is not in the result
+   - If you omit `aiModel`, `model` is not in the result
+
+4. **No Provider-specific Logic**: All providers are treated identically:
+   - No special handling for OpenRouter reasoning
+   - No model aliasing or name normalization
+   - No key selection logic based on provider
+
+5. **Limited Provider Support**: Only transforms four providers:
+   - `"openrouter" | "openai" | "anthropic" | "custom"`
+   - Does not transform `"gemini"` or `"zai"` providers (even though they exist in types)
+
+---
+
+## 🔍 BEHAVIORAL DETAILS
+
+### parseInt Behavior
+
+```typescript
+// Valid number strings
+buildAIConfig({ aiReasoning: "5000" })
+// Result: { reasoning: { maxTokens: 5000 } }
+
+// Invalid strings
+buildAIConfig({ aiReasoning: "invalid" })
+// Result: { reasoning: { maxTokens: NaN } }
+
+// Edge cases
+buildAIConfig({ aiReasoning: "" })
+// Result: {} (empty string is falsy, property excluded)
+
+buildAIConfig({ aiReasoning: "0" })
+// Result: { reasoning: { maxTokens: 0 } } (0 is truthy in parseInt)
+```
+
+### Property Order
+
+The returned object maintains this property order:
+1. `provider` (if provided)
+2. `model` (if provided)
+3. `apiKey` (if provided)
+4. `baseURL` (if provided)
+5. `reasoning` (if provided)
+
+### Conditional Spread Behavior
+
+```typescript
+// All truthy values included
+buildAIConfig({
+  aiProvider: "anthropic",     // truthy → included
+  aiModel: "claude-3.5",       // truthy → included
+  aiKey: "sk-ant-...",         // truthy → included
+  aiProviderUrl: "https://...", // truthy → included
+  aiReasoning: "5000"          // truthy → included
+})
+// Result includes all 5 properties
+
+// Falsy values excluded
+buildAIConfig({
+  aiProvider: "",           // falsy → excluded
+  aiModel: undefined,       // falsy → excluded
+  aiKey: null,              // falsy → excluded
+  aiProviderUrl: undefined, // falsy → excluded
+  aiReasoning: undefined    // falsy → excluded
+})
+// Result: {}
+```
+
+---
+
+## 🧪 TESTING RECOMMENDATIONS
+
+### Test Cases
+
+```typescript
+import assert from "assert";
+
+// Test 1: Complete configuration
+assert.deepStrictEqual(
+  buildAIConfig({
+    aiProvider: "anthropic",
+    aiModel: "claude-3.5-sonnet",
+    aiKey: "sk-test",
+    aiProviderUrl: "https://api.test.com",
+    aiReasoning: "8000"
+  }),
+  {
     provider: "anthropic",
     model: "claude-3.5-sonnet",
-    maxTokens: 8000,
-    temperature: 0.7
-  },
-  openrouter: {
-    provider: "openrouter",
-    model: "anthropic/claude-3.5-sonnet",
-    maxTokens: 8000,
-    temperature: 0.7,
-    reasoning: {
-      maxTokens: 8000
-    }
-  },
-  custom: {
-    provider: "custom",
-    model: "llama-3-70b",
-    maxTokens: 6000,
-    temperature: 0.8
-    }
+    apiKey: "sk-test",
+    baseURL: "https://api.test.com",
+    reasoning: { maxTokens: 8000 }
   }
-  }
-};
+);
 
-// Dynamic provider switching
-function switchAIProvider(provider: string, model?: string): AIConfig {
-  const currentConfig = aiService.getConfig();
-  const newConfig = providerConfigs[provider as keyof providerConfigs];
-  
-  aiService.updateConfig(newConfig);
-  return newConfig;
-}
+// Test 2: Empty/undefined input
+assert.deepStrictEqual(buildAIConfig(undefined), {});
+assert.deepStrictEqual(buildAIConfig(null), {});
+
+// Test 3: Falsy values excluded
+assert.deepStrictEqual(
+  buildAIConfig({
+    aiProvider: "anthropic",
+    aiModel: "",
+    aiKey: undefined
+  }),
+  { provider: "anthropic" }
+);
+
+// Test 4: Only provider
+assert.deepStrictEqual(
+  buildAIConfig({ aiProvider: "openai" }),
+  { provider: "openai" }
+);
+
+// Test 5: Reasoning parsing
+assert.deepStrictEqual(
+  buildAIConfig({ aiReasoning: "5000" }),
+  { reasoning: { maxTokens: 5000 } }
+);
 ```
 
-### TECHNICAL SPECIFICATIONS
+---
 
-#### Configuration Validation Rules
+## ❓ FREQUENTLY ASKED QUESTIONS FROM THE FIELD
 
-1. **Provider Validation**: AI provider must be in predefined list
-2. **Model Compatibility**: Model must be supported by provider
-3. **URL Validation**: Custom URLs must be valid URLs
-4. **Key Requirements**: API keys must be provided for custom providers
-5. **Reasoning Limits**: Reasoning tokens must be positive integers
+**Q: Why doesn't this utility validate input?**
 
-#### Performance Characteristics
+A: Citizen, validation is handled at the service layer where we have context about what's actually being done. This utility is a pure transformation function—keep it simple, let others do the checking.
 
-1. **Configuration Creation**: O(1) operation
-2. **Memory Usage**: Lightweight configuration objects
-3. **Type Safety**: Full compile-time validation
-4. **Caching**: Configuration objects cached for performance
+**Q: What happens if I pass an invalid provider name?**
 
-#### Security Considerations
+A: The function will still return it. The type assertion says "trust me, it's one of the four providers," but at runtime, anything goes. If you pass `aiProvider: "invalid"`, you'll get `{ provider: "invalid" }` back. The error will surface when the AI service tries to use it.
 
-1. **API Key Protection**: Keys never logged or exposed
-2. **URL Security**: Custom URLs validated for SSL/TLS
-3. **Input Sanitization**: All inputs validated before API calls
+**Q: Can I use this with "gemini" or "zai" providers?**
 
-### FREQUENTLY ASKED QUESTIONS FROM THE FIELD
+A: The transformation logic only handles the four primary providers (`openrouter`, `openai`, `anthropic`, `custom`). For `gemini` or `zai`, you'd need to extend the type assertion or build the config object manually.
 
-**Q: How do I configure different models for different steps?**
-A: Use step-specific AI options like `prdAnswerAiModel` for question/refine steps, or create separate configuration objects for each step.
+**Q: Why is `aiReasoning` a string if it's converted to a number?**
 
-**Q: What happens if I specify an invalid model?**
-A: The builder will throw a validation error before creating the configuration. Use the provider's model list to see valid options.
+A: CLI arguments are always strings. The builder handles the conversion so you don't have to remember to parse it everywhere.
 
-**Q: Can I use environment variables and CLI options together?**
-A: Yes! CLI options take precedence over environment variables, but environment variables provide fallbacks for missing values.
+**Q: What if `parseInt(aiReasoning, 10)` fails?**
 
-**Q: How do I handle API rate limits?**
-A: The configuration builder includes rate limit awareness and will automatically adjust request timing. Monitor costs and implement exponential backoff when limits are approached.
+A: You'll get `NaN` in the `maxTokens` value. The AI service will likely reject this when it tries to use it. Input validation prevents this scenario in practice.
 
-**Q: Can I use custom AI providers with authentication?**
-A: Yes! Use `aiProviderUrl` and `aiKey` options for custom endpoints. The builder validates URLs and handles authentication.
+**Q: Can I chain multiple `buildAIConfig` calls to merge configs?**
 
-**Remember:** Citizen, in the wasteland of AI integration, proper configuration is your compass. Every provider choice is a path through the fog of uncertainty, and every model parameter is a lighthouse against the chaos. Configure them wisely, test them thoroughly, and they'll guide your AI operations to success in the radioactive dust of poor configuration.
+A: Not directly—use object spread instead:
+```typescript
+const merged = {
+  ...buildAIConfig(config1),
+  ...buildAIConfig(config2)
+};
+```
+
+**Q: Why does this return `Partial<AIConfig>` instead of `AIConfig`?**
+
+A: Because not all properties are required, and missing values are excluded rather than set to undefined. This allows for flexible partial configuration that can be merged with defaults elsewhere.
+
+---
+
+## 🏁 FINAL REMINDER
+
+Citizen, the AI config builder is simple by design. It doesn't validate, it doesn't throw errors, it doesn't load defaults. It transforms one object format to another, nothing more.
+
+Use it where you need to bridge CLI arguments to internal configuration, and handle validation elsewhere in your systems.
+
+**Remember:** In the post-apocalyptic codebase, simple utilities survive. Complex ones break under pressure. Keep it clean, keep it simple, and live to refactor another day.
+
+---
+
+**DOCUMENT CONTROL:**
+
+- **Version:** 2.0 (Revised for accuracy)
+- **Clearance:** All Personnel
+- **Classification:** Public Documentation
+
+[Build well. Configure wisely. Survive.]

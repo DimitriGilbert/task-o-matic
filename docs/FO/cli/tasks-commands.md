@@ -2,14 +2,16 @@
 ## TECHNICAL BULLETIN NO. 002
 ### TASKS COMMANDS - TASK MANAGEMENT FIELD OPERATIONS
 
-**DOCUMENT ID:** `task-o-matic-cli-tasks-commands-v1`  
-**CLEARANCE:** `All Personnel`  
+**DOCUMENT ID:** `task-o-matic-cli-tasks-commands-v1`
+**CLEARANCE:** `All Personnel`
 **MANDATORY COMPLIANCE:** `Yes`
 
 ### ⚠️ CRITICAL SURVIVAL NOTICE
-Citizen, the tasks commands are your lifeblood in the post-deadline wasteland. Without proper task management, you're just wandering aimlessly through radioactive ruins. These commands provide structure, AI enhancement, and execution capabilities that separate survivors from the lost. Master them or watch your projects decay into chaos.
+
+Citizen, the tasks commands are your lifeline in the AI-pocalypse wasteland. Without proper task management, you're just wandering aimlessly through radioactive ruins. These commands provide structure, AI enhancement, and execution capabilities that separate survivors from the lost. Master them or watch your projects decay into chaos.
 
 ### COMMAND ARCHITECTURE OVERVIEW
+
 The tasks command group represents the core operational hub for task lifecycle management. Built on a hierarchical architecture, it supports parent-child relationships, AI-enhanced descriptions, implementation planning, and automated execution. Each subcommand specializes in specific aspects of task management while maintaining consistent interfaces and error handling.
 
 **Core Design Principles:**
@@ -19,9 +21,10 @@ The tasks command group represents the core operational hub for task lifecycle m
 - **Progressive Enhancement**: Tasks can be enhanced, split, and refined iteratively
 - **Documentation Integration**: Automatic fetching and analysis of relevant documentation
 
-### COMPLETE TASK COMMAND DOCUMENTATION
+---
 
 ## CREATE COMMAND
+
 **Command:** `task-o-matic tasks create`
 
 ### COMMAND SIGNATURE
@@ -119,7 +122,10 @@ Error: EACCES: permission denied, '.task-o-matic/tasks/task-123.json'
 Solution: Check directory permissions and disk space
 ```
 
+---
+
 ## LIST COMMAND
+
 **Command:** `task-o-matic tasks list`
 
 ### COMMAND SIGNATURE
@@ -179,7 +185,10 @@ The list command displays tasks in a structured format:
 - **Filter Error (2)**: Invalid status or tag filter
 - **Storage Error (4)**: Failed to read tasks from storage
 
+---
+
 ## SHOW COMMAND
+
 **Command:** `task-o-matic tasks show`
 
 ### COMMAND SIGNATURE
@@ -225,7 +234,10 @@ Error: Invalid task ID format
 Solution: Use correct task ID format from list output
 ```
 
+---
+
 ## UPDATE COMMAND
+
 **Command:** `task-o-matic tasks update`
 
 ### COMMAND SIGNATURE
@@ -303,7 +315,10 @@ Error: Task not found: invalid-task-id
 Solution: Verify task ID exists before updating
 ```
 
+---
+
 ## DELETE COMMAND
+
 **Command:** `task-o-matic tasks delete`
 
 ### COMMAND SIGNATURE
@@ -374,7 +389,10 @@ Error: Use --force to confirm deletion
 Solution: Add --force flag or run without --force for interactive confirmation
 ```
 
+---
+
 ## STATUS COMMAND
+
 **Command:** `task-o-matic tasks status`
 
 ### COMMAND SIGNATURE
@@ -410,14 +428,14 @@ task-o-matic tasks status --id task-789 --status in-progress
 #### Workflow Integration
 ```bash
 # Start work on next task
-NEXT_TASK=$(task-o-matic tasks next --status todo | grep "ID:" | cut -d' ' -f2)
+NEXT_TASK=$(task-o-matic tasks get-next --status todo | grep "ID:" | cut -d' ' -f2)
 task-o-matic tasks status --id $NEXT_TASK --status in-progress
 
 # Complete current task
 task-o-matic tasks status --id task-current --status completed
 
 # Move to next task
-task-o-matic tasks next
+task-o-matic tasks get-next
 ```
 
 ### STATUS VALUES AND MEANINGS
@@ -446,7 +464,10 @@ Error: Task not found: invalid-task-id
 Solution: Verify task ID exists
 ```
 
+---
+
 ## TAGS COMMANDS
+
 **Commands:** `task-o-matic tasks add-tags`, `task-o-matic tasks remove-tags`
 
 ### ADD-TAGS COMMAND SIGNATURE
@@ -534,7 +555,10 @@ Error: No tags specified
 Solution: Provide at least one tag
 ```
 
+---
+
 ## ENHANCE COMMAND
+
 **Command:** `task-o-matic tasks enhance`
 
 ### COMMAND SIGNATURE
@@ -655,7 +679,10 @@ Error: Operation cancelled by user
 Solution: Use --force or confirm when prompted
 ```
 
+---
+
 ## SPLIT COMMAND
+
 **Command:** `task-o-matic tasks split`
 
 ### COMMAND SIGNATURE
@@ -688,6 +715,12 @@ task-o-matic tasks split [options]
 --reasoning <tokens>          # Enable reasoning for OpenRouter models (max reasoning tokens)
 ```
 
+### MULTI-AI OPTIONS
+```bash
+--ai <models...>             # AI model(s) to use. Format: [provider:]model[;reasoning[=budget]]
+--combine-ai <provider:model>  # AI model to combine multiple split results
+```
+
 ### SPLIT COMMAND EXAMPLES
 
 #### Single Task Splitting
@@ -707,6 +740,22 @@ task-o-matic tasks split \
   --ai-provider anthropic \
   --ai-model claude-3.5-sonnet \
   --reasoning 2048
+```
+
+#### Multi-AI Splitting
+```bash
+# Split with multiple AI models
+task-o-matic tasks split --task-id task-123 \
+  --ai "anthropic:claude-3.5-sonnet" \
+  --ai "openai:gpt-4o" \
+  --ai "openrouter:qwen-2.5" \
+  --combine-ai anthropic:claude-3.5-sonnet \
+  --stream
+
+# Split with reasoning enabled
+task-o-matic tasks split --task-id task-123 \
+  --ai "openrouter:claude-3.5-sonnet;reasoning=4096" \
+  --stream
 ```
 
 #### Bulk Splitting
@@ -742,10 +791,12 @@ task-o-matic tasks split \
   --ai-provider openrouter \
   --ai-model anthropic/claude-3.5-sonnet
 
-# Split with custom reasoning
+# Split with multi-AI collaboration
 task-o-matic tasks split \
   --task-id task-complex-123 \
-  --reasoning 4096 \
+  --ai "anthropic:claude-3.5-sonnet;reasoning=5000" \
+  --ai "openai:gpt-4o" \
+  --combine-ai anthropic:claude-3.5-sonnet \
   --stream
 ```
 
@@ -791,7 +842,10 @@ Error: Cannot specify both --task-id and bulk filters
 Solution: Use either specific task or filtering options
 ```
 
+---
+
 ## EXECUTE COMMAND
+
 **Command:** `task-o-matic tasks execute`
 
 ### COMMAND SIGNATURE
@@ -807,7 +861,7 @@ task-o-matic tasks execute --id <id> [options]
 ### EXECUTOR OPTIONS
 ```bash
 --tool <tool>                # External tool to use (opencode/claude/gemini/codex, default: opencode)
--m, --model <model>           # Model to use with executor
+-m, --model <model>           # Model to use with the executor
 --message <message>           # Custom message to send to tool (uses task plan if not provided)
 ```
 
@@ -822,6 +876,7 @@ task-o-matic tasks execute --id <id> [options]
 ```bash
 --plan                       # Generate an implementation plan before execution (default: false)
 --plan-model <model>         # Model/executor to use for planning (e.g., 'opencode:gpt-4o' or 'gpt-4o')
+--plan-tool <tool>           # Tool/Executor to use for planning (defaults to --tool)
 --review-plan                # Pause for human review of plan (default: false)
 ```
 
@@ -843,6 +898,11 @@ task-o-matic tasks execute --id <id> [options]
 --try-models <models>        # Progressive model/executor configs for retries (e.g., 'gpt-4o-mini,claude:sonnet-4')
 ```
 
+### INCLUSION OPTIONS
+```bash
+--include-prd                # Include PRD content in execution context (default: false)
+```
+
 ### EXECUTE COMMAND EXAMPLES
 
 #### Basic Execution
@@ -859,7 +919,7 @@ task-o-matic tasks execute \
 # Execute with custom message
 task-o-matic tasks execute \
   --id task-123 \
-  --message "Implement the radiation detection system using Geiger counter integration"
+  --message "Implement radiation detection system using Geiger counter integration"
 ```
 
 #### Planning and Review
@@ -937,7 +997,8 @@ task-o-matic tasks execute \
   --validate "npm run build" \
   --review \
   --review-model "opencode:gpt-4o" \
-  --auto-commit
+  --auto-commit \
+  --include-prd
 
 # Dry run execution
 task-o-matic tasks execute \
@@ -994,7 +1055,10 @@ Error: Validation commands failed
 Solution: Fix validation errors and retry execution
 ```
 
+---
+
 ## EXECUTE-LOOP COMMAND
+
 **Command:** `task-o-matic tasks execute-loop`
 
 ### COMMAND SIGNATURE
@@ -1028,6 +1092,7 @@ task-o-matic tasks execute-loop [options]
 ```bash
 --plan                       # Generate an implementation plan before execution (default: false)
 --plan-model <model>         # Model/executor to use for planning
+--plan-tool <tool>           # Tool/Executor to use for planning (defaults to --tool)
 --review-plan                # Pause for human review of plan (default: false)
 ```
 
@@ -1041,6 +1106,17 @@ task-o-matic tasks execute-loop [options]
 ```bash
 --verify <command>            # Verification command to run after each task (can be used multiple times)
 --validate <command>          # Alias for --verify (validation command, can be used multiple times)
+```
+
+### INCLUSION OPTIONS
+```bash
+--include-completed            # Include already-completed tasks in execution (default: false)
+--include-prd                # Include PRD content in execution context (default: false)
+```
+
+### NOTIFICATION OPTIONS
+```bash
+--notify <target>            # Notify on completion via URL or command (can be used multiple times)
 ```
 
 ### EXECUTE-LOOP COMMAND EXAMPLES
@@ -1121,7 +1197,8 @@ task-o-matic tasks execute-loop \
   --review-model "opencode:gpt-4o" \
   --validate "npm test" \
   --validate "npm run build" \
-  --auto-commit
+  --auto-commit \
+  --include-prd
 
 # Dry run to preview execution
 task-o-matic tasks execute-loop \
@@ -1129,6 +1206,22 @@ task-o-matic tasks execute-loop \
   --dry \
   --plan \
   --validate "npm test"
+```
+
+#### Notification Integration
+```bash
+# Execute with notifications
+task-o-matic tasks execute-loop \
+  --status todo \
+  --notify "https://hooks.slack.com/services/xxx" \
+  --notify "email:team@example.com" \
+  --notify "notify-send 'Tasks completed'"
+
+# Include completed tasks
+task-o-matic tasks execute-loop \
+  --status todo \
+  --include-completed \
+  --notify "https://webhook.example.com"
 ```
 
 ### EXECUTION LOOP PROCESS
@@ -1145,11 +1238,12 @@ task-o-matic tasks execute-loop \
 5. **Result Summary**: Report overall execution statistics
 
 ### LOOP EXECUTION FEATURES
-- **Parallel Processing**: Configurable concurrency for multiple tasks
+- **Sequential Processing**: Tasks executed one at a time with retry logic
 - **Retry Logic**: Automatic retry with model escalation
 - **Progressive Enhancement**: Each retry can use better models
 - **Error Recovery**: Continue after individual task failures
 - **Comprehensive Logging**: Detailed execution logs and metrics
+- **Notification Support**: Multiple notification targets for completion alerts
 
 ### ERROR HANDLING IN LOOPS
 - **Individual Task Failures**: Continue with next task
@@ -1177,7 +1271,261 @@ Error: Invalid tool: invalid-tool
 Solution: Use valid executor: opencode, claude, gemini, codex
 ```
 
+---
+
+## TASK PLAN COMMANDS
+
+### PLAN COMMAND
+
+**Command:** `task-o-matic tasks plan`
+
+### COMMAND SIGNATURE
+```bash
+task-o-matic tasks plan --id <id> [options]
+```
+
+### REQUIRED OPTIONS
+```bash
+--id <id>                   # Task or subtask ID to plan (required)
+```
+
+### OPTIONAL OPTIONS
+```bash
+--stream                     # Show streaming AI output during planning
+--ai-provider <provider>       # AI provider override
+--ai-model <model>           # AI model override
+--ai-key <key>               # AI API key override
+--ai-provider-url <url>       # AI provider URL override
+--reasoning <tokens>          # Enable reasoning for OpenRouter models (max reasoning tokens)
+```
+
+### PLAN COMMAND EXAMPLES
+```bash
+# Create plan for task
+task-o-matic tasks plan --id task-123 --stream
+
+# Plan with custom AI model
+task-o-matic tasks plan \
+  --id task-123 \
+  --ai-provider anthropic \
+  --ai-model claude-3.5-sonnet \
+  --stream
+
+# Plan with reasoning
+task-o-matic tasks plan \
+  --id task-123 \
+  --reasoning 4096 \
+  --stream
+```
+
+### LIST-PLAN COMMAND
+
+**Command:** `task-o-matic tasks list-plan`
+
+### COMMAND SIGNATURE
+```bash
+task-o-matic tasks list-plan
+```
+
+### LIST-PLAN COMMAND EXAMPLES
+```bash
+# List all implementation plans
+task-o-matic tasks list-plan
+```
+
+### GET-PLAN COMMAND
+
+**Command:** `task-o-matic tasks get-plan`
+
+### COMMAND SIGNATURE
+```bash
+task-o-matic tasks get-plan --id <id>
+```
+
+### REQUIRED OPTIONS
+```bash
+--id <id>                   # Task or subtask ID (required)
+```
+
+### GET-PLAN COMMAND EXAMPLES
+```bash
+# View existing plan
+task-o-matic tasks get-plan --id task-123
+```
+
+### SET-PLAN COMMAND
+
+**Command:** `task-o-matic tasks set-plan`
+
+### COMMAND SIGNATURE
+```bash
+task-o-matic tasks set-plan --id <id> [options]
+```
+
+### REQUIRED OPTIONS
+```bash
+--id <id>                   # Task ID (required)
+```
+
+### OPTIONS (MUTUALLY EXCLUSIVE)
+```bash
+--plan <text>                # Plan content (use quotes for multi-line)
+--plan-file <path>           # Path to file containing plan
+```
+
+### SET-PLAN COMMAND EXAMPLES
+```bash
+# Set plan from text
+task-o-matic tasks set-plan \
+  --id task-123 \
+  --plan "Step 1: Setup\nStep 2: Implement\nStep 3: Test"
+
+# Set plan from file
+task-o-matic tasks set-plan \
+  --id task-123 \
+  --plan-file ./plans/implementation.md
+
+# Set plan for multi-line content
+task-o-matic tasks set-plan \
+  --id task-123 \
+  --plan '1. Analyze requirements
+2. Design architecture
+3. Implement core features
+4. Add tests
+5. Document changes'
+```
+
+### DELETE-PLAN COMMAND
+
+**Command:** `task-o-matic tasks delete-plan`
+
+### COMMAND SIGNATURE
+```bash
+task-o-matic tasks delete-plan --id <id>
+```
+
+### REQUIRED OPTIONS
+```bash
+--id <id>                   # Task ID (required)
+```
+
+### DELETE-PLAN COMMAND EXAMPLES
+```bash
+# Delete implementation plan
+task-o-matic tasks delete-plan --id task-123
+```
+
+---
+
+## TASK DOCUMENTATION COMMANDS
+
+### DOCUMENT COMMAND
+
+**Command:** `task-o-matic tasks document`
+
+### COMMAND SIGNATURE
+```bash
+task-o-matic tasks document [options]
+```
+
+### REQUIRED OPTIONS
+```bash
+--task-id <id>              # Task ID to document (required)
+```
+
+### OPTIONAL OPTIONS
+```bash
+--force                      # Force refresh documentation even if recent
+--stream                     # Show streaming AI output during analysis
+--ai-provider <provider>       # AI provider override
+--ai-model <model>           # AI model override
+--ai-key <key>               # AI API key override
+--ai-provider-url <url>       # AI provider URL override
+--reasoning <tokens>          # Enable reasoning for OpenRouter models (max reasoning tokens)
+```
+
+### DOCUMENT COMMAND EXAMPLES
+```bash
+# Document task
+task-o-matic tasks document --task-id task-123
+
+# Document with streaming
+task-o-matic tasks document \
+  --task-id task-123 \
+  --stream
+
+# Force refresh documentation
+task-o-matic tasks document \
+  --task-id task-123 \
+  --force \
+  --stream
+
+# Document with custom AI model
+task-o-matic tasks document \
+  --task-id task-123 \
+  --ai-provider anthropic \
+  --ai-model claude-3.5-sonnet \
+  --reasoning 2048
+```
+
+### GET-DOCUMENTATION COMMAND
+
+**Command:** `task-o-matic tasks get-documentation`
+
+### COMMAND SIGNATURE
+```bash
+task-o-matic tasks get-documentation --id <id>
+```
+
+### REQUIRED OPTIONS
+```bash
+--id <id>                   # Task ID (required)
+```
+
+### GET-DOCUMENTATION COMMAND EXAMPLES
+```bash
+# View existing documentation
+task-o-matic tasks get-documentation --id task-123
+```
+
+### ADD-DOCUMENTATION COMMAND
+
+**Command:** `task-o-matic tasks add-documentation`
+
+### COMMAND SIGNATURE
+```bash
+task-o-matic tasks add-documentation --id <id> --doc-file <path> [options]
+```
+
+### REQUIRED OPTIONS
+```bash
+-i, --id <id>               # Task ID (required)
+-f, --doc-file <path>       # Path to documentation file (required)
+```
+
+### OPTIONAL OPTIONS
+```bash
+-o, --overwrite              # Overwrite existing documentation
+```
+
+### ADD-DOCUMENTATION COMMAND EXAMPLES
+```bash
+# Add documentation from file
+task-o-matic tasks add-documentation \
+  --id task-123 \
+  --doc-file ./docs/api-reference.md
+
+# Add and overwrite existing documentation
+task-o-matic tasks add-documentation \
+  --id task-123 \
+  --doc-file ./docs/implementation-guide.md \
+  --overwrite
+```
+
+---
+
 ## SUBTASKS COMMAND
+
 **Command:** `task-o-matic tasks subtasks`
 
 ### COMMAND SIGNATURE
@@ -1238,7 +1586,10 @@ Error: Invalid task ID format
 Solution: Use correct task ID format
 ```
 
+---
+
 ## TREE COMMAND
+
 **Command:** `task-o-matic tasks tree`
 
 ### COMMAND SIGNATURE
@@ -1304,7 +1655,7 @@ task-o-matic tasks tree --id task-electrical-system
 ```bash
 # Root task not found
 Error: Root task not found: invalid-task-id
-Solution: Verify task ID exists in the tree
+Solution: Verify task ID exists in tree
 
 # Tree structure corruption
 Error: Invalid task hierarchy detected
@@ -1315,7 +1666,10 @@ Warning: No tasks found in current project
 Solution: Create tasks first with 'task-o-matic tasks create'
 ```
 
+---
+
 ## NEXT COMMAND
+
 **Command:** `task-o-matic tasks get-next`
 
 ### COMMAND SIGNATURE
@@ -1328,7 +1682,7 @@ task-o-matic tasks get-next [options]
 -s, --status <status>        # Filter by status (todo/in-progress, default: todo)
 -t, --tag <tag>             # Filter by tag
 -e, --effort <effort>       # Filter by effort (small/medium/large)
--p, --priority <priority>     # Sort priority (newest/oldest/effort, default: hierarchical)
+-p, --priority <priority>     # Sort priority (newest/oldest/effort/hierarchical, default: hierarchical)
 ```
 
 ### NEXT COMMAND EXAMPLES
@@ -1440,6 +1794,8 @@ Solution: Use valid effort: small, medium, large
 Error: Invalid priority: invalid-priority
 Solution: Use valid priority: newest, oldest, effort, hierarchical
 ```
+
+---
 
 ### FIELD OPERATIONS PROTOCOLS
 
@@ -1654,10 +2010,12 @@ interface Task {
 - **Cache Coherency**: Consistent state across operations
 - **Rollback Support**: Transaction-like operations with rollback
 
-**Remember:** Citizen, in the harsh reality of post-deadline wasteland, these task commands are your survival toolkit. They provide structure, intelligence, and automation that can mean the difference between thriving and perishing. Use them wisely, respect their power, and they will guide your projects to completion even in the most challenging circumstances.
+---
+
+**Remember:** Citizen, in the harsh reality of the AI-pocalypse wasteland, these task commands are your survival toolkit. They provide structure, intelligence, and automation that can mean the difference between thriving and perishing. Use them wisely, respect their power, and they will guide your projects to completion even in the most challenging circumstances.
 
 ---
 
-**DOCUMENT STATUS:** `Complete`  
-**NEXT REVIEW:** `After next feature release`  
+**DOCUMENT STATUS:** `Complete`
+**NEXT REVIEW:** `After next feature release`
 **CONTACT:** `Task-O-Matic Task Management Team`
