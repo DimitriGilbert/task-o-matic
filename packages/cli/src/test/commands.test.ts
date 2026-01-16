@@ -20,7 +20,8 @@ describe("CLI Commands Help", () => {
       "prompt",
       "workflow",
       "benchmark",
-      "install"
+      "install",
+      "continue"
     ];
 
     commands.forEach(cmd => {

@@ -11,6 +11,7 @@ import { configManager } from "task-o-matic-core";
 
 import { benchmarkCommand } from "./commands/benchmark";
 import { configCommand } from "./commands/config";
+import { continueCommand } from "./commands/continue";
 import { detectCommand } from "./commands/detect";
 import { initCommand } from "./commands/init";
 import { installCommand } from "./commands/install";
@@ -32,6 +33,7 @@ program
 program.addCommand(configCommand);
 program.addCommand(tasksCommand);
 program.addCommand(prdCommand);
+program.addCommand(continueCommand);
 program.addCommand(promptCommand);
 program.addCommand(initCommand);
 program.addCommand(workflowCommand);

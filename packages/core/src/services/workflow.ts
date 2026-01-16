@@ -1,4 +1,4 @@
-import { existsSync, writeFileSync, mkdirSync, readFileSync } from "fs";
+import { existsSync, writeFileSync, mkdirSync, readFileSync, readdirSync } from "fs";
 import { join, resolve } from "path";
 import { configManager } from "../lib/config";
 import { runBetterTStackCLI } from "../lib/better-t-stack-cli";
@@ -6,7 +6,7 @@ import { prdService } from "./prd";
 import { taskService } from "./tasks";
 import { workflowAIAssistant } from "./workflow-ai-assistant";
 import { AIOptions } from "../utils/ai-config-builder";
-import { StreamingOptions, Task } from "../types";
+import { StreamingOptions, Task, ContinueAction } from "../types";
 import { ProgressCallback } from "../types/callbacks";
 import {
   InitializeResult,
@@ -14,6 +14,7 @@ import {
   RefinePRDResult,
   GenerateTasksResult,
   SplitTasksResult,
+  ContinueResult,
 } from "../types/workflow-results";
 import {
   createStandardError,
@@ -745,6 +746,149 @@ export class WorkflowService {
     return {
       success: true,
       results,
+    };
+  }
+
+  /**
+   * Continue Project Workflow
+   * Analyzes current project state and provides next steps or executes actions
+   */
+  async continueProject(input: {
+    projectDir?: string;
+    action?: ContinueAction;
+    aiOptions?: AIOptions;
+    streamingOptions?: StreamingOptions;
+    callbacks?: ProgressCallback;
+  }): Promise<ContinueResult> {
+    const projectDir = input.projectDir || process.cwd();
+    const taskOMaticDir = join(projectDir, ".task-o-matic");
+
+    input.callbacks?.onProgress?.({
+      type: "started",
+      message: "Analyzing project status...",
+    });
+
+    // 1. Check if project is initialized
+    if (!existsSync(taskOMaticDir)) {
+      return {
+        success: false,
+        action: "initialize",
+        message: "Project is not initialized. Run 'task-o-matic init attach' first.",
+      };
+    }
+
+    // 2. Load project data
+    configManager.setWorkingDirectory(projectDir);
+    await configManager.load();
+
+    const tasks = await taskService.listTasks({});
+    const prdDir = join(taskOMaticDir, "prd");
+    const prdFiles = existsSync(prdDir) ? readdirSync(prdDir).filter((f: string) => f.endsWith(".md")) : [];
+    const hasPRD = prdFiles.length > 0;
+    
+    // 3. Calculate status
+    const totalTasks = tasks.length;
+    const completedTasks = tasks.filter(t => t.status === "completed").length;
+    const inProgressTasks = tasks.filter(t => t.status === "in-progress").length;
+    const todoTasks = tasks.filter(t => t.status === "todo").length;
+    const completionPercentage = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
+
+    const projectStatus = {
+      tasks: {
+        total: totalTasks,
+        completed: completedTasks,
+        inProgress: inProgressTasks,
+        todo: todoTasks,
+        completionPercentage,
+      },
+      prd: {
+        exists: hasPRD,
+        path: hasPRD ? join(prdDir, prdFiles[0]) : "",
+        features: [], // TODO: extract from PRD if possible
+      },
+      nextSteps: [] as string[],
+    };
+
+    // 4. Determine next steps
+    if (!hasPRD) {
+      projectStatus.nextSteps.push("Generate a PRD to define project scope");
+    } else if (totalTasks === 0) {
+      projectStatus.nextSteps.push("Generate tasks from your PRD");
+    } else if (inProgressTasks === 0 && todoTasks > 0) {
+      projectStatus.nextSteps.push("Start working on a task");
+    } else if (completionPercentage === 100) {
+      projectStatus.nextSteps.push("Project completed! Consider adding new features.");
+    }
+
+    // 5. Handle specific actions
+    if (input.action) {
+      input.callbacks?.onProgress?.({
+        type: "progress",
+        message: `Executing action: ${input.action}...`,
+      });
+
+      switch (input.action) {
+        case "generate-plan":
+          // Logic for generating plan would go here
+          // For now, we'll return a placeholder
+          return {
+            success: true,
+            action: input.action,
+            projectStatus,
+            message: "Plan generation not yet implemented in continue workflow",
+          };
+          
+        case "review-status":
+          // Already calculated status
+          break;
+
+        case "add-feature":
+          // Logic for adding feature would go here
+           return {
+            success: true,
+            action: input.action,
+            projectStatus,
+            message: "Feature addition not yet implemented in continue workflow",
+          };
+          
+        case "update-prd":
+          // Logic for updating PRD
+           return {
+            success: true,
+            action: input.action,
+            projectStatus,
+            message: "PRD update not yet implemented in continue workflow",
+          };
+          
+        case "generate-tasks":
+             if (!hasPRD) {
+                 return {
+                     success: false,
+                     action: input.action,
+                     projectStatus,
+                     message: "Cannot generate tasks: No PRD found",
+                 };
+             }
+             // We would call this.generateTasks() here
+             // For now just return status
+             return {
+                success: true,
+                action: input.action,
+                projectStatus,
+                message: "Use 'task-o-matic tasks generate' to generate tasks",
+             };
+      }
+    }
+
+    input.callbacks?.onProgress?.({
+      type: "completed",
+      message: "Project status analysis complete",
+    });
+
+    return {
+      success: true,
+      action: input.action || "status",
+      projectStatus,
     };
   }
 

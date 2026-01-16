@@ -236,3 +236,28 @@ export interface PRDFromCodebaseResult {
     cost?: number;
   };
 }
+
+/**
+ * Result of continue project operation.
+ */
+export interface ContinueResult {
+  success: boolean;
+  action: string;
+  projectStatus?: {
+    tasks: {
+      total: number;
+      completed: number;
+      inProgress: number;
+      todo: number;
+      completionPercentage: number;
+    };
+    prd?: {
+      path: string;
+      exists: boolean;
+      features: string[];
+    };
+    nextSteps: string[];
+  };
+  message?: string;
+  data?: any;
+}

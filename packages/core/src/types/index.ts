@@ -626,7 +626,7 @@ export type {
   DocumentTaskResult,
   DeleteTaskResult,
   PRDParseResult,
-  ContinueResult, // New result type
+  ContinueResult,
 } from "./results";
 
 export * from "./workflow-options";
