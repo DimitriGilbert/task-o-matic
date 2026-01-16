@@ -913,10 +913,6 @@ prdCommand
 prdCommand
   .command("generate")
   .description("Generate a PRD from an existing codebase (reverse-engineering)")
-  .option(
-    "--from-codebase",
-    "Analyze the current project and generate a PRD from it (default behavior)"
-  )
   .option("--output <filename>", "Output filename", "current-state.md")
   .option(
     "--ai <provider:model>",
