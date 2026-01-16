@@ -10,11 +10,13 @@ _task_o_matic() {
     local main_commands="config
 tasks
 prd
+continue
 prompt
 init
 workflow
 benchmark
-install"
+install
+detect"
 
     # Handle main command completion
     if [[ $cword -eq 1 ]]; then
@@ -168,6 +170,7 @@ rework
 question
 refine
 get-stack
+generate
 help"
             if [[ $cword -eq 2 ]]; then
                 COMPREPLY=( $(compgen -W "$subcommands --help" -- "$cur") )
@@ -195,14 +198,20 @@ help"
                     get-stack)
                         COMPREPLY=( $(compgen -W "--ai-key --ai-model --ai-provider --ai-provider-url --ai-reasoning --content --file --help --json --message --output --project-name --prompt --save --stream --tools -h -o-matic -stack --help" -- "$cur") )
                         ;;
+                    generate)
+                        COMPREPLY=( $(compgen -W "--ai --ai-reasoning --from-codebase --help --json --output --stream --tools -engineering -h -o-matic -state --help" -- "$cur") )
+                        ;;
                     help)
-                        COMPREPLY=( $(compgen -W "--help -h -o-matic -stack --help" -- "$cur") )
+                        COMPREPLY=( $(compgen -W "--help -engineering -h -o-matic -stack --help" -- "$cur") )
                         ;;
                     *)
                         COMPREPLY=( $(compgen -W "--help" -- "$cur") )
                         ;;
                 esac
             fi
+            ;;
+        continue)
+            COMPREPLY=( $(compgen -W "--add-feature --generate-plan --generate-tasks --help --status --update-prd -a -g -h -o-matic -p -s -u --help" -- "$cur") )
             ;;
         prompt)
             COMPREPLY=( $(compgen -W "--context-info --executor --full-context --help --list --metadata --prd-content --prd-file --stack-info --task-description --task-file --task-title --type --user-feedback --var -breakdown -detection -enhancement -h -l -m -o-matic -parsing -prd -related -rework -t --help" -- "$cur") )
@@ -284,6 +293,9 @@ help"
             ;;
         install)
             COMPREPLY=( $(compgen -W "--force --help -h -o-matic --help" -- "$cur") )
+            ;;
+        detect)
+            COMPREPLY=( $(compgen -W "--help --json --save -h -o-matic --help" -- "$cur") )
             ;;
     esac
 }

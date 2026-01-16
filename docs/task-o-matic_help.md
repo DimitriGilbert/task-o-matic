@@ -8,11 +8,13 @@ Auto-generated documentation for all task-o-matic commands.
 - [config Commands](#config-commands)
 - [tasks Commands](#tasks-commands)
 - [prd Commands](#prd-commands)
+- [continue Commands](#continue-commands)
 - [prompt Commands](#prompt-commands)
 - [init Commands](#init-commands)
 - [workflow Commands](#workflow-commands)
 - [benchmark Commands](#benchmark-commands)
 - [install Commands](#install-commands)
+- [detect Commands](#detect-commands)
 
 ---
 
@@ -32,6 +34,7 @@ Commands:
   config                      Manage task-o-matic configuration
   tasks
   prd                         Manage PRDs and generate tasks
+  continue [options]          Continue working on an existing project
   prompt [options] [name]     Build AI service prompts with variable replacement
                               for external tools
   init                        Initialize task-o-matic project and bootstrap
@@ -41,6 +44,7 @@ Commands:
   benchmark                   Run and manage AI benchmarks
   install [options] <target>  Install task-o-matic documentation and agent
                               guides into current project
+  detect [options]            Detect technology stack of the current project
 ```
 
 ## Config Commands
@@ -610,6 +614,8 @@ Commands:
   refine [options]                Refine PRD by answering clarifying questions
   get-stack [options]             Suggest optimal technology stack based on PRD
                                   analysis
+  generate [options]              Generate a PRD from an existing codebase
+                                  (reverse-engineering)
   help [command]                  display help for command
 ```
 
@@ -773,6 +779,26 @@ Options:
   -h, --help                display help for command
 ```
 
+### prd generate --help
+```
+Usage: task-o-matic prd generate [options]
+
+Generate a PRD from an existing codebase (reverse-engineering)
+
+Options:
+  --from-codebase          Analyze the current project and generate a PRD from
+                           it (default behavior)
+  --output <filename>      Output filename (default: "current-state.md")
+  --ai <provider:model>    AI model to use. Format:
+                           [provider:]model[;reasoning[=budget]]
+  --ai-reasoning <tokens>  Enable reasoning for OpenRouter models (max reasoning
+                           tokens)
+  --stream                 Enable streaming output
+  --tools                  Enable filesystem tools for deeper analysis
+  --json                   Output result as JSON
+  -h, --help               display help for command
+```
+
 ### prd help --help
 ```
 Usage: task-o-matic prd [options] [command]
@@ -791,65 +817,26 @@ Commands:
   refine [options]                Refine PRD by answering clarifying questions
   get-stack [options]             Suggest optimal technology stack based on PRD
                                   analysis
+  generate [options]              Generate a PRD from an existing codebase
+                                  (reverse-engineering)
   help [command]                  display help for command
 ```
 
 
-## Prompt Commands
+## Continue Commands
 
-### prompt --help
+### continue --help
 ```
-Usage: task-o-matic prompt [options] [name]
+Usage: task-o-matic continue [options]
 
-Build AI service prompts with variable replacement for external tools
-
-Arguments:
-  name                              Prompt name (e.g., prd-parsing,
-                                    task-enhancement, task-breakdown,
-                                    prd-rework, documentation-detection)
+Continue working on an existing project
 
 Options:
-  -t, --type <type>                 Prompt type: system or user (default: user)
-                                    (default: "user")
-  -l, --list                        List all available prompts and exit
-                                    (default: false)
-  -m, --metadata <name>             Show metadata for a specific prompt and exit
-  --prd-content <content>           PRD content (for PRD-related prompts)
-  --prd-file <filepath>             Load PRD content from file
-  --task-title <title>              Task title (for task-related prompts)
-  --task-description <description>  Task description (for task-related prompts)
-  --task-file <filepath>            Load task description from file
-  --stack-info <info>               Technology stack information (e.g.,
-                                    "Frontend: Next.js, Backend: Convex")
-  --context-info <info>             Additional context information
-  --user-feedback <feedback>        User feedback (for prd-rework prompt)
-  --var <key=value>                 Custom variable in format key=value (can be
-                                    used multiple times) (default: [])
-  --full-context                    Include comprehensive project context (file
-                                    structure, dependencies, etc.) (default:
-                                    false)
-  --executor <type>                 Format output for specific executor:
-                                    opencode, claude, gemini, codex
-  -h, --help                        display help for command
-
-Examples:
-  # List all available prompts
-  $ task-o-matic prompt --list
-
-  # Show metadata for a specific prompt
-  $ task-o-matic prompt --metadata prd-parsing
-  $ task-o-matic prompt --metadata task-enhancement --type user
-
-  # Build PRD parsing prompt with content from file
-  $ task-o-matic prompt prd-parsing --prd-file ./my-prd.md
-
-  # Build task enhancement prompt with task info
-  $ task-o-matic prompt task-enhancement --task-title "Add user auth" --task-description "Implement JWT authentication"
-
-  # Build with custom variables
-  $ task-o-matic prompt prd-parsing --var PRD_CONTENT="My PRD content" --var STACK_INFO="Next.js, Convex"
-
-  # Build system prompt
-  $ task-o-matic prompt prd-parsing --type system
+  -s, --status                 Show project status overview
+  -a, --add-feature <feature>  Add a new feature to the PRD
+  -u, --update-prd             Update PRD with implementation progress
+  -g, --generate-tasks         Generate tasks for unimplemented features
+  -p, --generate-plan          Generate implementation plan for remaining work
+  -h, --help                   display help for command
 ```
 

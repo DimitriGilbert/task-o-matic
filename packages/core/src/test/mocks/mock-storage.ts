@@ -1,5 +1,5 @@
 import { TaskRepository } from "../../lib/storage/types";
-import { Task, CreateTaskRequest, TaskAIMetadata } from "../../types";
+import { Task, CreateTaskRequest, TaskAIMetadata, PRDVersion, PRDVersionData } from "../../types";
 
 export class MockStorage implements TaskRepository {
   private tasks: Task[] = [];
@@ -10,6 +10,7 @@ export class MockStorage implements TaskRepository {
     { plan: string; createdAt: number; updatedAt: number }
   > = {};
   private documentationFiles: Record<string, string> = {};
+  private prdVersions: Record<string, PRDVersionData> = {};
   private taskIdCounter = 1;
 
   async createTask(
@@ -200,5 +201,41 @@ export class MockStorage implements TaskRepository {
 
   async listDocumentationFiles(): Promise<string[]> {
     return Object.keys(this.documentationFiles);
+  }
+
+  // PRD Versioning Operations
+  async getPRDVersions(prdFile: string): Promise<PRDVersionData | null> {
+    return this.prdVersions[prdFile] || null;
+  }
+
+  async savePRDVersion(prdFile: string, versionData: PRDVersion): Promise<void> {
+    if (!this.prdVersions[prdFile]) {
+      this.prdVersions[prdFile] = {
+        prdFile,
+        versions: [],
+        currentVersion: 0,
+      };
+    }
+
+    const data = this.prdVersions[prdFile];
+    const existingIndex = data.versions.findIndex(
+      (v) => v.version === versionData.version
+    );
+
+    if (existingIndex >= 0) {
+      data.versions[existingIndex] = versionData;
+    } else {
+      data.versions.push(versionData);
+    }
+
+    data.currentVersion = Math.max(data.currentVersion, versionData.version);
+  }
+
+  async getLatestPRDVersion(prdFile: string): Promise<PRDVersion | null> {
+    const data = this.prdVersions[prdFile];
+    if (!data || data.versions.length === 0) return null;
+    
+    const current = data.versions.find(v => v.version === data.currentVersion);
+    return current || data.versions[data.versions.length - 1];
   }
 }

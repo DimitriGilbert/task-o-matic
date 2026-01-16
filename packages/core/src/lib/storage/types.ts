@@ -1,4 +1,4 @@
-import { Task, CreateTaskRequest, TaskAIMetadata } from "../../types";
+import { Task, CreateTaskRequest, TaskAIMetadata, PRDVersion, PRDVersionData } from "../../types";
 
 export interface TaskRepository {
   // Task Operations
@@ -55,4 +55,9 @@ export interface TaskRepository {
   // Utility Operations
   sanitizeForFilename(name: string): string;
   validateStorageIntegrity(): Promise<{ isValid: boolean; issues: string[] }>;
+
+  // PRD Versioning Operations (Phase 6)
+  getPRDVersions(prdFile: string): Promise<PRDVersionData | null>;
+  savePRDVersion(prdFile: string, versionData: PRDVersion): Promise<void>;
+  getLatestPRDVersion(prdFile: string): Promise<PRDVersion | null>;
 }

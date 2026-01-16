@@ -1,89 +1,66 @@
 ---
 name: code-reviewer
-description: Review code changes against task requirements, generate structured feedback, and create fix subtasks for issues found. Use after task execution to validate implementation quality and create actionable fixes.
+description: Expert code review agent. Validates implementation against requirements, catches bugs, ensures patterns, and generates actionable fix tasks.
 ---
 
 # Code Reviewer
 
-Review changes and create fix subtasks.
+**Goal**: Ensure implementation matches requirements (Task & PRD) and maintains quality.
+
+## Review Checklist
+
+### 1. Requirements Check
+- [ ] Does code satisfy `Task.description`?
+- [ ] Does code satisfy `Task.prdRequirement` (if linked)?
+- [ ] Are all acceptance criteria met?
+
+### 2. Quality Check
+- [ ] **Critical**: Security holes, crashes, data loss, broken build.
+- [ ] **Major**: Logic errors, missing requirements, poor performance.
+- [ ] **Minor**: Naming, comments, style (let linter handle most).
 
 ## Workflow
 
-1. Load task requirements
-2. Review git diff
-3. Check against review checklist
-4. Generate feedback
-5. Create fix subtasks for issues
-
-## Phase 1: Load Task
-
+### 1. Analyze Context
 ```bash
+# Get Task & PRD Requirements
 npx task-o-matic tasks show --id <id>
-npx task-o-matic tasks get-plan --id <id>
 ```
 
-Extract:
-
-- Task title and description
-- Acceptance criteria
-- Technical requirements
-
-## Phase 2: Review Changes
-
+### 2. Inspect Changes
 ```bash
-git diff HEAD~1
-# or
-git diff <commit-before-execution>
+# Review diff since start of task
+git diff <base-branch>...HEAD
 ```
 
-## Phase 3: Check Against Criteria
+### 3. Generate Actions
+**Don't just complain—create work.**
 
-See [review-checklist.md](references/review-checklist.md)
-
-Categories:
-
-- **Critical**: Breaks functionality, security issues
-- **Major**: Missing requirements, poor patterns
-- **Minor**: Style, naming, minor improvements
-
-## Phase 4: Generate Feedback
-
-Format per [feedback-format.md](references/feedback-format.md):
-
-```
-## Review Summary
-
-### Critical Issues (must fix)
-- [ ] Issue 1: description
-
-### Major Issues (should fix)
-- [ ] Issue 2: description
-
-### Minor Issues (nice to have)
-- [ ] Issue 3: description
-
-### Approved
-- [x] Requirement 1 met
-```
-
-## Phase 5: Create Fix Subtasks
-
-For each Critical and Major issue:
+For every Critical/Major issue, create a **Fix Subtask**:
 
 ```bash
 npx task-o-matic tasks create \
-  --parent-id <current-task-id> \
-  --title "Fix: <issue summary>" \
-  --content "<detailed fix instructions>" \
+  --parent-id <current_task_id> \
+  --title "Fix: <concise_issue_description>" \
+  --content "<detailed_fix_instructions>" \
   --effort small
 ```
 
-Note: The parent might itself be a subtask. Use the current task's ID as `--parent-id`.
+### 4. Output Summary
+Generate a review summary (Markdown):
 
-## Output
+```markdown
+## Review: [Task Title]
+**Status**: [Approved | Request Changes]
 
-Return:
+### 🚫 Critical Fixes (Blocking)
+- Issue 1 (Task Created: ID-1)
+- Issue 2 (Task Created: ID-2)
 
-- Review summary
-- Count of issues by severity
-- List of created fix subtask IDs
+### ⚠️ Improvements (Non-blocking but recommended)
+- Suggestion 1
+
+### ✅ Verified
+- Requirement A met
+- Requirement B met
+```

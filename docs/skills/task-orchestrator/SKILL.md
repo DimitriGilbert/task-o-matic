@@ -1,125 +1,67 @@
 ---
 name: task-orchestrator
-description: Orchestrate task-o-matic execution with review cycles, fix subtask creation, and status tracking. Use when implementing tasks that need outer-loop supervision - execute, validate, review, create fixes, update status, repeat until complete.
+description: Autonomous agent loop for executing, validating, and completing tasks. Handles state transitions, subtask management, and review cycles.
 ---
 
 # Task Orchestrator
 
-Execute tasks with review cycles until completion.
+**Goal**: Drive tasks from `todo` to `completed` with strict quality gates.
 
-## Workflow
+## Core Rules
+1. **Validation First**: NEVER complete a task without passing build/tests.
+2. **Subtask Priority**: BLOCKED if subtasks are incomplete.
+3. **Status Truth**: ALWAYS update status to reflect reality (`in-progress` when starting).
+4. **Context Aware**: ALWAYS read linked PRD requirements before execution.
 
-```
-1. Get task → 2. Set in-progress → 3. Execute → 4. Validate → 5. Review
-                                                                   ↓
-    ←←←←←←←←←←←←←← 6. Create fix subtasks (if issues) ←←←←←←←←←←←←
-    ↓
-7. Set completed → 8. Next task
-```
+## The Loop
 
-## Commands Reference
-
-```bash
-# Get next task
-npx task-o-matic tasks get-next
-
-# Show task details (check if subtask via parentId)
-npx task-o-matic tasks show --id <id>
-
-# Set status
-npx task-o-matic tasks status --id <id> --status in-progress
-npx task-o-matic tasks status --id <id> --status completed
-
-# Execute task
-npx task-o-matic tasks execute --id <id> --tool <tool>
-
-# List subtasks
-npx task-o-matic tasks subtasks --id <id>
-
-# View task tree
-npx task-o-matic tasks tree --id <id>
-```
-
-## Phase 1: Get Task
+### 1. Claim & Context
+Find work and lock it.
 
 ```bash
-# Get next available task
+# Find next task
 npx task-o-matic tasks get-next --status todo
 
-# Or execute specific task
-npx task-o-matic tasks show --id <id>
+# Set status (replace <ID> with the ID found above)
+npx task-o-matic tasks status --id <ID> --status in-progress
+
+# Load Context (Check for prdFile/prdRequirement)
+npx task-o-matic tasks show --id <ID>
 ```
 
-Check `parentId` in output - if present, this task is a subtask.
+### 2. Execute
+Perform the work. Use available tools (`opencode`, `edit`, `bash`).
+*If task is complex, split it:* `npx task-o-matic tasks split --id $TASK_ID`
 
-## Phase 2: Set In-Progress
+### 3. Validate
+Run project-specific checks.
 
 ```bash
-npx task-o-matic tasks status --id <id> --status in-progress
+# Example validation cycle
+bun run check-types && bun run build && bun test
 ```
 
-## Phase 3: Execute
+### 4. Review & Fix
+Triggers `code-reviewer` skill if validation passes.
+
+*   **If Review Fails**: Create fix subtasks.
+    ```bash
+    npx task-o-matic tasks create --parent-id $TASK_ID --title "Fix: <issue>" --effort small
+    ```
+    *Loop back to Step 1 for the fix subtask.*
+
+*   **If Review Passes**: Proceed to completion.
+
+### 5. Completion
+Only when:
+- [x] Code implemented
+- [x] Validation passed
+- [x] Review approved
+- [x] All subtasks completed
 
 ```bash
-npx task-o-matic tasks execute --id <id> --tool opencode
+npx task-o-matic tasks status --id $TASK_ID --status completed
 ```
 
-Available tools: `opencode`, `claude`, `gemini`, `codex`
-
-## Phase 4: Validate
-
-Run project validation commands:
-
-```bash
-# Common patterns
-bun run check-types
-bun run build
-bun test
-```
-
-If validation fails → continue to review anyway with error context.
-
-## Phase 5: Review
-
-Use the `code-reviewer` skill to:
-
-1. Review changes against task requirements
-2. Generate structured feedback
-3. Create fix subtasks if issues found
-
-## Phase 6: Handle Fixes (if issues found)
-
-The `code-reviewer` skill creates fix subtasks under the current task:
-
-```bash
-npx task-o-matic tasks create --parent-id <current-id> --title "Fix: <issue>"
-```
-
-After fix subtasks are created:
-
-1. Keep parent task status as `in-progress`
-2. Execute each fix subtask
-3. After all fixes complete, re-validate parent task
-
-## Phase 7: Complete
-
-When validation passes and no issues:
-
-```bash
-npx task-o-matic tasks status --id <id> --status completed
-```
-
-## Handling Nested Tasks
-
-A task might itself be a subtask. Check `parentId` field:
-
-- If `parentId` exists → this is a subtask
-- After completing, check if parent is ready to complete
-
-```bash
-# Check parent status
-task-o-matic tasks show --id <parentId>
-task-o-matic tasks subtasks --id <parentId>
-```
-
-If all sibling subtasks completed → parent may be completable.
+## Helper Scripts
+- `scripts/check-status.sh <id>`: View task status and subtask tree.

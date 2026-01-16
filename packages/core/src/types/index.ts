@@ -99,6 +99,9 @@ export interface Task extends CreateTaskOptions {
   estimatedEffort?: "small" | "medium" | "large";
   prdFile?: string; // Reference to the PRD file this task was created from
   plan?: string; // Implementation plan - just fucking text
+  // Phase 6: PRD-Task bidirectional linking
+  prdSection?: string; // Which PRD section this task addresses
+  prdRequirement?: string; // Original requirement text from PRD
 }
 
 // PRD Parsing - moved to results.ts
@@ -642,3 +645,55 @@ export type ContinueAction =
   | "generate-tasks"   // Create tasks for unimplemented parts
   | "review-status"    // Show project overview
   | "generate-plan";   // Create implementation plan
+
+// ============================================================================
+// PRD EVOLUTION TYPES (Phase 6)
+// ============================================================================
+
+/**
+ * Represents a change made to a PRD
+ */
+export interface PRDChange {
+  /** Type of change */
+  type: "add" | "modify" | "remove" | "complete";
+  /** Section of the PRD that was changed */
+  section: string;
+  /** Description of the change */
+  description: string;
+  /** Associated task ID if this change is linked to a task */
+  taskId?: string;
+  /** Timestamp when the change was made */
+  changedAt: number;
+}
+
+/**
+ * Represents a version of a PRD for tracking evolution
+ */
+export interface PRDVersion {
+  /** Version number (incrementing) */
+  version: number;
+  /** The PRD content at this version */
+  content: string;
+  /** When this version was created */
+  createdAt: number;
+  /** Changes made in this version compared to previous */
+  changes: PRDChange[];
+  /** Task IDs that have been implemented as of this version */
+  implementedTasks: string[];
+  /** Optional message describing this version */
+  message?: string;
+  /** Path to the PRD file this version is for */
+  prdFile: string;
+}
+
+/**
+ * Data structure for PRD version storage
+ */
+export interface PRDVersionData {
+  /** Path to the PRD file */
+  prdFile: string;
+  /** All versions of this PRD */
+  versions: PRDVersion[];
+  /** Current active version number */
+  currentVersion: number;
+}

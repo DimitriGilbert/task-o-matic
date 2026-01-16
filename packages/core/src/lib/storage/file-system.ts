@@ -1,4 +1,4 @@
-import { Task, CreateTaskRequest, TaskAIMetadata } from "../../types";
+import { Task, CreateTaskRequest, TaskAIMetadata, PRDVersion, PRDVersionData } from "../../types";
 import { configManager } from "../config";
 import { TaskRepository } from "./types";
 import {
@@ -860,5 +860,67 @@ export class FileSystemStorage implements TaskRepository {
       logger.error(`Failed to read task documentation for ${taskId}: ${error}`);
       return null;
     }
+  }
+
+  // PRD Versioning Operations
+  private getPRDVersionsFilePath(prdFile: string): string {
+    const sanitizedName = this.sanitizeForFilename(prdFile.replace(/\//g, "-"));
+    return `prd/versions/${sanitizedName}.json`;
+  }
+
+  async getPRDVersions(prdFile: string): Promise<PRDVersionData | null> {
+    const versionFile = this.getPRDVersionsFilePath(prdFile);
+    try {
+      const content = await this.callbacks.read(versionFile);
+      if (!content) return null;
+      return JSON.parse(content);
+    } catch (error) {
+      // It's okay if version file doesn't exist yet
+      return null;
+    }
+  }
+
+  async savePRDVersion(prdFile: string, versionData: PRDVersion): Promise<void> {
+    const versionFile = this.getPRDVersionsFilePath(prdFile);
+    let data: PRDVersionData;
+
+    try {
+      const existingData = await this.getPRDVersions(prdFile);
+      if (existingData) {
+        data = existingData;
+        // Check if version already exists to avoid duplicates
+        const existingVersionIndex = data.versions.findIndex(
+          (v) => v.version === versionData.version
+        );
+        if (existingVersionIndex >= 0) {
+          data.versions[existingVersionIndex] = versionData;
+        } else {
+          data.versions.push(versionData);
+        }
+        data.currentVersion = Math.max(data.currentVersion, versionData.version);
+      } else {
+        data = {
+          prdFile,
+          versions: [versionData],
+          currentVersion: versionData.version,
+        };
+      }
+
+      await this.callbacks.write(versionFile, JSON.stringify(data, null, 2));
+    } catch (error) {
+      throw formatStorageError(
+        `save PRD version for ${prdFile}`,
+        error instanceof Error ? error : undefined
+      );
+    }
+  }
+
+  async getLatestPRDVersion(prdFile: string): Promise<PRDVersion | null> {
+    const data = await this.getPRDVersions(prdFile);
+    if (!data || data.versions.length === 0) return null;
+    
+    // Return the one marked as current, or the last one if not found
+    const current = data.versions.find(v => v.version === data.currentVersion);
+    return current || data.versions[data.versions.length - 1];
   }
 }

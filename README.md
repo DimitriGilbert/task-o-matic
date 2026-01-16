@@ -20,6 +20,7 @@ This project is organized as a monorepo with two packages:
 - 📁 **Project-Local Storage**: All data stored locally in `.task-o-matic/` directory
 - 🎯 **Task Management**: Full CRUD operations with AI enhancement
 - 📋 **PRD Processing**: Convert Product Requirements Documents into actionable tasks
+- 🔄 **PRD Evolution**: Version control for PRDs with task bidirectional linking
 - 🏗️ **Project Bootstrapping**: Better-T-Stack integration for new projects
 - 🔧 **Multi-Provider AI**: Support for OpenAI, Anthropic, OpenRouter, and custom providers
 - 📊 **Smart Breakdown**: AI-powered task decomposition into subtasks
@@ -616,6 +617,35 @@ task-o-matic tasks execute-loop --status todo
 **Why `init attach` instead of `init init`?**
 - `init init` is for **new projects** (optionally bootstraps with Better-T-Stack)
 - `init attach` is for **existing projects** (detects existing stack, never modifies code)
+
+### Workflow 6: Returning to a Project
+
+Jump back into a project and let task-o-matic tell you where you left off:
+
+```bash
+# 1. Analyze project state
+task-o-matic continue
+
+# Output:
+# 📊 Project Status: Active
+# Tasks: 12 Completed, 3 In Progress, 5 Todo
+# PRD: Found
+# 👉 Suggested Next Steps:
+#   - Start working on a task
+```
+
+You can also use specific actions:
+
+```bash
+# Update PRD with progress
+task-o-matic continue --update-prd
+
+# Generate tasks for unimplemented features
+task-o-matic continue --generate-tasks
+
+# Generate plan for remaining work
+task-o-matic continue --generate-plan
+```
 
 ## 📊 Benchmarking Commands
 
