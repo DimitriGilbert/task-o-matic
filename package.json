@@ -34,5 +34,13 @@
     "ts-node": "^10.9.2",
     "tsx": "^4.21.0",
     "typescript": "^5.9.3"
+  },
+  "dependencies": {
+    "@ai-sdk/anthropic": "^3.0.14",
+    "@ai-sdk/google": "^3.0.9",
+    "@ai-sdk/openai": "^3.0.11",
+    "@ai-sdk/openai-compatible": "^2.0.12",
+    "@openrouter/ai-sdk-provider": "^6.0.0-alpha.1",
+    "ai": "^6.0.37"
   }
 }
