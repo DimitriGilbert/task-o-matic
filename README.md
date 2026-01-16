@@ -8,7 +8,7 @@
 
 _Citizen, the world outside has changed. The AI-pocalypse has transformed development from a chaotic free-for-all into something... darker. But your projects don't have to die in the radioactive dust._
 
-_npx task-o-matic is your task management system for software development. Think of it as your Pip-Boy for code—organizing tasks, parsing documents, and deploying artificial intelligence to help your projects thrive when everything else has collapsed._
+_task-o-matic is your task management system for software development. Think of it as your Pip-Boy for code—organizing tasks, parsing documents, and deploying artificial intelligence to help your projects thrive when everything else has collapsed._
 
 _[The preceding message was brought to you by the Department of Project Preservation. Remember: A prepared developer is a surviving developer.]_
 
@@ -21,7 +21,6 @@ In the Before Times, people used sticky notes and spreadsheets. Then came the AI
 - **🤖 AI-Powered Task Management**: Let the machine spirits enhance your tasks with actual documentation. They may not have souls, but they have access to Context7.
 - **📋 PRD Processing**: Parse Product Requirements Documents into structured tasks. Because vague requirements lead to vague outcomes. Vague outcomes lead to... well, you've seen what happens to vague projects.
 - **🎯 Complete Workflow Automation**: From project initialization to execution—guided by AI, supervised by you. Mostly.
-- **📊 AI Model Benchmarking**: Test multiple models against each other. Let them fight it out. Survival of the fittest, citizen.
 - **💾 Local Storage**: Everything lives in `.task-o-matic/`. No cloud. No surveillance. Just you, your code, and the containment directory.
 - **🌊 Real-Time Streaming**: Watch AI responses generate live. Like watching the Geiger counter tick, but for code generation.
 
@@ -29,7 +28,7 @@ In the Before Times, people used sticky notes and spreadsheets. Then came the AI
 
 ## 📦 ARCHITECTURE: TWO FACILITIES
 
-The npx task-o-matic compound is split into two facilities:
+The task-o-matic compound is split into two facilities:
 
 ### **task-o-matic-core** (`packages/core/`)
 
@@ -37,7 +36,7 @@ The infrastructure foundation. Library code for TUI, web apps, and custom integr
 
 - [Full documentation here](packages/core/README.md)
 
-### **npx task-o-matic** (`packages/cli/`)
+### **task-o-matic** (`packages/cli/`)
 
 The terminal interface. What you actually use.
 
@@ -165,32 +164,6 @@ npx task-o-matic tasks create --title "Add rad-resistant UI" --ai-enhance --stre
 
 No code is modified. Only observation. We're not raiders, citizen.
 
-### Workflow Delta: AI Model Comparison (When You Need the Best)
-
-Not sure which AI model to use? Let them compete. The strongest model survives.
-
-```bash
-# Benchmark PRD parsing across multiple models
-task-o-matic benchmark run prd-parse \
-  --file requirements.md \
-  --models "openai:gpt-4o,anthropic:claude-3-5-sonnet,openrouter:anthropic/claude-3.5-sonnet" \
-  --concurrency 2
-
-# Benchmark the ENTIRE workflow
-task-o-matic benchmark workflow \
-  --models "openai:gpt-4o,anthropic:claude-3-5-sonnet" \
-  --project-name "vault-manager-app" \
-  --project-description "Comprehensive vault management system" \
-  --init-method ai \
-  --prd-method ai \
-  --auto-accept \
-  --split-all
-```
-
-**Output:** Comprehensive comparison table showing duration, task count, token usage, and cost. Select the winner. Your project gets the best results.
-
----
-
 ## 🔧 COMMAND REFERENCE: YOUR SURVIVAL KIT
 
 ### Initialization (`init`)
@@ -261,32 +234,42 @@ npx task-o-matic prd refine --file requirements.md --question-mode ai --stream
 
 **🔥 Multi-AI Generation (READY NOW!)**
 
-When creating PRDs or parsing them into tasks, you can use multiple AI models in parallel and combine the best results:
+When creating PRDs or parsing them into tasks, you can use multiple AI models in parallel and combine to best results:
+
+**For PRD Creation:**
 
 ```bash
-# Multi-model PRD creation
 npx task-o-matic prd create "Build a vault manager" \
-  --ai "anthropic:claude-3.5-sonnet,openai:gpt-4o,openrouter:qwen-2.5" \
+  --ai "anthropic:claude-3.5-sonnet" \
+  --ai "openai:gpt-4o" \
+  --ai "openrouter:qwen-2.5" \
   --combine-ai anthropic:claude-3.5-sonnet \
   --stream
+```
 
-# Multi-model PRD parsing
+**For PRD Parsing:**
+
+```bash
 npx task-o-matic prd parse --file requirements.md \
-  --ai "anthropic:claude-3.5-sonnet,openai:gpt-4o,openrouter:qwen-2.5" \
+  --ai "anthropic:claude-3.5-sonnet" \
+  --ai "openai:gpt-4o" \
+  --ai "openrouter:qwen-2.5" \
   --combine-ai anthropic:claude-3.5-sonnet \
   --stream
+```
 
-# Multi-model task splitting
+**For Task Splitting:**
+
+```bash
 npx task-o-matic tasks split --task-id 7 \
-  --ai "anthropic:claude-3.5-sonnet,openai:gpt-4o" \
+  --ai "anthropic:claude-3.5-sonnet" \
+  --ai "openai:gpt-4o" \
   --stream
 ```
 
 **Why this matters:** Competition among AI models produces superior PRDs and task breakdowns. Let multiple models work, then combine their strengths into one definitive result.
 
 [Full PRD documentation](docs/prd.md)
-
-### Configuration (`config`)
 
 ### Configuration (`config`)
 
@@ -327,7 +310,7 @@ Based on extensive field testing (read: we tried a lot of things so you don't ha
 OpenRouter models support extended reasoning for complex problems:
 
 ```bash
-task-o-matic tasks create --title "Solve the energy crisis" \
+npx task-o-matic tasks create --title "Solve the energy crisis" \
   --ai-provider openrouter \
   --ai-model anthropic/claude-3.5-sonnet \
   --ai-reasoning 5000 \
@@ -464,7 +447,9 @@ Let multiple AI models compete and produce the best results together.
 
 ```bash
 npx task-o-matic prd create "Build a vault manager" \
-  --ai "anthropic:claude-3.5-sonnet,openai:gpt-4o,openrouter:qwen-2.5" \
+  --ai "anthropic:claude-3.5-sonnet" \
+  --ai "openai:gpt-4o" \
+  --ai "openrouter:qwen-2.5" \
   --combine-ai anthropic:claude-3.5-sonnet \
   --stream
 ```
@@ -473,7 +458,9 @@ npx task-o-matic prd create "Build a vault manager" \
 
 ```bash
 npx task-o-matic prd parse --file requirements.md \
-  --ai "anthropic:claude-3.5-sonnet,openai:gpt-4o,openrouter:qwen-2.5" \
+  --ai "anthropic:claude-3.5-sonnet" \
+  --ai "openai:gpt-4o" \
+  --ai "openrouter:qwen-2.5" \
   --combine-ai anthropic:claude-3.5-sonnet \
   --stream
 ```
@@ -482,7 +469,8 @@ npx task-o-matic prd parse --file requirements.md \
 
 ```bash
 npx task-o-matic tasks split --task-id 7 \
-  --ai "anthropic:claude-3.5-sonnet,openai:gpt-4o" \
+  --ai "anthropic:claude-3.5-sonnet" \
+  --ai "openai:gpt-4o" \
   --stream
 ```
 
@@ -492,7 +480,7 @@ Competition among AI models produces superior results. Much like competition amo
 
 ### Tip 4: Context7 Documentation Integration
 
-npx task-o-matic integrates with Context7 to fetch current library documentation automatically.
+Task-o-matic integrates with Context7 to fetch current library documentation automatically.
 
 ```bash
 # Enable Context7 during init
@@ -525,7 +513,7 @@ If a task fails, it will retry with progressively stronger models. Survival of t
 
 ### Tip 6: Continue Working on Existing Projects
 
-Jump back into a project and let npx task-o-matic tell you where you left off.
+Jump back into a project and let task-o-matic tell you where you left off.
 
 ```bash
 # Check project status
@@ -543,7 +531,7 @@ npx task-o-matic continue --generate-plan
 
 ---
 
-## 📚 LIBRARY INTEGRATION: USING npx task-o-matic IN YOUR CODE
+## 📚 LIBRARY INTEGRATION: USING task-o-matic IN YOUR CODE
 
 Need to integrate task management into a TUI, web app, or custom tooling? Use `task-o-matic-core`.
 
@@ -726,7 +714,7 @@ npx task-o-matic tasks create \
 
 A: Common occurrence, citizen. Use `prd rework` to update your PRD, then regenerate tasks from the updated document. [Flexibility is a survival trait.]
 
-**Q: How does npx task-o-matic handle dependencies?**
+**Q: How does task-o-matic handle dependencies?**
 
 A: Tasks can specify dependencies. The system tracks relationships and prevents circular dependencies. [A project where everything depends on everything is a project that never completes. We learned this the hard way.]
 
