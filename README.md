@@ -118,20 +118,71 @@ npx task-o-matic tasks get-next
 ```bash
 # Initialize AND bootstrap with Better-T-Stack in one shot
 npx task-o-matic init init \
-  --project-name my-fallout-shelter-manager \
+  --project-name job-applications-manager \
   --ai-provider openrouter \
   --ai-model anthropic/claude-4.5-sonnet \
+  --ai-key "sk_123456azerty0987POIUY"
   --frontend next \
-  --backend hono \
-  --database postgres \
+  --backend convex \
   --auth
+
+# get in
+cd job-applications-manager
+
+# tell the AI to generate a PRD from an idea
+npx task-o-matic prd create \
+  --stream \
+  --ai-reasoning 4096 \
+  "I need a way to manage my job applications and help me create better resume and cover letter using AI and result of the previous applications. the goal would be for me to have a profile determined after an AI interview process. that profile would be used to create job applications and cover letters from job offers. AI will have to be able to research the company to make the best job applications and cover letters. I would also like to have preparation interviews that would be created by AI to train me for the upcoming jon application interview."
+
+
+# refine the PRD
+# reply to question
+npx task-o-matic prd refine \
+  --stream \
+  --ai-reasoning 4096 \
+  --ai-model claude-4.5-opus \
+  --file prd.md
+# get better PRD
+npx task-o-matic prd refine \
+  --stream \
+  --file prd.md \
+  --ai-reasoning 4096 \
+  --ai-model claude-4.5-opus \
+  --output prd_enhanced.md
+
+# parse the PRD
+npx task-o-matic prd parse \
+  --stream \
+  --ai-reasoning 4096 \
+  --file prd_enhanced.md
+
+# split the tasks
+npx task-o-matic tasks split \
+  --all \
+  --stream
+
+# start the loop, --tool to select you harness, opencode by default
+npx task-o-matic tasks execute-loop \
+  # big brain planification
+  --plan --plan-model claude-4.5-opus \
+  # grinding tokenisation
+  --model zai-coding-plan/glm-4.7 \
+  # force validations
+  --validate "npm run check-types" \
+  --validate "npm run build" \
+  # limit divagation
+  --include-prd
+
+# you can go hunt for jobs now, it's going to take a while...
+# or you can rot watching, it's almost like sailng the 7 sees back in the days, when the internet weren't dead
 ```
 
 This creates:
 
 - `.task-o-matic/` directory with config
 - A full Better-T-Stack project scaffold
-- Next.js frontend, Hono backend, Postgres database, authentication
+- Next.js frontend, Convex backend, no database, authentication
 
 **Result:** A project ready to be built.
 
