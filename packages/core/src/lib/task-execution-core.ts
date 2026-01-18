@@ -34,7 +34,7 @@ import { logger } from "./logger";
  */
 export async function executeTaskCore(
   taskId: string,
-  config: TaskExecutionConfig
+  config: TaskExecutionConfig,
 ): Promise<TaskExecutionResult> {
   const {
     tool,
@@ -89,7 +89,7 @@ export async function executeTaskCore(
         logger.warn(
           `⚠️ Failed to load full content for task ${task.id}: ${
             error instanceof Error ? error.message : String(error)
-          }`
+          }`,
         );
       }
     }
@@ -129,7 +129,7 @@ export async function executeTaskCore(
       attempts,
       planContent,
       1,
-      maxRetries
+      maxRetries,
     );
   }
 }
@@ -140,12 +140,12 @@ export async function executeTaskCore(
 async function executeTaskWithSubtasks(
   task: Task,
   subtasks: Task[],
-  config: TaskExecutionConfig
+  config: TaskExecutionConfig,
 ): Promise<TaskExecutionResult> {
   const { dry, includeCompleted = false } = config;
 
   logger.info(
-    `📋 Task has ${subtasks.length} subtasks, executing recursively...`
+    `📋 Task has ${subtasks.length} subtasks, executing recursively...`,
   );
 
   const subtaskResults: TaskExecutionResult[] = [];
@@ -158,7 +158,7 @@ async function executeTaskWithSubtasks(
     // Skip completed subtasks unless includeCompleted is set
     if (!includeCompleted && subtask.status === "completed") {
       logger.info(
-        `⏭️  Skipping completed subtask: ${subtask.title} (${subtask.id})`
+        `⏭️  Skipping completed subtask: ${subtask.title} (${subtask.id})`,
       );
       continue;
     }
@@ -166,7 +166,7 @@ async function executeTaskWithSubtasks(
     logger.progress(
       `\n[${i + 1}/${subtasks.length}] Executing subtask: ${subtask.title} (${
         subtask.id
-      })`
+      })`,
     );
 
     try {
@@ -176,7 +176,7 @@ async function executeTaskWithSubtasks(
       if (!result.success) {
         allSuccess = false;
         logger.error(
-          `❌ Failed to execute subtask ${subtask.id}: ${subtask.title}`
+          `❌ Failed to execute subtask ${subtask.id}: ${subtask.title}`,
         );
         break; // Stop on first failure
       }
@@ -185,7 +185,7 @@ async function executeTaskWithSubtasks(
       logger.error(
         `❌ Failed to execute subtask ${subtask.id}: ${
           error instanceof Error ? error.message : "Unknown error"
-        }`
+        }`,
       );
       break;
     }
@@ -199,7 +199,7 @@ async function executeTaskWithSubtasks(
     } else {
       await taskService.setTaskStatus(task.id, "todo");
       logger.error(
-        `❌ Main task ${task.title} failed due to subtask failure, status reset to todo`
+        `❌ Main task ${task.title} failed due to subtask failure, status reset to todo`,
       );
     }
   }
@@ -218,7 +218,7 @@ async function executeTaskWithRetry(
   task: Task,
   config: TaskExecutionConfig,
   attempts: TaskExecutionAttempt[],
-  planContent?: string
+  planContent?: string,
 ): Promise<TaskExecutionResult> {
   const {
     tool,
@@ -228,6 +228,7 @@ async function executeTaskWithRetry(
     enableReviewPhase = false,
     reviewModel,
     autoCommit: enableAutoCommit = false,
+    includePrd = false,
     dry = false,
   } = config;
 
@@ -242,7 +243,7 @@ async function executeTaskWithRetry(
     if (tryModels && tryModels.length > 0) {
       const modelConfigIndex = Math.min(
         currentAttempt - 1,
-        tryModels.length - 1
+        tryModels.length - 1,
       );
       const modelConfig = tryModels[modelConfigIndex];
 
@@ -255,12 +256,12 @@ async function executeTaskWithRetry(
     }
 
     logger.info(
-      `\n🎯 Attempt ${currentAttempt}/${maxRetries} for task: ${task.title} (${task.id})`
+      `\n🎯 Attempt ${currentAttempt}/${maxRetries} for task: ${task.title} (${task.id})`,
     );
 
     if (currentModel) {
       logger.progress(
-        `   Using executor: ${currentExecutor} with model: ${currentModel}`
+        `   Using executor: ${currentExecutor} with model: ${currentModel}`,
       );
     } else {
       logger.progress(`   Using executor: ${currentExecutor}`);
@@ -274,15 +275,15 @@ async function executeTaskWithRetry(
 
       if (currentModel) {
         retryParts.push(
-          `**Note**: You are ${currentExecutor} using the ${currentModel} model. This is a more capable model than the previous attempt.\n\n`
+          `**Note**: You are ${currentExecutor} using the ${currentModel} model. This is a more capable model than the previous attempt.\n\n`,
         );
       }
 
       retryParts.push(
-        `## Previous Attempt Failed With Error:\n\n${lastError}\n\n`
+        `## Previous Attempt Failed With Error:\n\n${lastError}\n\n`,
       );
       retryParts.push(
-        `Please analyze the error carefully and fix it. The error might be due to:\n`
+        `Please analyze the error carefully and fix it. The error might be due to:\n`,
       );
       retryParts.push(`- Syntax errors\n`);
       retryParts.push(`- Logic errors\n`);
@@ -290,7 +291,7 @@ async function executeTaskWithRetry(
       retryParts.push(`- Incorrect configuration\n`);
       retryParts.push(`- Build or test failures\n\n`);
       retryParts.push(
-        `Please fix the error above and complete the task successfully.\n\n`
+        `Please fix the error above and complete the task successfully.\n\n`,
       );
       retryContext = retryParts.join("");
     }
@@ -314,13 +315,13 @@ async function executeTaskWithRetry(
         planContent,
         currentAttempt,
         maxRetries,
-        retryContext
+        retryContext,
       );
 
       // Check if all verifications passed
       const allVerificationsPassed =
         result.attempts[result.attempts.length - 1]?.verificationResults?.every(
-          (r) => r.success
+          (r) => r.success,
         ) ?? true;
 
       if (!allVerificationsPassed) {
@@ -336,16 +337,36 @@ async function executeTaskWithRetry(
       // AI REVIEW PHASE
       // ----------------------------------------------------------------------
       if (enableReviewPhase && !dry) {
+        // Build context for review if needed (PRD content)
+        let prdContentForReview: string | undefined;
+        if (includePrd) {
+          try {
+            const contextBuilder = getContextBuilder();
+            const reviewContext = await contextBuilder.buildContext(task.id);
+            prdContentForReview = reviewContext.prdContent;
+          } catch (error) {
+            logger.warn(
+              `⚠️ Failed to load PRD content for review: ${
+                error instanceof Error ? error.message : String(error)
+              }`,
+            );
+          }
+        }
+
         const reviewResult = await executeReviewPhase(task, {
           reviewModel,
           planContent,
+          taskDescription: task.description,
+          taskContent: task.content,
+          prdContent: prdContentForReview,
+          documentation: task.documentation,
           dry,
         });
 
         if (!reviewResult.approved) {
           lastError = `AI Review Failed:\n${reviewResult.feedback}`;
           logger.error(
-            `❌ AI Review Rejected Changes: ${reviewResult.feedback}`
+            `❌ AI Review Rejected Changes: ${reviewResult.feedback}`,
           );
           currentAttempt++;
           continue;
@@ -360,7 +381,7 @@ async function executeTaskWithRetry(
     } catch (error) {
       lastError = error instanceof Error ? error.message : String(error);
       logger.error(
-        `❌ Task execution failed on attempt ${currentAttempt}: ${lastError}`
+        `❌ Task execution failed on attempt ${currentAttempt}: ${lastError}`,
       );
 
       if (!dry && currentAttempt < maxRetries) {
@@ -394,7 +415,7 @@ async function executeSingleAttempt(
   planContent: string | undefined,
   attemptNumber: number,
   maxRetries: number,
-  retryContext?: string
+  retryContext?: string,
 ): Promise<TaskExecutionResult> {
   const {
     tool,
@@ -409,7 +430,7 @@ async function executeSingleAttempt(
   const attemptStartTime = Date.now();
 
   logger.info(
-    `🎯 ${dry ? "DRY RUN" : "Executing"} task: ${task.title} (${task.id})`
+    `🎯 ${dry ? "DRY RUN" : "Executing"} task: ${task.title} (${task.id})`,
   );
 
   // Capture git state before execution
@@ -450,7 +471,7 @@ async function executeSingleAttempt(
     if (!promptResult.success) {
       throw createStandardError(
         TaskOMaticErrorCodes.CONFIGURATION_ERROR,
-        `Failed to build execution prompt: ${promptResult.error}`
+        `Failed to build execution prompt: ${promptResult.error}`,
       );
     }
 
@@ -473,7 +494,7 @@ async function executeSingleAttempt(
     // Log session resumption if applicable
     if (executorConfig?.continueLastSession && attemptNumber > 1) {
       logger.progress(
-        "🔄 Resuming previous session to provide error feedback to AI"
+        "🔄 Resuming previous session to provide error feedback to AI",
       );
     }
 
@@ -499,7 +520,7 @@ async function executeSingleAttempt(
       });
 
       logger.error(
-        `❌ Task execution failed verification on attempt ${attemptNumber}`
+        `❌ Task execution failed verification on attempt ${attemptNumber}`,
       );
 
       // Don't throw - return failure so retry loop can handle with session continuation
@@ -518,12 +539,12 @@ async function executeSingleAttempt(
 
       // Check if agent already committed during execution
       const agentCommitted = await hasNewCommitsSince(
-        gitStateBefore.beforeHead || ""
+        gitStateBefore.beforeHead || "",
       );
 
       if (agentCommitted) {
         logger.info(
-          "📝 Agent already committed changes during execution, skipping auto-commit"
+          "📝 Agent already committed changes during execution, skipping auto-commit",
         );
       } else {
         const gitStateAfter = await captureGitState();
@@ -539,7 +560,7 @@ async function executeSingleAttempt(
             task.id,
             task.title,
             executionMessage,
-            gitState
+            gitState,
           );
 
           logger.success(`✅ Commit message: ${commitInfo.message}`);

@@ -12,6 +12,10 @@ const execAsync = promisify(exec);
 export interface ReviewConfig {
   reviewModel?: string; // Format: "executor:model" or just "model"
   planContent?: string; // Plan content to include in review context
+  taskDescription?: string; // Task description
+  taskContent?: string; // Full task content/requirements
+  prdContent?: string; // PRD content if available
+  documentation?: { recap: string; files?: string[] }; // Documentation context
   dry?: boolean; // Dry run mode
 }
 
@@ -33,10 +37,18 @@ export async function executeReviewPhase(
   task: Task,
   config: ReviewConfig,
   execFn: (
-    command: string
-  ) => Promise<{ stdout: string; stderr: string }> = execAsync
+    command: string,
+  ) => Promise<{ stdout: string; stderr: string }> = execAsync,
 ): Promise<ReviewResult> {
-  const { reviewModel, planContent, dry } = config;
+  const {
+    reviewModel,
+    planContent,
+    taskDescription,
+    taskContent,
+    prdContent,
+    documentation,
+    dry,
+  } = config;
 
   logger.info("\n🕵️  Starting AI Review Phase...");
 
@@ -70,29 +82,56 @@ export async function executeReviewPhase(
 
     if (reviewExecutor && reviewModelName) {
       logger.progress(
-        `   Using executor for review: ${reviewExecutor} (${reviewModelName})`
+        `   Using executor for review: ${reviewExecutor} (${reviewModelName})`,
       );
     } else {
       logger.progress("   Using default AI provider for review");
     }
 
-    const reviewPrompt = `You are a strict code reviewer. Review the following changes for the task.
+    // Build comprehensive context sections
+    const descriptionSection = taskDescription
+      ? `\nTask Description:\n${taskDescription}\n`
+      : "";
 
-Task: ${task.title}
-${planContent ? `Plan: ${planContent}` : "Plan: No plan provided."}
+    const contentSection = taskContent
+      ? `\nTask Requirements/Content:\n${taskContent}\n`
+      : "";
 
-Git Diff:
+    const prdSection = prdContent
+      ? `\nProduct Requirements Document (PRD):\n${prdContent.substring(0, 5000)}\n`
+      : "";
+
+    const docsSection = documentation
+      ? `\nDocumentation Context:\n${documentation.recap}${
+          documentation.files?.length
+            ? `\nReferenced files: ${documentation.files.join(", ")}`
+            : ""
+        }\n`
+      : "";
+
+    const planSection = planContent
+      ? `\nImplementation Plan:\n${planContent}\n`
+      : "";
+
+    const reviewPrompt = `You are a strict code reviewer. Review the following changes against the task requirements.
+
+# Task: ${task.title}
+${descriptionSection}${contentSection}${prdSection}${docsSection}${planSection}
+# Git Diff (changes to review):
+\`\`\`diff
 ${diff.substring(0, 10000)}
+\`\`\`
 
 Analyze the changes for:
-1. Correctness (does it solve the task?)
-2. Code Quality (clean code, best practices)
-3. Potential Bugs
+1. Correctness - Do the changes solve the task requirements?
+2. Completeness - Are all requirements addressed?
+3. Code Quality - Clean code, best practices
+4. Potential Bugs - Any obvious issues?
 
 Return a JSON object:
 {
   "approved": boolean,
-  "feedback": "Detailed feedback explaining why it was rejected or approved"
+  "feedback": "Detailed feedback explaining why it was rejected or approved, referencing specific requirements"
 }
 `;
 
