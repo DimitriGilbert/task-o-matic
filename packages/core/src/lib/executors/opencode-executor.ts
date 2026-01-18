@@ -18,15 +18,15 @@ export class OpencodeExecutor implements ExternalExecutor {
   async execute(
     message: string,
     dry: boolean = false,
-    config?: ExecutorConfig
+    config?: ExecutorConfig,
   ): Promise<void> {
     // Merge constructor config with execution config (execution takes precedence)
     const finalConfig = { ...this.config, ...config };
 
-    // Build arguments array
-    const args: string[] = [];
+    // Build arguments array - 'run' subcommand must come first
+    const args: string[] = ["run"];
 
-    // Add model if specified
+    // Add flags after 'run' subcommand (they are subcommand-specific flags)
     if (finalConfig.model) {
       args.push("-m", finalConfig.model);
       logger.progress(`🤖 Using model: ${finalConfig.model}`);
@@ -41,14 +41,14 @@ export class OpencodeExecutor implements ExternalExecutor {
       logger.progress(`🔄 Resuming session: ${finalConfig.sessionId}`);
     }
 
-    // Use 'run' subcommand with message as positional argument
-    args.push("run", message);
+    // Add message as positional argument at the end
+    args.push(message);
 
     if (dry) {
       logger.progress(`🔧 Using executor: ${this.name}`);
       // Quote arguments that contain spaces for display
       const quotedArgs = args.map((arg) =>
-        arg.includes(" ") ? `"${arg.replace(/"/g, '\\"')}"` : arg
+        arg.includes(" ") ? `"${arg.replace(/"/g, '\\"')}"` : arg,
       );
       logger.progress(`opencode ${quotedArgs.join(" ")}`);
       return;
