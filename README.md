@@ -115,7 +115,7 @@ npx task-o-matic prd create \
 
 # refine the PRD
 # reply to question
-npx task-o-matic prd refine \
+npx task-o-matic prd question \
   --stream \
   --ai-reasoning 4096 \
   --ai-model claude-4.5-opus \
@@ -124,6 +124,7 @@ npx task-o-matic prd refine \
 npx task-o-matic prd refine \
   --stream \
   --file prd.md \
+  --question-file prd-questions.md \
   --ai-reasoning 4096 \
   --ai-model claude-4.5-opus \
   --output prd_enhanced.md
