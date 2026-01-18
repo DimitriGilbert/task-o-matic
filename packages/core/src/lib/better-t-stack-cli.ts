@@ -392,27 +392,28 @@ export class BetterTStackIntegration {
   ): Promise<{ success: boolean; message: string; projectPath: string }> {
     const backend = options.backend || "hono";
     const isConvex = backend === "convex";
+    const isNoBackend = backend === "none";
 
     const btsConfig: BTSConfig = {
       projectName: options.name || options.projectName || name,
       frontend: frontends.length === 1 ? frontends[0] : frontends, // Pass array if multiple
       backend: (backend as BTSConfig["backend"]) || "hono",
-      database: isConvex
+      database: isNoBackend || isConvex
         ? "none"
         : (options.database as BTSConfig["database"]) || "sqlite",
       auth: (options.noAuth || options.backend === "none"
         ? "none"
         : options.auth || "better-auth") as BTSConfig["auth"],
       addons: (options.addons as BTSConfig["addons"]) || ["turborepo"],
-      runtime: (isConvex || backend === "self"
+      runtime: isNoBackend || isConvex || backend === "self"
         ? "none"
-        : options.runtime || "node") as BTSConfig["runtime"],
+        : (options.runtime as BTSConfig["runtime"]) || "node",
       api: (options.api as BTSConfig["api"]) || "none",
       payments: (options.payment as BTSConfig["payments"]) || "none",
-      orm: (isConvex || options.database === "none"
+      orm: isNoBackend || isConvex || options.database === "none"
         ? "none"
-        : options.orm || "drizzle") as BTSConfig["orm"],
-      dbSetup: (isConvex
+        : (options.orm as BTSConfig["orm"]) || "drizzle",
+      dbSetup: (isNoBackend || isConvex
         ? "none"
         : options.dbSetup || "none") as BTSConfig["dbSetup"],
       packageManager:

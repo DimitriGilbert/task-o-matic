@@ -235,6 +235,10 @@ async function executeTaskWithRetry(
   let currentAttempt = 1;
   let lastError: string | undefined;
 
+  // Capture git HEAD before any execution attempts for review diffing
+  const beforeHeadState = await captureGitState();
+  const beforeHead = beforeHeadState.beforeHead;
+
   while (currentAttempt <= maxRetries) {
     // Determine which executor and model to use for this attempt
     let currentExecutor = tool;
@@ -360,6 +364,7 @@ async function executeTaskWithRetry(
           taskContent: task.content,
           prdContent: prdContentForReview,
           documentation: task.documentation,
+          beforeHead,
           dry,
         });
 

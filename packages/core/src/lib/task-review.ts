@@ -16,6 +16,7 @@ export interface ReviewConfig {
   taskContent?: string; // Full task content/requirements
   prdContent?: string; // PRD content if available
   documentation?: { recap: string; files?: string[] }; // Documentation context
+  beforeHead?: string; // Git HEAD before execution started (for diffing commits)
   dry?: boolean; // Dry run mode
 }
 
@@ -47,6 +48,7 @@ export async function executeReviewPhase(
     taskContent,
     prdContent,
     documentation,
+    beforeHead,
     dry,
   } = config;
 
@@ -62,8 +64,40 @@ export async function executeReviewPhase(
   }
 
   try {
-    // Get git diff
-    const { stdout: diff } = await execFn("git diff HEAD");
+    // Get git diff - handle both committed and uncommitted changes
+    let diff = "";
+
+    if (beforeHead) {
+      // Get changes from commits made during execution
+      try {
+        const { stdout: commitDiff } = await execFn(
+          `git diff ${beforeHead}..HEAD`,
+        );
+        if (commitDiff.trim()) {
+          diff += `# Committed changes during execution:\n${commitDiff}\n`;
+          logger.progress(
+            `   Found committed changes since ${beforeHead.substring(0, 7)}`,
+          );
+        }
+      } catch (e) {
+        logger.warn(
+          `⚠️  Could not get commit diff: ${e instanceof Error ? e.message : e}`,
+        );
+      }
+    }
+
+    // Also check for any uncommitted changes
+    try {
+      const { stdout: uncommittedDiff } = await execFn("git diff HEAD");
+      if (uncommittedDiff.trim()) {
+        diff += `# Uncommitted changes:\n${uncommittedDiff}\n`;
+        logger.progress("   Found uncommitted changes");
+      }
+    } catch (e) {
+      logger.warn(
+        `⚠️  Could not get uncommitted diff: ${e instanceof Error ? e.message : e}`,
+      );
+    }
 
     if (!diff.trim()) {
       logger.warn("⚠️  No changes detected to review.");
