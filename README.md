@@ -90,30 +90,7 @@ npx task-o-matic tasks create --title "Add user authentication" --ai-enhance --s
 
 ## 🗺️ THE WASTELAND: COMMON WORKFLOWS
 
-### Workflow Alpha: From PRD to Tasks (When You Have a Plan)
-
-You've written a PRD. It's beautiful. Let's turn it into something executable.
-
-```bash
-#1. Initialize (if you haven't)
-npx task-o-matic init init
-
-#2. Parse PRD with streaming
-npx task-o-matic prd parse --file requirements.md --stream
-
-#3. Review task tree
-npx task-o-matic tasks tree
-
-#4. Split big ones into manageable chunks
-npx task-o-matic tasks split --all --stream
-
-#5. Get your next assignment
-npx task-o-matic tasks get-next
-```
-
-**Tip:** Use `--stream` on AI operations. Watching text appear character-by-character gives you something to do while waiting for the token machine to settle.
-
-### Workflow Beta: Project Bootstrapping (When Starting Fresh)
+### Workflow Alpha: Project Bootstrapping (When Starting Fresh)
 
 ```bash
 # Initialize AND bootstrap with Better-T-Stack in one shot
@@ -185,6 +162,29 @@ This creates:
 - Next.js frontend, Convex backend, no database, authentication
 
 **Result:** A project ready to be built.
+
+### Workflow Beta: From PRD to Tasks (When You Have a Plan)
+
+You've written a PRD. It's beautiful. Let's turn it into something executable.
+
+```bash
+#1. Initialize (if you haven't)
+npx task-o-matic init init
+
+#2. Parse PRD with streaming
+npx task-o-matic prd parse --file requirements.md --stream
+
+#3. Review task tree
+npx task-o-matic tasks tree
+
+#4. Split big ones into manageable chunks
+npx task-o-matic tasks split --all --stream
+
+#5. Get your next assignment
+npx task-o-matic tasks get-next
+```
+
+**Tip:** Use `--stream` on AI operations. Watching text appear character-by-character gives you something to do while waiting for the token machine to settle.
 
 ### Workflow Gamma: Existing Project Adoption (When the Walls Are Already Up)
 
