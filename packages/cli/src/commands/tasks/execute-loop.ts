@@ -17,32 +17,32 @@ import { textInputPrompt } from "../../utils/workflow-prompts";
 
 export const executeLoopCommand = new Command("execute-loop")
   .description(
-    "Execute multiple tasks in a loop with retry logic and verification"
+    "Execute multiple tasks in a loop with retry logic and verification",
   )
   .option(
     "--status <status>",
-    "Filter tasks by status (todo/in-progress/completed)"
+    "Filter tasks by status (todo/in-progress/completed)",
   )
   .option("--tag <tag>", "Filter tasks by tag")
   .option(
     "--ids <ids>",
     "Comma-separated list of task IDs to execute",
-    (value: string) => value.split(",").map((id) => id.trim())
+    (value: string) => value.split(",").map((id) => id.trim()),
   )
   .option(
     "--tool <tool>",
     "External tool to use (opencode/claude/gemini/codex)",
-    "opencode"
+    "opencode",
   )
   .option(
     "--max-retries <number>",
     "Maximum number of retries per task",
     (value: string) => parseInt(value, 10),
-    3
+    3,
   )
   .option(
     "--try-models <models>",
-    "Progressive model/executor configs for each retry (e.g., 'gpt-4o-mini,gpt-4o,claude:sonnet-4')"
+    "Progressive model/executor configs for each retry (e.g., 'gpt-4o-mini,gpt-4o,claude:sonnet-4')",
   )
   .option("-m, --model <model>", "Model to force for execution")
   .option(
@@ -50,54 +50,58 @@ export const executeLoopCommand = new Command("execute-loop")
     "Verification command to run after each task (can be used multiple times)",
     (value: string, previous: string[] = []) => {
       return [...previous, value];
-    }
+    },
   )
   .option(
     "--validate <command>",
     "Alias for --verify (validation command, can be used multiple times)",
     (value: string, previous: string[] = []) => {
       return [...previous, value];
-    }
+    },
   )
   .option(
     "--message <message>",
-    "Custom message to send to the tool (overrides task plan)"
+    "Custom message to send to the tool (overrides task plan)",
   )
   .option(
     "--continue-session",
     "Continue the last session (for error feedback)",
-    false
+    false,
   )
   .option(
     "--auto-commit",
     "Automatically commit changes after each task",
-    false
+    false,
   )
   .option("--plan", "Generate an implementation plan before execution", false)
   .option(
     "--plan-model <model>",
-    "Model/executor to use for planning (e.g., 'opencode:gpt-4o' or 'gpt-4o')"
+    "Model/executor to use for planning (e.g., 'opencode:gpt-4o' or 'gpt-4o')",
   )
   .option(
     "--plan-tool <tool>",
-    "Tool/Executor to use for planning (defaults to --tool)"
+    "Tool/Executor to use for planning (defaults to --tool)",
   )
   .option("--review-plan", "Pause for human review of the plan", false)
   .option("--review", "Run AI review after execution", false)
   .option(
     "--review-model <model>",
-    "Model/executor to use for review (e.g., 'opencode:gpt-4o' or 'gpt-4o')"
+    "Model/executor to use for review (e.g., 'opencode:gpt-4o' or 'gpt-4o')",
+  )
+  .option(
+    "--review-tool <tool>",
+    "Tool/Executor to use for review (defaults to --tool, e.g. claude, opencode)",
   )
   .option(
     "--include-completed",
     "Include already-completed tasks in execution",
-    false
+    false,
   )
   .option("--include-prd", "Include PRD content in execution context", false)
   .option(
     "--notify <target>",
     "Notify on completion via URL or command (can be used multiple times)",
-    (value: string, previous: string[] = []) => [...previous, value]
+    (value: string, previous: string[] = []) => [...previous, value],
   )
   .option("--dry", "Show what would be executed without running it", false)
   .action(
@@ -110,8 +114,8 @@ export const executeLoopCommand = new Command("execute-loop")
             chalk.red(
               `Invalid tool: ${
                 options.tool
-              }. Must be one of: ${VALID_EXECUTORS.join(", ")}`
-            )
+              }. Must be one of: ${VALID_EXECUTORS.join(", ")}`,
+            ),
           );
           process.exit(1);
         }
@@ -123,8 +127,8 @@ export const executeLoopCommand = new Command("execute-loop")
             tryModels = parseTryModels(options.tryModels);
             console.log(
               chalk.cyan(
-                `📊 Progressive model escalation configured with ${tryModels.length} model(s):`
-              )
+                `📊 Progressive model escalation configured with ${tryModels.length} model(s):`,
+              ),
             );
             tryModels.forEach((config, index) => {
               const executorInfo = config.executor
@@ -132,7 +136,7 @@ export const executeLoopCommand = new Command("execute-loop")
                 : "default:";
               const modelInfo = config.model || "default model";
               console.log(
-                chalk.cyan(`   ${index + 1}. ${executorInfo}${modelInfo}`)
+                chalk.cyan(`   ${index + 1}. ${executorInfo}${modelInfo}`),
               );
             });
             console.log();
@@ -141,8 +145,8 @@ export const executeLoopCommand = new Command("execute-loop")
               chalk.red(
                 `Failed to parse --try-models: ${
                   error instanceof Error ? error.message : "Unknown error"
-                }`
-              )
+                }`,
+              ),
             );
             process.exit(1);
           }
@@ -174,6 +178,7 @@ export const executeLoopCommand = new Command("execute-loop")
             reviewPlan: options.reviewPlan,
             review: options.review,
             reviewModel: options.reviewModel,
+            reviewTool: options.reviewTool,
             customMessage: options.message,
             continueSession: options.continueSession,
             includeCompleted: options.includeCompleted,
@@ -181,7 +186,7 @@ export const executeLoopCommand = new Command("execute-loop")
             notifyTargets: options.notify,
             onPlanReview: async (planFile: string) => {
               return await textInputPrompt(
-                `Enter feedback to refine the plan (or press Enter to approve and continue):`
+                `Enter feedback to refine the plan (or press Enter to approve and continue):`,
               );
             },
           },
@@ -195,17 +200,17 @@ export const executeLoopCommand = new Command("execute-loop")
         if (result.failedTasks > 0) {
           console.error(
             chalk.red(
-              `\n❌ ${result.failedTasks} task(s) failed. See logs above for details.`
-            )
+              `\n❌ ${result.failedTasks} task(s) failed. See logs above for details.`,
+            ),
           );
           process.exit(1);
         }
 
         console.log(
           chalk.green(
-            `\n✅ All ${result.completedTasks} task(s) completed successfully!`
-          )
+            `\n✅ All ${result.completedTasks} task(s) completed successfully!`,
+          ),
         );
-      }
-    )
+      },
+    ),
   );

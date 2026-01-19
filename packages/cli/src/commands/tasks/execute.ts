@@ -17,17 +17,17 @@ export const executeCommand = new Command("execute")
   .option(
     "--tool <tool>",
     "External tool to use (opencode/claude/gemini/codex)",
-    "opencode"
+    "opencode",
   )
   .option(
     "--message <message>",
-    "Custom message to send to the tool (uses task plan if not provided)"
+    "Custom message to send to the tool (uses task plan if not provided)",
   )
   .option("-m, --model <model>", "Model to use with the executor")
   .option(
     "--continue-session",
     "Continue the last session (for error feedback)",
-    false
+    false,
   )
   .option("--dry", "Show what would be executed without running it")
   .option(
@@ -35,43 +35,47 @@ export const executeCommand = new Command("execute")
     "Validation/verification command to run after execution (can be used multiple times)",
     (value: string, previous: string[] = []) => {
       return [...previous, value];
-    }
+    },
   )
   .option(
     "--verify <command>",
     "Alias for --validate (verification command)",
     (value: string, previous: string[] = []) => {
       return [...previous, value];
-    }
+    },
   )
   .option(
     "--max-retries <number>",
     "Maximum number of retries (opt-in, enables retry logic)",
-    (value: string) => parseInt(value, 10)
+    (value: string) => parseInt(value, 10),
   )
   .option(
     "--try-models <models>",
-    "Progressive model/executor configs for retries (e.g., 'gpt-4o-mini,claude:sonnet-4')"
+    "Progressive model/executor configs for retries (e.g., 'gpt-4o-mini,claude:sonnet-4')",
   )
   .option("--plan", "Generate an implementation plan before execution", false)
   .option(
     "--plan-model <model>",
-    "Model/executor to use for planning (e.g., 'opencode:gpt-4o' or 'gpt-4o')"
+    "Model/executor to use for planning (e.g., 'opencode:gpt-4o' or 'gpt-4o')",
   )
   .option(
     "--plan-tool <tool>",
-    "Tool/Executor to use for planning (defaults to --tool)"
+    "Tool/Executor to use for planning (defaults to --tool)",
   )
   .option("--review-plan", "Pause for human review of the plan", false)
   .option("--review", "Run AI review after execution", false)
   .option(
     "--review-model <model>",
-    "Model/executor to use for review (e.g., 'opencode:gpt-4o' or 'gpt-4o')"
+    "Model/executor to use for review (e.g., 'opencode:gpt-4o' or 'gpt-4o')",
+  )
+  .option(
+    "--review-tool <tool>",
+    "Tool/Executor to use for review (defaults to --tool, e.g. claude, opencode)",
   )
   .option(
     "--auto-commit",
     "Automatically commit changes after execution",
-    false
+    false,
   )
   .option("--include-prd", "Include PRD content in execution context", false)
   .action(
@@ -84,8 +88,8 @@ export const executeCommand = new Command("execute")
             chalk.red(
               `Invalid tool: ${
                 options.tool
-              }. Must be one of: ${VALID_EXECUTORS.join(", ")}`
-            )
+              }. Must be one of: ${VALID_EXECUTORS.join(", ")}`,
+            ),
           );
           process.exit(1);
         }
@@ -106,8 +110,8 @@ export const executeCommand = new Command("execute")
               chalk.red(
                 `Failed to parse --try-models: ${
                   error instanceof Error ? error.message : "Unknown error"
-                }`
-              )
+                }`,
+              ),
             );
             process.exit(1);
           }
@@ -129,14 +133,15 @@ export const executeCommand = new Command("execute")
           reviewPlan: options.reviewPlan,
           review: options.review,
           reviewModel: options.reviewModel,
+          reviewTool: options.reviewTool,
           autoCommit: options.autoCommit,
           includePrd: options.includePrd,
           onPlanReview: async (planFile: string) => {
             return await textInputPrompt(
-              `Enter feedback to refine the plan (or press Enter to approve and continue):`
+              `Enter feedback to refine the plan (or press Enter to approve and continue):`,
             );
           },
         });
-      }
-    )
+      },
+    ),
   );

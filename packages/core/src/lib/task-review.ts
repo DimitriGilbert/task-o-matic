@@ -11,6 +11,7 @@ const execAsync = promisify(exec);
  */
 export interface ReviewConfig {
   reviewModel?: string; // Format: "executor:model" or just "model"
+  reviewTool?: string; // Tool/executor to use for review
   planContent?: string; // Plan content to include in review context
   taskDescription?: string; // Task description
   taskContent?: string; // Full task content/requirements
@@ -43,6 +44,7 @@ export async function executeReviewPhase(
 ): Promise<ReviewResult> {
   const {
     reviewModel,
+    reviewTool,
     planContent,
     taskDescription,
     taskContent,
@@ -109,14 +111,44 @@ export async function executeReviewPhase(
     }
 
     // Parse executor and model from reviewModel string
-    const reviewExecutor = reviewModel
-      ? (reviewModel.split(":")[0] as ExecutorTool)
-      : undefined;
-    const reviewModelName = reviewModel ? reviewModel.split(":")[1] : undefined;
+    let reviewExecutor = reviewTool as ExecutorTool | undefined;
 
-    if (reviewExecutor && reviewModelName) {
+    // If reviewTool not explicitly set, try to parse from reviewModel
+    if (!reviewExecutor && reviewModel) {
+      reviewExecutor = reviewModel.split(":")[0] as ExecutorTool;
+    }
+
+    const reviewModelName = reviewModel
+      ? reviewModel.split(":")[1] || reviewModel
+      : undefined;
+
+    // Map executor to AI provider
+    let aiProvider:
+      | "openai"
+      | "anthropic"
+      | "gemini"
+      | "openrouter"
+      | undefined;
+
+    if (reviewExecutor) {
+      switch (reviewExecutor) {
+        case "claude":
+          aiProvider = "anthropic";
+          break;
+        case "gemini":
+          aiProvider = "gemini";
+          break;
+        case "codex":
+          aiProvider = "openai";
+          break;
+        case "opencode":
+          // opencode usually uses the default provider or openrouter
+          // We don't force a provider change unless necessary
+          break;
+      }
+
       logger.progress(
-        `   Using executor for review: ${reviewExecutor} (${reviewModelName})`,
+        `   Using executor for review: ${reviewExecutor} ${reviewModelName ? `(${reviewModelName})` : ""}`,
       );
     } else {
       logger.progress("   Using default AI provider for review");
@@ -169,9 +201,18 @@ Return a JSON object:
 }
 `;
 
+    // Build AI config override
+    const aiConfigOverride: any = {};
+    if (aiProvider) {
+      aiConfigOverride.provider = aiProvider;
+    }
+    if (reviewModelName) {
+      aiConfigOverride.model = reviewModelName;
+    }
+
     // Use AI operations to get review response
     const aiOps = getAIOperations();
-    const aiResponse = await aiOps.streamText(reviewPrompt);
+    const aiResponse = await aiOps.streamText(reviewPrompt, aiConfigOverride);
     const jsonMatch = aiResponse.match(/\{[\s\S]*\}/);
 
     if (jsonMatch) {

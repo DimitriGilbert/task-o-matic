@@ -50,6 +50,7 @@ export async function executeTaskCore(
     reviewPlan = false,
     enableReviewPhase = false,
     reviewModel,
+    reviewTool,
     autoCommit: enableAutoCommit = false,
     executeSubtasks = true,
     includePrd = false,
@@ -118,9 +119,19 @@ export async function executeTaskCore(
   // ----------------------------------------------------------------------
   const attempts: TaskExecutionAttempt[] = [];
 
-  if (enableRetry) {
-    // Execute with retry logic
-    return await executeTaskWithRetry(task, config, attempts, planContent);
+  if (enableRetry || enableReviewPhase) {
+    // Execute with retry logic OR if review is enabled (even without retry)
+    // If retry is disabled, we force maxRetries to 1 to ensure single execution + review
+    const effectiveConfig: TaskExecutionConfig = enableRetry
+      ? config
+      : { ...config, maxRetries: 1 };
+
+    return await executeTaskWithRetry(
+      task,
+      effectiveConfig,
+      attempts,
+      planContent,
+    );
   } else {
     // Execute once without retry (simpler path for execute command)
     return await executeSingleAttempt(
@@ -227,6 +238,7 @@ async function executeTaskWithRetry(
     verificationCommands = [],
     enableReviewPhase = false,
     reviewModel,
+    reviewTool,
     autoCommit: enableAutoCommit = false,
     includePrd = false,
     dry = false,
@@ -359,6 +371,7 @@ async function executeTaskWithRetry(
 
         const reviewResult = await executeReviewPhase(task, {
           reviewModel,
+          reviewTool,
           planContent,
           taskDescription: task.description,
           taskContent: task.content,

@@ -489,6 +489,7 @@ export interface ExecuteTaskOptions {
   reviewPlan?: boolean; // Enable human plan review
   review?: boolean; // Enable AI code review
   reviewModel?: string; // Model/executor for review
+  reviewTool?: string; // Tool/executor for review
   autoCommit?: boolean; // Auto-commit changes
   includePrd?: boolean; // Include PRD content in execution context
   onPlanReview?: (planFile: string) => Promise<string | undefined>; // Callback for human plan review
@@ -499,7 +500,7 @@ export interface ExternalExecutor {
   execute(
     message: string,
     dry?: boolean,
-    config?: ExecutorConfig
+    config?: ExecutorConfig,
   ): Promise<void>;
   supportsSessionResumption(): boolean; // Indicates if executor supports session resumption
 }
@@ -529,6 +530,7 @@ export interface ExecuteLoopConfig {
   reviewPlan?: boolean; // Pause for human review of the plan
   review?: boolean; // Run AI review after execution
   reviewModel?: string; // Model/executor to use for review
+  reviewTool?: string; // Tool/executor to use for review
   customMessage?: string; // Custom message override (from execute command)
   continueSession?: boolean; // Continue last session (from execute command)
   includeCompleted?: boolean; // Include already-completed tasks (default: false)
@@ -598,6 +600,7 @@ export interface TaskExecutionConfig {
   reviewPlan?: boolean; // Enable human plan review
   enableReviewPhase?: boolean; // Enable AI code review
   reviewModel?: string; // Model/executor for review (format: "executor:model" or "model")
+  reviewTool?: string; // Tool/executor for review
   onPlanReview?: (planFile: string) => Promise<string | undefined>; // Callback for human plan review
   autoCommit?: boolean; // Auto-commit changes
   executeSubtasks?: boolean; // Execute subtasks recursively (default: true)
@@ -639,12 +642,12 @@ export * from "./callbacks";
 export * from "./project-analysis";
 
 // Continue Workflow Types
-export type ContinueAction = 
-  | "add-feature"      // Add new feature to PRD
-  | "update-prd"       // Update PRD with progress
-  | "generate-tasks"   // Create tasks for unimplemented parts
-  | "review-status"    // Show project overview
-  | "generate-plan";   // Create implementation plan
+export type ContinueAction =
+  | "add-feature" // Add new feature to PRD
+  | "update-prd" // Update PRD with progress
+  | "generate-tasks" // Create tasks for unimplemented parts
+  | "review-status" // Show project overview
+  | "generate-plan"; // Create implementation plan
 
 // ============================================================================
 // PRD EVOLUTION TYPES (Phase 6)

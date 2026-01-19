@@ -40,8 +40,7 @@ export interface AIProviderOptions {
  * Command-specific option interfaces
  */
 export interface CreateCommandOptions
-  extends StreamingOptions,
-    AIProviderOptions {
+  extends StreamingOptions, AIProviderOptions {
   title: string;
   content?: string;
   effort?: "small" | "medium" | "large";
@@ -50,7 +49,8 @@ export interface CreateCommandOptions
 }
 
 export interface EnhanceCommandOptions
-  extends TaskIdOrAllOptions,
+  extends
+    TaskIdOrAllOptions,
     FilterOptions,
     DryRunOptions,
     ForceOptions,
@@ -58,7 +58,8 @@ export interface EnhanceCommandOptions
     AIProviderOptions {}
 
 export interface SplitCommandOptions
-  extends TaskIdOrAllOptions,
+  extends
+    TaskIdOrAllOptions,
     FilterOptions,
     DryRunOptions,
     ForceOptions,
@@ -70,8 +71,7 @@ export interface SplitCommandOptions
 }
 
 export interface PlanCommandOptions
-  extends StreamingOptions,
-    AIProviderOptions {
+  extends StreamingOptions, AIProviderOptions {
   id: string;
 }
 
@@ -95,8 +95,7 @@ export interface SetPlanCommandOptions {
 }
 
 export interface DocumentCommandOptions
-  extends StreamingOptions,
-    AIProviderOptions {
+  extends StreamingOptions, AIProviderOptions {
   taskId: string;
   force?: boolean;
 }
@@ -127,6 +126,7 @@ export interface ExecuteCommandOptions extends DryRunOptions {
   reviewPlan?: boolean;
   review?: boolean;
   reviewModel?: string;
+  reviewTool?: string;
   autoCommit?: boolean;
   includePrd?: boolean;
 }
@@ -150,6 +150,7 @@ export interface ExecuteLoopCommandOptions extends DryRunOptions {
   reviewPlan?: boolean;
   review?: boolean;
   reviewModel?: string;
+  reviewTool?: string;
   includeCompleted?: boolean;
   includePrd?: boolean;
   notify?: string[];
