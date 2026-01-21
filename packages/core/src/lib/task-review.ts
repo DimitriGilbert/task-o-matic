@@ -1,6 +1,7 @@
 import { logger } from "./logger";
 import { ExecutorTool, Task } from "../types";
 import { getAIOperations } from "../utils/ai-service-factory";
+import { parseExecutorModelString } from "../utils/model-executor-parser";
 import { exec } from "child_process";
 import { promisify } from "util";
 
@@ -110,17 +111,22 @@ export async function executeReviewPhase(
       };
     }
 
-    // Parse executor and model from reviewModel string
+    // Parse executor and model from reviewModel string (same logic as task-planning.ts)
     let reviewExecutor = reviewTool as ExecutorTool | undefined;
+    let reviewModelName = reviewModel;
 
-    // If reviewTool not explicitly set, try to parse from reviewModel
-    if (!reviewExecutor && reviewModel) {
-      reviewExecutor = reviewModel.split(":")[0] as ExecutorTool;
+    // Only parse reviewModel for executor if reviewTool is NOT explicitly set
+    if (reviewModel && !reviewTool) {
+      const result = parseExecutorModelString(reviewModel);
+      if (result.executor) {
+        reviewExecutor = result.executor;
+      }
+      reviewModelName = result.model;
+    } else if (reviewModel) {
+      // If reviewTool IS set, just use reviewModel as the model name
+      const result = parseExecutorModelString(reviewModel);
+      reviewModelName = result.model;
     }
-
-    const reviewModelName = reviewModel
-      ? reviewModel.split(":")[1] || reviewModel
-      : undefined;
 
     // Map executor to AI provider
     let aiProvider:
