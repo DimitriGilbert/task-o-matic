@@ -9,7 +9,7 @@ export class BetterTStackService {
   async createProject(
     name: string,
     config: BTSConfig,
-    workingDirectory?: string
+    workingDirectory?: string,
   ): Promise<{
     success: boolean;
     projectPath: string;
@@ -35,7 +35,7 @@ export class BetterTStackService {
       // eslint-disable-next-line @typescript-eslint/no-implied-eval, @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-assignment
       const dynamicImport = new Function(
         "specifier",
-        "return import(specifier)"
+        "return import(specifier)",
       );
       // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call
       const btsModule = await dynamicImport("create-better-t-stack");
@@ -51,7 +51,7 @@ export class BetterTStackService {
       if (typeof initFn !== "function") {
         throw new Error(
           `Could not find 'create' or 'init' function in create-better-t-stack module. ` +
-            `Available exports: ${Object.keys(btsModule).join(", ")}`
+            `Available exports: ${Object.keys(btsModule).join(", ")}`,
         );
       }
 
@@ -62,20 +62,50 @@ export class BetterTStackService {
         process.chdir(originalCwd);
       }
 
-      if (result.success) {
+      // Handle Result type from better-result library (create-better-t-stack v3.15+)
+      // The API returns Result<InitResult, CreateError> not a plain object
+      const isResultType =
+        typeof result?.isOk === "function" ||
+        typeof result?.isErr === "function";
+
+      let isSuccess: boolean;
+      let projectDirectory: string;
+      let relativePath: string;
+      let errorMessage: string | undefined;
+
+      if (isResultType) {
+        // New Result-based API
+        isSuccess = result.isOk();
+        if (isSuccess) {
+          const value = result.unwrap();
+          projectDirectory = value.projectDirectory;
+          relativePath = value.relativePath;
+        } else {
+          const error = result.unwrapErr();
+          errorMessage = error?.message || String(error);
+          projectDirectory = "";
+          relativePath = "";
+        }
+      } else {
+        // Legacy API (pre v3.15) - plain object with success property
+        isSuccess = result.success;
+        projectDirectory = result.projectDirectory || "";
+        relativePath = result.relativePath || "";
+        errorMessage = result.error;
+      }
+
+      if (isSuccess) {
         // Save configuration
-        await this.saveBTSConfig(name, config, result.projectDirectory);
+        await this.saveBTSConfig(name, config, projectDirectory);
 
         // Post-bootstrap enhancements
         try {
-          const projectDir = result.projectDirectory;
-
           // 1. Add check-types script to packages
-          await this.addCheckTypesScript(projectDir);
+          await this.addCheckTypesScript(projectDirectory);
 
           // 2. Copy documentation if requested
           if (config.includeDocs) {
-            await this.copyDocumentation(projectDir);
+            await this.copyDocumentation(projectDirectory);
           }
         } catch (error) {
           logger.error(`⚠ Post-bootstrap enhancements failed: ${error}`);
@@ -84,14 +114,14 @@ export class BetterTStackService {
 
         return {
           success: true,
-          projectPath: result.relativePath,
-          message: `Better-T-Stack project ${name} created successfully at ${result.projectDirectory}`,
+          projectPath: relativePath,
+          message: `Better-T-Stack project ${name} created successfully at ${projectDirectory}`,
         };
       } else {
         return {
           success: false,
           projectPath: "",
-          message: `Better-T-Stack bootstrap failed: ${result.error}`,
+          message: `Better-T-Stack bootstrap failed: ${errorMessage || "Unknown error"}`,
         };
       }
     } catch (error) {
@@ -145,7 +175,7 @@ export class BetterTStackService {
   private async saveBTSConfig(
     name: string,
     config: BTSConfig,
-    projectPath?: string
+    projectPath?: string,
   ): Promise<void> {
     const taskOMaticDir = projectPath
       ? join(projectPath, ".task-o-matic")
@@ -163,7 +193,7 @@ export class BetterTStackService {
         createdAt: new Date().toISOString(),
       },
       null,
-      2
+      2,
     );
 
     // Save with project-specific name for tracking multiple projects
@@ -184,7 +214,7 @@ export class BetterTStackService {
     // Find all package.json files in apps and backend directories
     const packageFiles = await glob(
       ["apps/*/package.json", "backend/*/package.json"],
-      { cwd: projectDir, absolute: true }
+      { cwd: projectDir, absolute: true },
     );
 
     for (const file of packageFiles) {
@@ -199,7 +229,7 @@ export class BetterTStackService {
           content.scripts["check-types"] = "tsc --noEmit";
           writeFileSync(file, JSON.stringify(content, null, 2) + "\n");
           logger.success(
-            `  ✓ Added check-types to ${file.split("/").slice(-3).join("/")}`
+            `  ✓ Added check-types to ${file.split("/").slice(-3).join("/")}`,
           );
         }
       } catch (err) {
@@ -269,7 +299,7 @@ export class BetterTStackIntegration {
    * Parse frontend option into array of frontends
    */
   private parseFrontends(
-    frontendOption?: BTSFrontend | BTSFrontend[] | string
+    frontendOption?: BTSFrontend | BTSFrontend[] | string,
   ): BTSFrontend[] {
     if (!frontendOption) return [];
 
@@ -309,7 +339,7 @@ export class BetterTStackIntegration {
   async createProject(
     name: string,
     options: InitOptions,
-    workingDirectory?: string
+    workingDirectory?: string,
   ): Promise<{ success: boolean; message: string; projectPath?: string }> {
     const workingDir = workingDirectory || configManager.getWorkingDirectory();
     const frontends = this.parseFrontends(options.frontend);
@@ -327,7 +357,7 @@ export class BetterTStackIntegration {
           name,
           btsFrontends,
           options,
-          workingDir
+          workingDir,
         );
         if (!result.success) throw new Error(result.message);
 
@@ -351,7 +381,7 @@ export class BetterTStackIntegration {
             name,
             projectPath,
             isMonorepo,
-            options
+            options,
           );
           results.push(result.message);
         }
@@ -361,7 +391,7 @@ export class BetterTStackIntegration {
             name,
             projectPath,
             isMonorepo,
-            options
+            options,
           );
           results.push(result.message);
         }
@@ -388,7 +418,7 @@ export class BetterTStackIntegration {
     name: string,
     frontends: BTSFrontend[],
     options: InitOptions,
-    workingDir: string
+    workingDir: string,
   ): Promise<{ success: boolean; message: string; projectPath: string }> {
     const backend = options.backend || "hono";
     const isConvex = backend === "convex";
@@ -398,21 +428,24 @@ export class BetterTStackIntegration {
       projectName: options.name || options.projectName || name,
       frontend: frontends.length === 1 ? frontends[0] : frontends, // Pass array if multiple
       backend: (backend as BTSConfig["backend"]) || "hono",
-      database: isNoBackend || isConvex
-        ? "none"
-        : (options.database as BTSConfig["database"]) || "sqlite",
+      database:
+        isNoBackend || isConvex
+          ? "none"
+          : (options.database as BTSConfig["database"]) || "sqlite",
       auth: (options.noAuth || options.backend === "none"
         ? "none"
         : options.auth || "better-auth") as BTSConfig["auth"],
       addons: (options.addons as BTSConfig["addons"]) || ["turborepo"],
-      runtime: isNoBackend || isConvex || backend === "self"
-        ? "none"
-        : (options.runtime as BTSConfig["runtime"]) || "node",
+      runtime:
+        isNoBackend || isConvex || backend === "self"
+          ? "none"
+          : (options.runtime as BTSConfig["runtime"]) || "node",
       api: (options.api as BTSConfig["api"]) || "none",
       payments: (options.payment as BTSConfig["payments"]) || "none",
-      orm: isNoBackend || isConvex || options.database === "none"
-        ? "none"
-        : (options.orm as BTSConfig["orm"]) || "drizzle",
+      orm:
+        isNoBackend || isConvex || options.database === "none"
+          ? "none"
+          : (options.orm as BTSConfig["orm"]) || "drizzle",
       dbSetup: (isNoBackend || isConvex
         ? "none"
         : options.dbSetup || "none") as BTSConfig["dbSetup"],
@@ -434,7 +467,7 @@ export class BetterTStackIntegration {
     const result = await this.btsService.createProject(
       name,
       btsConfig,
-      workingDir
+      workingDir,
     );
     return {
       success: result.success,
@@ -450,11 +483,10 @@ export class BetterTStackIntegration {
     projectName: string,
     projectPath: string,
     isMonorepo: boolean,
-    options: InitOptions
+    options: InitOptions,
   ): Promise<{ success: boolean; message: string }> {
-    const { bootstrapCliProject } = await import(
-      "./bootstrap/cli-bootstrap.js"
-    );
+    const { bootstrapCliProject } =
+      await import("./bootstrap/cli-bootstrap.js");
 
     const cliPath = isMonorepo ? join(projectPath, "apps", "cli") : projectPath;
     const cliName = isMonorepo ? `${projectName}-cli` : projectName;
@@ -486,11 +518,10 @@ export class BetterTStackIntegration {
     projectName: string,
     projectPath: string,
     isMonorepo: boolean,
-    options: InitOptions
+    options: InitOptions,
   ): Promise<{ success: boolean; message: string }> {
-    const { bootstrapMedusaProject } = await import(
-      "./bootstrap/medusa-bootstrap.js"
-    );
+    const { bootstrapMedusaProject } =
+      await import("./bootstrap/medusa-bootstrap.js");
 
     const medusaPath = isMonorepo
       ? join(projectPath, "apps", "medusa")
@@ -521,12 +552,12 @@ export class BetterTStackIntegration {
 // Export backward-compatible function
 export async function runBetterTStackCLI(
   options: InitOptions,
-  workingDirectory?: string
+  workingDirectory?: string,
 ): Promise<{ success: boolean; message: string; projectPath?: string }> {
   const integration = new BetterTStackIntegration();
   return integration.createProject(
     options.projectName || options.name || "default-project",
     options,
-    workingDirectory
+    workingDirectory,
   );
 }

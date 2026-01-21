@@ -1,6 +1,6 @@
 {
   "name": "task-o-matic",
-  "version": "0.1.5-beta.3",
+  "version": "0.1.5",
   "description": "CLI for Task-O-Matic",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
